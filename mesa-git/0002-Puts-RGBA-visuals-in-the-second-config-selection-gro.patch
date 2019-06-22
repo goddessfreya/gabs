@@ -1,0 +1,42 @@
+From b91cd7a488c0b53eb7ca99443a67521ce8af4dc2 Mon Sep 17 00:00:00 2001
+From: Hal Gentz <zegentzy@protonmail.com>
+Date: Fri, 21 Jun 2019 17:12:47 -0600
+Subject: [PATCH 2/2] Puts RGBA visuals in the second config selection group.
+ That way applications don't get windows that are compositor alpha-blended
+ accidentally.
+
+In the ideal world, this would be done by the xserver as it is done for
+GLX, however, I failed to comprehend their code, so I'm putting it here
+instead.
+
+Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
+---
+ src/egl/drivers/dri2/platform_x11.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform_x11.c
+index c52befd5643..e738007ef60 100644
+--- a/src/egl/drivers/dri2/platform_x11.c
++++ b/src/egl/drivers/dri2/platform_x11.c
+@@ -831,9 +831,17 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
+             dri2_conf = dri2_add_config(disp, config, config_count + 1,
+                                         surface_type, config_attrs,
+                                         rgba_masks);
+-            if (dri2_conf)
++            if (dri2_conf) {
+                if (dri2_conf->base.ConfigID == config_count + 1)
+                   config_count++;
++
++               /* Put RGBA visuals in the second ConfigSelectGroup so that they
++                * have lower priority. Applications probably don't want the
++                * compositor to alpha-blend their windows.
++                */
++               if (d.data->depth != 24 && d.data->depth != 30)
++                  dri2_conf->base.ConfigSelectGroup = 1;
++            }
+          }
+       }
+ 
+-- 
+2.22.0
+

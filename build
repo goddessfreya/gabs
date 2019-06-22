@@ -1,0 +1,259 @@
+#!/bin/zsh -x
+
+# This code was once commented, but got lost from a call to `ln` in the wrong
+# directory. This version has been pieced together from one shity log.
+
+sudo -v || exit $?
+while true; do
+    sudo -nv
+    sleep 1m
+    kill -0 $$ 2>/dev/null || exit
+done &
+
+local POSITIONAL=()
+local SHOULD_RESUME=false
+local RESUME_PKG=
+local PACKAGES=()
+local EXCLUDED_PACKAGES=()
+local FIRST_PARAMS=()
+local EVERY_PARAMS=()
+local ONE_ONLY=false
+local DO_BACKUP_DIR=
+local RESUME_BACKUP_DIR=
+
+source "$(pwd)/build_utils"
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		-r)
+            if [[ "$SHOULD_RESUME" != "false" ]]; then
+                echo -r conflicts with either other -r or -rp 
+                exit 1
+            fi
+            SHOULD_RESUME=true
+            RESUME_PKG="$(cat last_pkg)"
+			shift # past argument
+		;;
+		-rp)
+            if [[ "$SHOULD_RESUME" != "false" ]]; then
+                echo -rp conflicts with either other -rp or -r
+                exit 1
+            fi
+            SHOULD_RESUME=true
+            RESUME_PKG="$2"
+			shift # past argument
+			shift # past value
+		;;
+		-p)
+            PACKAGES+=("$2")
+			shift # past argument
+			shift # past value
+		;;
+		-e)
+            EXCLUDED_PACKAGES+=("$2")
+			shift # past argument
+			shift # past value
+		;;
+		-fp)
+            FIRST_PARAMS+=("$2")
+			shift # past argument
+			shift # past value
+		;;
+		-ep)
+            EVERY_PARAMS+=("$2")
+			shift # past argument
+			shift # past value
+		;;
+		-o)
+            ONE_ONLY=true
+			shift # past argument
+		;;
+		-rs)
+            if [[ "$RESUME_BACKUP_DIR" != "" ]]; then
+                echo Resume backup dir already passed.
+                exit 1
+            fi
+
+            RESUME_BACKUP_DIR="$2"
+			shift # past argument
+			shift # past argument
+		;;
+		-bk)
+            if [[ "$DO_BACKUP_DIR" != "" ]]; then
+                echo Do backup dir already passed.
+                exit 1
+            fi
+
+            DO_BACKUP_DIR="$2"
+			shift # past argument
+			shift # past argument
+		;;
+
+        --help)
+            echo "====== HELP ======"
+            echo "PARA | DESC"
+            echo "-rp  : Resumes on this package"
+            echo "-r   : Resumes on last built package"
+            echo "-p   : Adds this to the package list"
+            echo "-e   : Adds this to the excluded package list"
+            echo "-fp  : Add this as one of the params that the first package built recieves"
+            echo "-ep  : Add this as one of the params that every package recieves, excluding the first if -fp is set"
+            echo "-o   : Only build one package"
+            echo "-bk  : Do backups."
+            echo "-rs  : Resume backups."
+            exit
+        ;;
+		*) # unknown option
+			POSITIONAL+=("$1") # save it in an array for later
+			printf "Ignoring option \`$1\`\n"
+			shift # past argument
+		;;
+	esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+if [[ "${#EVERY_PARAMS[@]}" == "0" ]]; then
+    echo "Falling back to using -w for every package"
+    EVERY_PARAMS=("-w")
+fi
+
+if [[ "${#PACKAGES[@]}" == "0" ]]; then
+    echo "Falling back to built in package list."
+    PACKAGES=( 
+        "lib32-tk"
+        "lib32-mpdecimal"
+        "python2"
+        "python"
+        "lib32-libedit"
+        "llvm-git"
+        "lib32-libomxil-bellagio"
+        "mesa-git"
+        "libglvnd-git"
+        #"wayland-git"
+        #"wayland-protocols-git"
+        #"xorg-server-git"
+        #"sddm-git"
+        #"xf86-video-amdgpu-git"
+        #"xf86-video-ati-git"
+    ) 
+fi
+
+if [[ "$(diff /etc/makepkg.conf makepkg.conf | wc -l)" != "4" \
+    || "$(diff /etc/makepkg.conf makepkg.conf \
+        | grep '^>\|^<' \
+        | sed 's/\!sign/sign/' \
+        | sed 's/^</>/' \
+        | sort -u \
+        | wc -l)" != "1" ]]; then
+    echo "makepkg.conf was not updated"
+    exit
+fi
+
+local CHROOT_SUFFIX=chroot
+local CHROOT_DIR="$(pwd)/$CHROOT_SUFFIX"
+
+if [[ "$SHOULD_RESUME" == "false" ]]; then
+    cp alternatives provides
+    sudo rm -rf deps
+    mkdir -p deps
+
+    rm */*.pkg.tar-namcap.log
+    rm */*-build.log*
+    rm */*-package*.log*
+    rm */*-namcap.log*
+    rm */*-prepare.log*
+    rm */*-check.log*
+    rm */*-pkgver.log*
+    rm last_pkg || true
+
+    mkdir -p pkgs.old
+    mkdir -p pkgs
+    mv pkgs/* pkgs.old
+
+    sudo rm -rf "$CHROOT_DIR"
+    mkdir -p "$CHROOT_DIR"
+
+    sudo /usr/bin/mkarchroot \
+        -C /etc/pacman.conf \
+        -M "$(pwd)/makepkg.conf" \
+        -c /var/cache/pacman/pkg \
+        "$CHROOT_DIR/root" \
+        base-devel ccache gcc-multilib zsh
+
+    sudo /usr/bin/arch-nspawn "$CHROOT_DIR/root" \
+        /bin/bash -c 'yes | pacman -Syu'
+
+    sudo mkdir -p "${CHROOT_DIR}/root/alt_pkgs/"
+    sudo cp alt_pkgs/*.pkg.tar "${CHROOT_DIR}/root/pkgs/"
+    local ALT_DEPS="$(sudo ls ${CHROOT_DIR}/root/alt_pkgs/ \
+        | sed "s/^/\/alt_pkgs\//" \
+        | tr '\n' ' ')"
+    if [[ "$ALT_DEPS" != "" ]]; then
+        sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
+            /bin/bash -c "yes | pacman -U $ALT_DEPS"
+    fi
+fi
+
+[[ "$RESUME_BACKUP_DIR" != "" ]] && mkdir -p "$RESUME_BACKUP_DIR"
+[[ "$DO_BACKUP_DIR" != "" ]] && mkdir -p "$DO_BACKUP_DIR"
+
+for PKG_TO_BUILD in $PACKAGES; do
+    if [[ "$SHOULD_RESUME" != "false" ]]; then
+        if [[ "$PKG_TO_BUILD" != "$RESUME_PKG" ]]; then 
+            echo "Skipping $PKG_TO_BUILD"
+            continue
+        fi
+        SHOULD_RESUME=false
+    fi
+
+    if array_contains_element $PKG_TO_BUILD ${EXCLUDED_PACKAGES[@]} ; then 
+        echo "Excluding $PKG_TO_BUILD"
+        continue
+    fi
+
+    echo "Doing $PKG_TO_BUILD"
+
+    echo "$PKG_TO_BUILD" > last_pkg
+
+    local PARAMS=(${EVERY_PARAMS[@]})
+
+    if [[ "${#FIRST_PARAMS[@]}" != "0" ]]; then
+        PARAMS=("${FIRST_PARAMS[@]}")
+        FIRST_PARAMS=()
+    fi
+
+    array_contains_element "-rs" ${PARAMS[@]} \
+        && echo "Did not insert -rs as already present" \
+        || {
+            [[ "$RESUME_BACKUP_DIR" != "" ]] \
+                && PARAMS+=("-rs" "$RESUME_BACKUP_DIR/$PKG_TO_BUILD")
+        }
+
+    if array_contains_element "-rs" ${PARAMS[@]} ; then 
+        # Strip -w, as that conflicts
+        TO_REMOVE=("-w")
+        remove_from_array PARAMS TO_REMOVE
+        PARAMS=("${RFA_RETURN[@]}")
+    fi
+
+    array_contains_element "-bk" ${PARAMS[@]} \
+        && echo "Did not insert -bk as already present" \
+        || {
+            [[ "$DO_BACKUP_DIR" != "" ]] \
+                && PARAMS+=("-bk" "$DO_BACKUP_DIR/$PKG_TO_BUILD")
+        }
+
+    cd "$PKG_TO_BUILD"
+    local CHROOT_DIR2="$(pwd)/../$CHROOT_SUFFIX"
+    ./build "${PARAMS[@]}" -c "$CHROOT_DIR2" || {
+        echo "Failed to build $PKG_TO_BUILD"
+        exit 1
+    }
+
+    cd ..
+    echo "Done $PKG_TO_BUILD"
+
+    if [[ "$ONE_ONLY" == "true" ]]; then
+        exit
+    fi
+done

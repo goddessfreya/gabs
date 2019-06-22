@@ -1,0 +1,182 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributor: Lone_Wolf <lonewolf at xs4all dot nl>
+# Contributor: Armin K. <krejzi at email dot com>
+# Contributor: Kristian Klausen <klausenbusk@hotmail.com>
+# Contributor: Egon Ashrafinia <e.ashrafinia@gmail.com>
+# Contributor: Tavian Barnes <tavianator@gmail.com>
+# Contributor: Jan de Groot <jgc@archlinux.org>
+# Contributor: Andreas Radke <andyrtr@archlinux.org>
+# Contributor: Thomas Dziedzic < gostrc at gmail >
+# Contributor: Antti "Tera" Oja <antti.bofh@gmail.com>
+# Contributor: Diego Jose <diegoxter1006@gmail.com>
+
+pkgbase=mesa-git-gentz
+pkgname=('mesa-git-gentz' 'lib32-mesa-git-gentz')
+pkgdesc="an open-source implementation of the OpenGL specification, git version"
+pkgver=19.2.0_devel.112096.301bdda2b83
+pkgrel=0
+arch=('x86_64')
+optdepends=('opengl-man-pages: for the OpenGL API man pages')
+url="https://www.mesa3d.org"
+license=('custom')
+makedepends=(
+    'git' 'python-mako' 'xorgproto' 'libomxil-bellagio' 'ocl-icd'
+    'vulkan-icd-loader' 'wayland-protocols' 'meson' 'lib32-gcc-libs'
+    'lib32-llvm-git' 'lib32-libxml2' 'lib32-libx11' 'lib32-libvdpau'
+    'lib32-libva' 'lib32-elfutils' 'lib32-libxrandr' 'lib32-libgcrypt'
+    'lib32-wayland' 'lib32-libelf' 'llvm-git' 'libxml2' 'libx11' 'libvdpau'
+    'libva' 'elfutils' 'libxrandr' 'libgcrypt' 'wayland' 'libelf' 'clang-git'
+    'libclc' 'glslang' 'lib32-libomxil-bellagio'
+)
+groups=('gentz_custom')
+
+source=(
+    'git+https://github.com/freedesktop/mesa.git'
+    'LICENSE'
+    '533.patch'
+    '1145.patch'
+    'llvm32.cross'
+    '0001-Fixes-transparency-with-EGL-and-X11.patch'
+	'0002-Puts-RGBA-visuals-in-the-second-config-selection-gro.patch'
+)
+
+#_meson_flags="-D b_ndebug=true"
+
+sha512sums=('SKIP'
+            '25da77914dded10c1f432ebcbf29941124138824ceecaf1367b3deedafaecabc082d463abcfa3d15abff59f177491472b505bcb5ba0c4a51bb6b93b4721a23c2'
+            '2838c24aea0c3da3b9f5b5e89fd0ff2d4f9c3b3bb34cba713707425f9dadb8b277ff023ae254cd897aac962beaf3f2a92f5a31e127bef37f68de353abbf75af6'
+            '4e5b936a52e3592f69a4a6b4d164c24f6d30d9f7bd30db9a186befe93ef31588690b8ac3dee71fa6e7b1cb84874f38196c6e765f49fbb9cf6aac07c76cb0481c'
+            'a792f0dd95b77a54e9b9dbf3bb9d80496542c2ec5a6af1da9606cdacfebe6c36b7404cf8b70306df31c1e8b6b459a77b7ed90f95f87027966ab0306b4f8079f0'
+            'c023560ad4df7d4c221d03208caaac13e42931ee0bd92dd02367dc14c349b3ecd4bd445759bcc02618ed68d6047f8f9766618ed1f9953823db4a6f2f85537792')
+
+pkgver() {
+    cd mesa
+    read -r _ver <VERSION
+    echo ${_ver/-/_}.$(git rev-list --count HEAD).$(git rev-parse --short HEAD)
+}
+
+build_meson() {
+    if [[ -f ".build$1.built" ]]; then
+        return
+    fi
+
+    meson setup mesa _build$1 \
+        ${@:2} \
+        $_meson_flags \
+        -D buildtype=plain \
+        --wrap-mode=nofallback \
+        -D prefix=/usr \
+        -D sysconfdir=/etc \
+        -D platforms=x11,wayland,drm,surfaceless \
+        -D dri-drivers="" \
+        -D gallium-drivers=radeonsi,svga,swrast,virgl \
+        -D vulkan-drivers=amd \
+        -D swr-arches=avx,avx2 \
+        -D dri3=true \
+        -D egl=true \
+        -D gallium-extra-hud=true \
+        -D vulkan-overlay-layer=true \
+        -D gallium-nine=true \
+        -D gallium-va=true \
+        -D gallium-vdpau=true \
+        -D gallium-xa=true \
+        -D gallium-xvmc=false \
+        -D gbm=true \
+        -D gles1=true \
+        -D gles2=true \
+        -D glvnd=true \
+        -D glx=dri \
+        -D libunwind=true \
+        -D llvm=true \
+        -D lmsensors=true \
+        -D osmesa=gallium \
+        -D shared-glapi=true \
+        -D valgrind=false \
+        -D tools=[]
+
+    meson configure _build$1
+
+    ninja $NINJAFLAGS -C _build$1
+    touch ".build$1.built"
+}
+
+prepare() {
+    # So git am works.
+    # Yeah, we could use git apply, but I want to be able to run diff and only
+    # get the changes for my patches.
+    git config --global user.email "zegentzy@protonmail.com"
+    git config --global user.name "Hal Gentz"
+
+    cd mesa
+    git am "../533.patch"
+    git am "../1145.patch" -C2
+
+    git am "../0001-Fixes-transparency-with-EGL-and-X11.patch"
+    git am "../0002-Puts-RGBA-visuals-in-the-second-config-selection-gro.patch"
+    cd ..
+}
+
+build () {
+    build_meson 64 \
+        -D gallium-opencl=icd \
+        -D gallium-omx=bellagio
+
+    build_meson 32 \
+        --cross-file "$srcdir"/llvm32.cross \
+        --libdir=/usr/lib32 \
+        -D gallium-opencl=disabled \
+        -D gallium-omx=disabled
+}
+
+package_lib32-mesa-git-gentz() {
+    depends+=(
+        'libomxil-bellagio' 'libclc' 'lib32-libelf' 'lib32-libdrm'
+        'lib32-libxxf86vm' 'lib32-libxdamage' 'lib32-libxshmfence'
+        'lib32-llvm-libs-git' 'lib32-libunwind' 'lib32-libglvnd'
+        'lib32-wayland' 'lib32-lm_sensors' 'glslang'
+    )
+    provides+=(
+        'lib32-mesa' 'lib32-opencl-mesa' 'lib32-vulkan-intel'
+        'lib32-vulkan-radeon' 'lib32-libva-mesa-driver' 'lib32-mesa-vdpau'
+        'lib32-vulkan-driver' 'lib32-opengl-driver' 'lib32-opencl-driver'
+    )
+    conflicts+=(
+        'lib32-mesa' 'lib32-opencl-mesa' 'lib32-vulkan-intel'
+        'lib32-vulkan-radeon' 'lib32-libva-mesa-driver' 'lib32-mesa-vdpau'
+        'lib32-vulkan-driver' 'lib32-opengl-driver' 'lib32-opencl-driver'
+    )
+    DESTDIR="$pkgdir" ninja $NINJAFLAGS -C _build32 install
+
+    # remove files provided by mesa-git
+    rm -rf "$pkgdir"/etc
+    rm -rf "$pkgdir"/usr/include
+    rm -rf "$pkgdir"/usr/share/glvnd/
+    rm -rf "$pkgdir"/usr/share/drirc.d/
+    rm -rf "$pkgdir"/usr/share/vulkan/explicit_layer.d/
+
+    # indirect rendering
+    ln -s /usr/lib32/libGLX_mesa.so.0 "${pkgdir}/usr/lib32/libGLX_indirect.so.0"
+}
+
+package_mesa-git-gentz() {
+    depends+=(
+        'lib32-libomxil-bellagio' 'libclc' 'libelf' 'libdrm' 'libxxf86vm'
+        'libxdamage' 'libxshmfence' 'llvm-libs-git' 'libunwind' 'libglvnd'
+        'wayland' 'lm_sensors' 'glslang'
+    )
+    provides+=(
+        'mesa' 'opencl-mesa' 'vulkan-intel' 'vulkan-radeon' 'libva-mesa-driver'
+        'mesa-vdpau' 'vulkan-driver' 'opengl-driver' 'opencl-driver'
+    )
+    conflicts+=(
+        'mesa' 'opencl-mesa' 'vulkan-intel' 'vulkan-radeon' 'libva-mesa-driver'
+        'mesa-vdpau' 'vulkan-driver' 'opengl-driver' 'opencl-driver'
+    )
+
+    DESTDIR="$pkgdir" ninja $NINJAFLAGS -C _build64 install
+
+    # indirect rendering
+    ln -s /usr/lib/libGLX_mesa.so.0 ${pkgdir}/usr/lib/libGLX_indirect.so.0
+
+    install -Dt "$pkgdir"/usr/share/licenses/$pkgbase "$srcdir"/LICENSE
+}

@@ -1,0 +1,187 @@
+diff --git a/include/EGL/eglmesaext.h b/include/EGL/eglmesaext.h
+index f4332b279f8..3864f0dd416 100644
+--- a/include/EGL/eglmesaext.h
++++ b/include/EGL/eglmesaext.h
+@@ -86,6 +86,11 @@ typedef EGLBoolean (EGLAPIENTRYP PFNEGLSWAPBUFFERSREGIONNOK) (EGLDisplay dpy, EG
+ #define EGL_DRM_BUFFER_FORMAT_RGB565_MESA       0x3292
+ #endif /* EGL_MESA_drm_image_formats */
+ 
++#ifndef EGL_MESA_config_select_group
++#define EGL_MESA_config_select_group 1
++#define EGL_CONFIG_SELECT_GROUP_MESA		0x31D9
++#endif
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
+index d584bccdebe..0278880d6e2 100644
+--- a/src/egl/drivers/dri2/egl_dri2.c
++++ b/src/egl/drivers/dri2/egl_dri2.c
+diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
+index d584bccdebe..fabb5dc3ce8 100644
+--- a/src/egl/drivers/dri2/egl_dri2.c
++++ b/src/egl/drivers/dri2/egl_dri2.c
+@@ -167,4 +167,5 @@ static const EGLint dri2_to_egl_attribute_map[__DRI_ATTRIB_MAX] = {
+    [__DRI_ATTRIB_MAX_SWAP_INTERVAL]     = EGL_MAX_SWAP_INTERVAL,
+    [__DRI_ATTRIB_MIN_SWAP_INTERVAL]     = EGL_MIN_SWAP_INTERVAL,
+    [__DRI_ATTRIB_YINVERTED]             = EGL_Y_INVERTED_NOK,
++   [__DRI_ATTRIB_CONFIG_SELECT_GROUP]   = EGL_CONFIG_SELECT_GROUP_MESA,
+ };
+@@ -182,6 +182,9 @@ dri2_get_dri_config(struct dri2_egl_config *conf, EGLint surface_type,
+ static EGLBoolean
+ dri2_match_config(const _EGLConfig *conf, const _EGLConfig *criteria)
+ {
++   if (conf->NativeVisualID != criteria->NativeVisualID)
++      return EGL_FALSE;
++
+    if (_eglCompareConfigs(conf, criteria, NULL, EGL_FALSE) != 0)
+       return EGL_FALSE;
+ 
+diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform_x11.c
+index c8c676d2f00..b72b5d8e03c 100644
+--- a/src/egl/drivers/dri2/platform_x11.c
++++ b/src/egl/drivers/dri2/platform_x11.c
+@@ -840,16 +840,13 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
+              * compositor.  This is probably not what the application
+              * wants... especially on drivers that only have 32-bit RGBA
+              * EGLConfigs! */
+-            if (d.data->depth == 24 || d.data->depth == 30) {
+-               rgba_masks[3] =
+-                  ~(rgba_masks[0] | rgba_masks[1] | rgba_masks[2]);
+-               dri2_conf = dri2_add_config(disp, config, config_count + 1,
+-                                           surface_type, config_attrs,
+-                                           rgba_masks);
+-               if (dri2_conf)
+-                  if (dri2_conf->base.ConfigID == config_count + 1)
+-                     config_count++;
+-            }
++            rgba_masks[3] = ~(rgba_masks[0] | rgba_masks[1] | rgba_masks[2]);
++            dri2_conf = dri2_add_config(disp, config, config_count + 1,
++                                        surface_type, config_attrs,
++                                        rgba_masks);
++            if (dri2_conf)
++               if (dri2_conf->base.ConfigID == config_count + 1)
++                  config_count++;
+ 	 }
+       }
+ 
+diff --git a/include/GL/internal/dri_interface.h b/include/GL/internal/dri_interface.h
+index af0ee9c5667..09f7a798351 100644
+--- a/include/GL/internal/dri_interface.h
++++ b/include/GL/internal/dri_interface.h
+@@ -766,10 +767,11 @@ struct __DRIuseInvalidateExtensionRec {
+ #define __DRI_ATTRIB_YINVERTED			47
+ #define __DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE	48
+ #define __DRI_ATTRIB_MUTABLE_RENDER_BUFFER	49 /* EGL_MUTABLE_RENDER_BUFFER_BIT_KHR */
+-#define __DRI_ATTRIB_MAX			50
++#define __DRI_ATTRIB_CONFIG_SELECT_GROUP	50
++#define __DRI_ATTRIB_MAX			51
+ 
+ /* __DRI_ATTRIB_RENDER_TYPE */
+ #define __DRI_ATTRIB_RGBA_BIT			0x01	
+ #define __DRI_ATTRIB_COLOR_INDEX_BIT		0x02
+ #define __DRI_ATTRIB_LUMINANCE_BIT		0x04
+ #define __DRI_ATTRIB_FLOAT_BIT			0x08
+diff --git a/src/egl/main/eglconfig.c b/src/egl/main/eglconfig.c
+index 72cd73d5179..959902c8b26 100644
+--- a/src/egl/main/eglconfig.c
++++ b/src/egl/main/eglconfig.c
+@@ -258,6 +263,9 @@ static const struct {
+    { EGL_COLOR_COMPONENT_TYPE_EXT,  ATTRIB_TYPE_ENUM,
+                                     ATTRIB_CRITERION_EXACT,
+                                     EGL_COLOR_COMPONENT_TYPE_FIXED_EXT },
++   { EGL_CONFIG_SELECT_GROUP_MESA,  ATTRIB_TYPE_INTEGER,
++                                    ATTRIB_CRITERION_IGNORE,
++                                    0 },
+ };
+ 
+ 
+@@ -296,6 +304,8 @@ _eglValidateConfig(const _EGLConfig *conf, EGLBoolean for_matching)
+             if (val > 1 || val < 0)
+                valid = EGL_FALSE;
+             break;
++         case EGL_CONFIG_SELECT_GROUP_MESA:
++            break;
+          default:
+             if (val < 0)
+                valid = EGL_FALSE;
+@@ -608,6 +618,10 @@ _eglCompareConfigs(const _EGLConfig *conf1, const _EGLConfig *conf2,
+    if (conf1 == conf2)
+       return 0;
+ 
++   val1 = conf1->ConfigSelectGroup - conf2->ConfigSelectGroup;
++   if (val1)
++      return val1;
++
+    /* the enum values have the desired ordering */
+    STATIC_ASSERT(EGL_NONE < EGL_SLOW_CONFIG);
+    STATIC_ASSERT(EGL_SLOW_CONFIG < EGL_NON_CONFORMANT_CONFIG);
+diff --git a/src/egl/main/eglconfig.h b/src/egl/main/eglconfig.h
+index 605289de536..233178337d6 100644
+--- a/src/egl/main/eglconfig.h
++++ b/src/egl/main/eglconfig.h
+@@ -89,6 +89,7 @@ struct _egl_config
+    EGLint FramebufferTargetAndroid;
+    EGLint RecordableAndroid;
+    EGLint ComponentType;
++   EGLint ConfigSelectGroup;
+ };
+ 
+ 
+@@ -139,6 +140,7 @@ _eglOffsetOfConfig(EGLint attr)
+    ATTRIB_MAP(EGL_FRAMEBUFFER_TARGET_ANDROID, FramebufferTargetAndroid);
+    ATTRIB_MAP(EGL_RECORDABLE_ANDROID,        RecordableAndroid);
+    ATTRIB_MAP(EGL_COLOR_COMPONENT_TYPE_EXT,  ComponentType);
++   ATTRIB_MAP(EGL_CONFIG_SELECT_GROUP_MESA,  ConfigSelectGroup);
+ #undef ATTRIB_MAP
+    default:
+       return -1;
+diff --git a/src/egl/main/eglglobals.c b/src/egl/main/eglglobals.c
+index 2fc64bc52c3..45e82258b54 100644
+--- a/src/egl/main/eglglobals.c
++++ b/src/egl/main/eglglobals.c
+@@ -70,7 +70,8 @@ struct _egl_global _eglGlobal =
+    " EGL_EXT_device_query"
+    " EGL_EXT_platform_base"
+    " EGL_KHR_client_get_all_proc_addresses"
+-   " EGL_KHR_debug",
++   " EGL_KHR_debug"
++   " EGL_MESA_config_select_group",
+ 
+    .PlatformExtensionString =
+ #ifdef HAVE_WAYLAND_PLATFORM
+diff --git a/src/mesa/drivers/dri/common/utils.c b/src/mesa/drivers/dri/common/utils.c
+index 5a66bcf8e05..287fb277893 100644
+--- a/src/mesa/drivers/dri/common/utils.c
++++ b/src/mesa/drivers/dri/common/utils.c
+@@ -345,6 +345,7 @@ driCreateConfigs(mesa_format format,
+ 		    modes->yInverted = GL_TRUE;
+ 		    modes->sRGBCapable = is_srgb;
+ 		    modes->mutableRenderBuffer = mutable_render_buffer;
++		    modes->configSelectGroup = 0;
+ 		}
+ 	    }
+ 	}
+@@ -430,6 +431,7 @@ static const struct { unsigned int attrib, offset; } attribMap[] = {
+     __ATTRIB(__DRI_ATTRIB_YINVERTED,			yInverted),
+     __ATTRIB(__DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE,	sRGBCapable),
+     __ATTRIB(__DRI_ATTRIB_MUTABLE_RENDER_BUFFER,	mutableRenderBuffer),
++    __ATTRIB(__DRI_ATTRIB_CONFIG_SELECT_GROUP, configSelectGroup),
+ 
+     /* The struct field doesn't matter here, these are handled by the
+      * switch in driGetConfigAttribIndex.  We need them in the array
+diff --git a/src/mesa/main/mtypes.h b/src/mesa/main/mtypes.h
+index 76905f60662..5414bad417b 100644
+--- a/src/mesa/main/mtypes.h
++++ b/src/mesa/main/mtypes.h
+@@ -216,6 +216,9 @@ struct gl_config
+ 
+    /* EGL_KHR_mutable_render_buffer */
+    GLuint mutableRenderBuffer; /* bool */
++
++   /* EGL_MESA_config_select_group */
++   GLint configSelectGroup;
+ };
+ 
+ 

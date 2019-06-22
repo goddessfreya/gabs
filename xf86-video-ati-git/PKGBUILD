@@ -1,0 +1,60 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributor: Bash Booster <Booster.sdk@gmail.com>
+# Contributor: Riccardo Berto <riccardobrt@gmail.com>
+# Contributor: vbmithr
+# Contributor: Flamelab <panosfilip at gmail dot com>
+# Contributor: Dan Ziemba <zman0900@gmail.com>
+
+pkgname=xf86-video-ati-git
+_realpkgname=xf86-video-ati
+pkgver=19.0.1.r2.gf758908d
+pkgrel=1
+pkgdesc="X.org ati video driver. Git version"
+arch=('i686' 'x86_64')
+url="http://xorg.freedesktop.org/"
+provides=("${_realpkgname}")
+depends=('libdrm' 'systemd' 'mesa')
+makedepends=('xorg-server-devel')
+conflicts=('xf86-video-ati')
+license=('custom')
+install=xf86-video-ati-git.install
+source=('xf86-video-ati::git://anongit.freedesktop.org/xorg/driver/xf86-video-ati')
+md5sums=('SKIP')
+groups=('gentz_custom')
+
+pkgver() {
+    cd "$srcdir/xf86-video-ati"
+    ( set -o pipefail
+        git describe --long | sed 's/^xf86-video-ati-//;s/\([^-]*-g\)/r\1/;s/-/./g'
+    )
+}
+
+exports() {
+    # Since pacman 5.0.2-2, hardened flags are now enabled in makepkg.conf
+    # With them, module fail to load with undefined symbol.
+    # See https://bugs.archlinux.org/task/55102 / https://bugs.archlinux.org/task/54845
+    export CFLAGS=${CFLAGS/-fno-plt}
+    export CXXFLAGS=${CXXFLAGS/-fno-plt}
+    export LDFLAGS=${LDFLAGS/,-z,now}
+
+    export CFLAGS="$CFLAGS -fplt -fno-lto -g"
+    export CXXFLAGS="$CXXFLAGS -fplt -fno-lto -g"
+    export LDFLAGS="$LDFLAGS,-fno-lto"
+}
+
+build() {
+    cd "${srcdir}/xf86-video-ati"
+
+    exports
+    ./autogen.sh --prefix=/usr --enable-glamor
+    make
+}
+
+package() {
+    cd "${srcdir}/xf86-video-ati"
+
+    exports
+    make DESTDIR="${pkgdir}" install
+    install -m755 -d "${pkgdir}/usr/share/licenses/${pkgname}"
+    install -m644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/"
+}

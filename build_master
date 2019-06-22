@@ -1,0 +1,238 @@
+#!/bin/zsh -x
+
+local POSITIONAL=()
+local MAKEPKG_PARAM=()
+local MAKECHROOTPKG_PARAM=("-c" "-d" "/home/gentz/.ccache:/ccache")
+local CHROOT_DIR=
+local RESUME_DIR=
+local BACKUP_DIR=
+local WIPE_SRC=false
+local RESET_REL=
+local DONT_BUMP_REL=false
+local NO_BUILD=false
+
+source "$(pwd)/../build_utils"
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		-m)
+            MAKEPKG_PARAM+=("$2")
+			shift # past argument
+			shift # past value
+		;;
+		-w)
+            if [[ "$WIPE_SRC" != "false" && "$WIPE_SRC" != "true" ]]; then
+                echo -w conflicts with -nw or -rs
+                exit 1
+            fi
+            WIPE_SRC=true
+			shift # past argument
+		;;
+		-nw)
+            if [[ "$WIPE_SRC" != "false" && "$WIPE_SRC" != "very_false" ]]; then
+                echo -nw conflicts with -w 
+                exit 1
+            fi
+            WIPE_SRC=very_false
+            MAKEPKG_PARAM+=("--noextract" "--noprepare")
+            TO_REMOVE=("-c")
+            remove_from_array MAKECHROOTPKG_PARAM TO_REMOVE
+            MAKECHROOTPKG_PARAM=("${RFA_RETURN[@]}")
+			shift # past argument
+		;;
+        -rs)
+            if [[ "$RESUME_DIR" != "" ]]; then
+                echo Resume dir already passed.
+                exit 1
+            fi
+
+            RESUME_DIR="$2"
+			shift # past argument
+			shift # past value
+            set -- "$@" -nw
+        ;;
+        -bk)
+            if [[ "$BACKUP_DIR" != "" ]]; then
+                echo Backup dir already passed.
+                exit 1
+            fi
+
+            BACKUP_DIR="$2"
+			shift # past argument
+			shift # past value
+        ;;
+        -c)
+            if [[ "$CHROOT_DIR" != "" ]]; then
+                echo Chroot dir already passed.
+                exit 1
+            fi
+            CHROOT_DIR="$2"
+            MAKECHROOTPKG_PARAM+=("-r" "$2")
+			shift # past argument
+			shift # past value
+        ;;
+        -dbr) 
+            DONT_BUMP_REL=true
+			shift # past argument
+        ;;
+        -nb) 
+            NO_BUILD=true
+			shift # past argument
+        ;;
+        -rr) 
+            RESET_REL="$2"
+			shift # past argument
+			shift # past value
+        ;;
+
+        --help)
+            echo "====== HELP ======"
+            echo "PARA | DESC"
+            echo "-m   : Makepkg param"
+            echo "-w   : Wipe existing source"
+            echo "-nw  : Dont wipe existing source, infact reuse it"
+            echo "-c   : The chroot directory"
+            echo "-dbr : Don't bump the package release"
+            echo "-rr  : Only reset the package release before exiting"
+            echo "-rs  : Resume directory. (Implies -nw)"
+            echo "-bk  : Backup directory."
+            echo "-nb  : No build."
+            exit
+        ;;
+		*) # unknown option
+			POSITIONAL+=("$1") # save it in an array for later
+			printf "Ignoring option \`$1\`\n"
+			shift # past argument
+		;;
+	esac
+done
+set -- "${POSITIONAL[@]}" # restore positional parameters
+
+if [[ "$WIPE_SRC" != "very_false" && "$DONT_BUMP_REL" == "false" || "$RESET_REL" != "" ]]; then
+    local PKGREL="$(cat PKGBUILD | grep "^pkgrel=[0-9]*$" | cut -d"=" -f2)"
+
+    if [[ "$(echo "$PKGREL" | wc -l)" != "1" ]]; then
+        echo Invalid number of pkgrel found, exiting
+        exit 1
+    fi
+
+    if [[ "$RESET_REL" != "" ]]; then
+        sed -i "s/^pkgrel=$PKGREL$/pkgrel=$RESET_REL/g" PKGBUILD
+        exit
+    fi
+    
+    sed -i "s/^pkgrel=$PKGREL$/pkgrel=$(( $PKGREL + 1 ))/g" PKGBUILD
+fi
+
+if [[ "$CHROOT_DIR" == "" ]]; then
+    echo Chroot dir never passed.
+    exit 1
+fi
+
+# Install deps because for some reason pacman fails to do this when called from
+# makechrootpkg
+
+local DEPS_PREFIX="$(pwd)/../deps/$(basename $(pwd))"
+mkdir -p "$DEPS_PREFIX"
+
+sort -u ../provides > ../provides.new
+mv ../provides{.new,}
+
+makepkg --printsrcinfo > "$DEPS_PREFIX/printsrcinfo"
+
+[[ "$WIPE_SRC" == "true" ]] && MAKEPKG_PARAM+=("-C")
+
+# first we find all the packages we depend on
+cat "$DEPS_PREFIX/printsrcinfo" \
+    | grep -P "^\tdepends = " \
+    | cut -d"=" -f2 \
+    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' > "$DEPS_PREFIX/deps"
+
+# This pkg's provides to our provide list
+cat "$DEPS_PREFIX/printsrcinfo" \
+    | grep -P "^\tprovides = " \
+    | cut -d"=" -f2 \
+    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' > "$DEPS_PREFIX/provides"
+
+# Append this pkg to our provide list
+cat "$DEPS_PREFIX/printsrcinfo" \
+    | grep -P "^pkgname = " \
+    | cut -d"=" -f2 \
+    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/provides"
+
+sort -u "$DEPS_PREFIX/provides" > "$DEPS_PREFIX/provides.sorted"
+sort -u "$DEPS_PREFIX/deps" > "$DEPS_PREFIX/deps.sorted"
+
+# But we only need ones we don't provide 
+comm -23 "$DEPS_PREFIX/deps.sorted" "$DEPS_PREFIX/provides.sorted" \
+    > "$DEPS_PREFIX/deps.provideless"
+
+cp "$DEPS_PREFIX/deps."{provideless,withmake}
+
+# Make deps don't care about future deps, however, so we insert them here
+cat "$DEPS_PREFIX/printsrcinfo" \
+    | grep -P "^\tmakedepends = " \
+    | cut -d"=" -f2 \
+    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/deps.withmake"
+
+sort -u "$DEPS_PREFIX/deps.withmake" > "$DEPS_PREFIX/deps.withmakesorted"
+
+# And we strip out provides.
+comm -23 "$DEPS_PREFIX/deps.withmakesorted" ../provides \
+    > "$DEPS_PREFIX/deps.final"
+local DEPS="$(cat $DEPS_PREFIX/deps.final | sed "s/^ /\"/" | sed "s/$/\"/")"
+
+[[ "$DEPS" != "" ]] && sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
+    /bin/bash -c "DEPS=($DEPS); yes | pacman -S --needed \"\${DEPS[@]}\" \
+        || exit \$?" || exit $?
+
+# Remove old packages
+sudo rm *.pkg.tar
+sudo rm  -rf "${CHROOT_DIR}/root/pkgs/"
+
+if [[ "$RESUME_DIR" != "" ]]; then
+    sudo rm -rf "${CHROOT_DIR}/gentz/build"
+    sudo rsync -chavPA --stats "$RESUME_DIR/" "${CHROOT_DIR}/gentz/build"
+fi
+
+# Then actually build it
+if [[ "$NO_BUILD" != "true" ]]; then
+    sudo /usr/bin/makechrootpkg "${MAKECHROOTPKG_PARAM[@]}" \
+        -- CCACHE_DIR=/ccache "${MAKEPKG_PARAM[@]}" || exit $?
+fi
+
+[[ "$BACKUP_DIR" != "" ]] && \
+    sudo rsync -chavPA --stats "${CHROOT_DIR}/gentz/build/" "$BACKUP_DIR" 
+
+[[ "$NO_BUILD" == "true" ]] && exit
+
+if [[ "$(ls *.pkg.tar | wc -l)" == "false" ]]; then
+    echo WARN: No packages generated.
+    exit 1
+fi
+
+# Add this package to the list of our git packages then install it
+sudo mkdir -p "${CHROOT_DIR}/root/pkgs/"
+sudo mv *.pkg.tar "${CHROOT_DIR}/root/pkgs/"
+sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
+    /bin/bash -c "yes | pacman -U \
+        $(sudo ls ${CHROOT_DIR}/root/pkgs/ \
+            | sed "s/^/\/pkgs\//" \
+            | tr '\n' ' ') \
+            || exit \$?" || exit $?
+
+if [[ -f "$DEPS_PREFIX"/packages ]]; then
+    pushd ../pkgs
+    mv $(cat "$DEPS_PREFIX"/packages | tr "\n" " ") ../pkgs.old
+    popd
+fi
+
+pushd "${CHROOT_DIR}/root/pkgs/"
+ls * > "$DEPS_PREFIX"/packages
+popd
+
+# Add it with the rest of the packages
+sudo mv "${CHROOT_DIR}/root/pkgs/"* "../pkgs"
+
+# Append our provides list to the provides list
+cat "$DEPS_PREFIX/provides" >> ../provides

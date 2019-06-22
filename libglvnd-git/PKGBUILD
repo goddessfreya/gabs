@@ -1,0 +1,49 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributor: Lone_Wolf <lonewolf@xs4all.nl>
+# Contributor: Rafał Kozdrój <kozeid2@gmail.com>
+# Contributor: Felix Yan <felixonmars@archlinux.org>
+
+_pkgname=libglvnd
+pkgname=$_pkgname-git
+pkgver=1.1.1.r2.g58c8c4a
+pkgrel=0
+pkgdesc="The GL Vendor-Neutral Dispatch library"
+arch=('x86_64')
+url="https://github.com/NVIDIA/libglvnd"
+license=('custom:BSD-like')
+makedepends=('libxext' 'libx11' 'glproto' 'python' 'git')
+provides=('libgl' 'libegl' 'libgles' "$_pkgname=$pkgver")
+conflicts=("$_pkgname")
+source=("git+https://github.com/NVIDIA/libglvnd.git"
+        LICENSE
+        Add-pkgconfig-data-for-libraries-implemented-so-far.patch)
+sha512sums=('SKIP'
+            'bf0f4a7e04220a407400f89226ecc1f798cc43035f2538cc8860e5088e1f84140baf0d4b0b28f66e4b802d4d6925769a1297c24e1ba39c1c093902b2931781a5'
+            '64928dbcbd837f7c45974deeaed3125e72132b4208bb6536449b9201e488a6c518bbf2b4c810be3a633b2b61a1a89b44cf33618ecdced13aa751a3c9c2bd5283')
+# libglvnd needs mesa for indirect rendering
+depends=('libxext' 'mesa' 'opengl-driver')
+groups=('gentz_custom')
+
+pkgver() {
+    cd $_pkgname
+    git describe --long --tags | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+    cd $_pkgname
+    patch -p1 < ../Add-pkgconfig-data-for-libraries-implemented-so-far.patch
+}
+
+build() {
+    cd $_pkgname
+    ./autogen.sh
+    ./configure --prefix=/usr
+    make
+}
+
+package() {
+    cd $_pkgname
+    make DESTDIR="$pkgdir" install
+
+    install -Dm644 ../LICENSE "$pkgdir"/usr/share/licenses/$pkgname/LICENSE
+}

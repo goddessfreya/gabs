@@ -1,0 +1,3 @@
+#!/bin/zsh
+
+../build_master -m --nocheck "$@"

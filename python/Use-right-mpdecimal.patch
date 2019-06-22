@@ -1,0 +1,13 @@
+diff --git a/Modules/_decimal/_decimal.c b/Modules/_decimal/_decimal.c
+index 1e58d3d..7f392ad 100644
+--- a/Modules/_decimal/_decimal.c
++++ b/Modules/_decimal/_decimal.c
+@@ -31,7 +31,7 @@
+ #include "pythread.h"
+ #include "structmember.h"
+ #include "complexobject.h"
+-#include "mpdecimal.h"
++#include "mpdecimal.32.h"
+ 
+ #include <stdlib.h>
+ 
