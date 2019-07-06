@@ -16,8 +16,8 @@
 
 pkgbase=llvm-git-gentz
 pkgname=('llvm-git-gentz' 'lib32-llvm-git-gentz')
-pkgver=9.0.0_r319636.d5e1ce3f44b
-pkgrel=0
+pkgver=9.0.0_r320019.3845a4f8493
+pkgrel=1
 _ocaml_ver=4.07.1
 arch=('x86_64')
 url="https://llvm.org/"
@@ -66,11 +66,11 @@ source=(
     'enable-SSP-and-PIE-by-default.patch'
     'atomic-link-32.patch'
 )
-sha256sums=('SKIP'
-            '597dc5968c695bbdbb0eac9e8eb5117fcd2773bc91edf5ec103ecffffab8bc48'
-            '58f86da25eb230ed6d423b5b61870cbf3bef88f38103ca676a2c7f34b2372171'
-            'fd7088a17510d8b40b7d91ba9ecac11ecfcef066c0dfb116ccfefe7355ec9cf7')
 groups=('gentz_custom')
+sha512sums=('SKIP'
+            '75e743dea28b280943b3cc7f8bbb871b57d110a7f2b9da2e6845c1c36bf170dd883fca54e463f5f49e0c3effe07fbd0db0f8cf5a12a2469d3f792af21a73fcdd'
+            '2fdbae0b62d33411beaf191920ff280f83fa80fd505a71077671027f27ed8c61c5867de3e6ee6f26734c7605037e86796404212182f8ffa71f4af6ed2c316a40'
+            'd84bc260a0eeb80c3abb0d4710fbf58162fe4cacd36b771f9eefd54d29c9b90f8fc33d1df709bd413b9c588230c2dd9b4413f0d91a41552bf2a107346fb8268c')
 
 # The docs say we should build a stage 1 compiler, and use that to build the
 # instrumentation compiler, and stage 2 compiler, however, if we do that, we'll
@@ -121,12 +121,16 @@ pkgver() {
     # This will almost match the output of `llvm-config --version` when the
     # LLVM_APPEND_VC_REV cmake flag is turned on. The only difference is
     # dash being replaced with underscore because of Pacman requirements.
-    local _pkgver=$(awk -F 'MAJOR |MINOR |PATCH |)' \
+    printf '%s_r%s.%s' \
+        "$(awk -F \
+            'MAJOR |MINOR |PATCH |)' \
             'BEGIN { ORS="." ; i=0 } \
-             /set\(LLVM_VERSION_/ { print $2 ; i++ ; if (i==2) ORS="" } \
-             END { print "\n" }' \
-             CMakeLists.txt)_r$(git rev-list --count HEAD).$(git rev-parse --short HEAD)
-    echo "$_pkgver"
+                /set\(LLVM_VERSION_/ { print $2 ; i++ ; if (i==2) ORS="" } \
+                END { print "\n" }' \
+            CMakeLists.txt \
+        )" \
+        "$(git rev-list --count HEAD)" \
+        "$(git rev-parse --short HEAD)"
 }
 
 prepare() {
@@ -134,7 +138,7 @@ prepare() {
     mkdir dont_delete
 
     pushd llvm-project64/clang
-    patch -Np1 -i "$srcdir"/enable-SSP-and-PIE-by-default.patch
+    patch -Np1 -i "${srcdir}/enable-SSP-and-PIE-by-default.patch"
     popd
 
     cp llvm-project{64,32} -R
@@ -143,7 +147,7 @@ prepare() {
         llvm-project32/llvm/cmake/config-ix.cmake
 
     pushd llvm-project32/clang-tools-extra/clangd
-    patch -Np1 -i "$srcdir"/atomic-link-32.patch
+    patch -Np1 -i "${srcdir}/atomic-link-32.patch"
     popd
 }
 
@@ -151,10 +155,10 @@ build_cmake_sub() {
     local _cmake_compile_options=(
         # Cargo culted from similar packages.
         -D LLVM_APPEND_VC_REV=ON
-        -D LLVM_HOST_TRIPLE=$CHOST
+        -D LLVM_HOST_TRIPLE="$CHOST"
         -D LLVM_ENABLE_RTTI=ON
         -D LLVM_ENABLE_FFI=ON
-        -D FFI_INCLUDE_DIR=$(pkg-config --variable=includedir libffi)
+        -D FFI_INCLUDE_DIR="$(pkg-config --variable=includedir libffi)"
         -D LLVM_BUILD_TESTS=ON
         -D LLVM_VERSION_SUFFIX=""
         -D CMAKE_POLICY_DEFAULT_CMP0075=NEW
@@ -192,10 +196,10 @@ build_cmake_sub() {
         # Instead I install the whole of llvm to opt, and symlink the whole of
         # opt to my home partitions. Modern problems need modern solutions, you
         # know.
-        -D CMAKE_INSTALL_PREFIX=/opt/llvm$1
+        -D CMAKE_INSTALL_PREFIX="/opt/llvm$1"
     )
 
-    cmake "$srcdir/llvm-project$1/llvm" -G Ninja \
+    cmake "${srcdir}/llvm-project$1/llvm" -G Ninja \
         "${@:2}" \
         "${_cmake_compile_options[@]}"
 
@@ -223,7 +227,7 @@ build_cmake() {
         -D LLVM_ENABLE_LTO=Thin
     )
 
-    if [[ "$_low_perf_fallback" -eq "1" ]]; then
+    if [[ "${_low_perf_fallback}" -eq "1" ]]; then
         _high_perf_compile_opts=("${_low_perf_compile_opts[@]}")
     fi
 
@@ -236,7 +240,7 @@ build_cmake() {
     )
 
     local _stage_1_tablegen=()
-    if [[ "$_system_utils" -eq "1" ]]; then
+    if [[ "${_system_utils}" -eq "1" ]]; then
         _stage_1_tablegen=(
             -D LLVM_TABLEGEN="/usr/bin/llvm-tblgen"
             -D CLANG_TABLEGEN="/usr/bin/clang-tblgen"
@@ -244,9 +248,9 @@ build_cmake() {
     fi
 
     local _llvm_profdata="/usr/bin/llvm-profdata"
-    if [[ "$_bootstrap" -eq "1" ]]; then
-        if [[ ! -f .build$1_stg1.built ]]; then
-            cd _build$1_stg1
+    if [[ "${_bootstrap}" -eq "1" ]]; then
+        if [[ ! -f "${srcdir}/.build$1_stg1.built" ]]; then
+            cd "${srcdir}/_build$1_stg1"
             build_cmake_sub "$1" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
@@ -255,27 +259,26 @@ build_cmake() {
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld"
 
             build_cmake_test llvm clang lld
-            touch "../.build$1_stg1.built"
-            cd ..
+            touch "${srcdir}/build$1_stg1.built"
         fi
 
         _stage_1_opts=(
-            -D CMAKE_CXX_COMPILER="$srcdir/_build$1_stg1/bin/clang++"
-            -D CMAKE_C_COMPILER="$srcdir/_build$1_stg1/bin/clang"
-            -D LLVM_USE_LINKER="$srcdir/_build$1_stg1/bin/ld.lld"
-            -D CMAKE_RANLIB="$srcdir/_build$1_stg1/bin/llvm-ranlib"
-            -D CMAKE_AR="$srcdir/_build$1_stg1/bin/llvm-ar"
+            -D CMAKE_CXX_COMPILER="${srcdir}/_build$1_stg1/bin/clang++"
+            -D CMAKE_C_COMPILER="${srcdir}/_build$1_stg1/bin/clang"
+            -D LLVM_USE_LINKER="${srcdir}/_build$1_stg1/bin/ld.lld"
+            -D CMAKE_RANLIB="${srcdir}/_build$1_stg1/bin/llvm-ranlib"
+            -D CMAKE_AR="${srcdir}/_build$1_stg1/bin/llvm-ar"
         )
         _stage_1_tablegen=(
-            -D LLVM_TABLEGEN="$srcdir/_build$1_stg1/bin/llvm-tblgen"
-            -D CLANG_TABLEGEN="$srcdir/_build$1_stg1/bin/clang-tblgen"
+            -D LLVM_TABLEGEN="${srcdir}/_build$1_stg1/bin/llvm-tblgen"
+            -D CLANG_TABLEGEN="${srcdir}/_build$1_stg1/bin/clang-tblgen"
         )
-        _llvm_profdata="$srcdir/_build$1_stg1/bin/llvm-profdata"
+        _llvm_profdata="${srcdir}/_build$1_stg1/bin/llvm-profdata"
     fi
 
-    if [[ "$_bootstrap" -ne "2" ]]; then
-        if [[ ! -f ".build$1_instr.built" ]]; then
-            cd _build$1_instr
+    if [[ "${_bootstrap}" -ne "2" ]]; then
+        if [[ ! -f "${srcdir}/.build$1_instr.built" ]]; then
+            cd "${srcdir}/_build$1_instr"
             build_cmake_sub "$1" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
@@ -288,20 +291,19 @@ build_cmake() {
 
             # Tests hang
             #build_cmake_test llvm clang lld
-            touch "../.build$1_instr.built"
-            cd ..
+            touch "${srcdir}/.build$1_instr.built"
         fi
 
         local _instr_opts=(
-            -D CMAKE_CXX_COMPILER="$srcdir/_build$1_instr/bin/clang++"
-            -D CMAKE_C_COMPILER="$srcdir/_build$1_instr/bin/clang"
-            -D LLVM_USE_LINKER="$srcdir/_build$1_instr/bin/ld.lld"
-            -D CMAKE_RANLIB="$srcdir/_build$1_instr/bin/llvm-ranlib"
-            -D CMAKE_AR="$srcdir/_build$1_instr/bin/llvm-ar"
+            -D CMAKE_CXX_COMPILER="${srcdir}/_build$1_instr/bin/clang++"
+            -D CMAKE_C_COMPILER="${srcdir}/_build$1_instr/bin/clang"
+            -D LLVM_USE_LINKER="${srcdir}/_build$1_instr/bin/ld.lld"
+            -D CMAKE_RANLIB="${srcdir}/_build$1_instr/bin/llvm-ranlib"
+            -D CMAKE_AR="${srcdir}/_build$1_instr/bin/llvm-ar"
         )
 
-        if [[ ! -f ".build$1_to_instr1.built" ]]; then
-            cd _build$1_to_instr1
+        if [[ ! -f "${srcdir}/.build$1_to_instr1.built" ]]; then
+            cd "${srcdir}/_build$1_to_instr1"
             build_cmake_sub "$1" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
@@ -311,12 +313,15 @@ build_cmake() {
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld;lldb;clang-tools-extra"
 
             build_cmake_test llvm clang lld lldb
-            touch "../.build$1_to_instr1.built"
+            touch "${srcdir}/.build$1_to_instr1.built"
             cd ..
         fi
 
-        if [[ ! -f ".build$1_to_instr2.built" && "$_low_perf_fallback" -ne "1" ]]; then
-            cd _build$1_to_instr2
+        if [[ \
+            ! -f "${srcdir}/.build$1_to_instr2.built" \
+            && "${_low_perf_fallback}" -ne "1" \
+        ]]; then
+            cd "${srcdir}/_build$1_to_instr2"
             build_cmake_sub "$1" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
@@ -325,28 +330,28 @@ build_cmake() {
                 "${_low_perf_compile_opts[@]}" \
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld;lldb;clang-tools-extra" \
             build_cmake_test llvm clang lld lldb
-            touch "../.build$1_to_instr2.built"
+            touch "${srcdir}/.build$1_to_instr2.built"
             cd ..
         fi
 
-        _stage_1_opts+=(-D LLVM_PROFDATA_FILE="$srcdir/profdata$1.prof")
+        _stage_1_opts+=(-D LLVM_PROFDATA_FILE="${srcdir}ofdata$1.prof")
 
-        "$_llvm_profdata" merge \
-            -output="$srcdir/profdata$1.prof" \
-            $srcdir/_build$1_instr/profiles/*.profraw
+        "${_llvm_profdata}" merge \
+            -output="${srcdir}/profdata$1.prof" \
+            "${srcdir}/_build$1_instr/profiles/"*.profraw
     fi
 
-    if [[ ! -f ".build$1_final.built" ]]; then
-        cd _build$1_final
+    if [[ ! -f "${srcdir}/.build$1_final.built" ]]; then
+        cd "${srcdir}/_build$1_final"
         build_cmake_sub "$1" \
-            -D CMAKE_BUILD_TYPE=$_final_build_type \
+            -D CMAKE_BUILD_TYPE="${_final_build_type}" \
             "${@:2}" \
             "${_stage_1_opts[@]}" \
             "${_stage_1_tablegen[@]}" \
             "${_high_perf_compile_opts[@]}" \
             -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld;lldb;clang-tools-extra"
 
-        touch "../.build$1_final.built"
+        touch "${srcdir}/.build$1_final.built"
         cd ..
     fi
 }
@@ -392,17 +397,20 @@ check() {
 }
 
 symlink_to_opt() {
-    pushd "$pkgdir"
+    pushd "${pkgdir}"
 
     # Symlink can easily be swapped to some more local installs, use by other
     # scripts of mine.
-    ln -s ./llvm$1 ./opt/llvm$1-sym
+    ln -s "./llvm$1" "./opt/llvm$1-sym"
 
     for idir in $(find ./opt/llvm$1-sym/* -type d); do
         install -d "$(echo "$idir" | sed "s/^\.\/opt\/llvm$1-sym/.\/usr/")"
     done
 
-    for file in $(find ./opt/llvm$1-sym/* -type f) $(find ./opt/llvm$1-sym/* -type l); do
+    for file in \
+        $(find ./opt/llvm$1-sym/* -type f) \
+        $(find ./opt/llvm$1-sym/* -type l)
+    do
         ln -s "${file#?}" "$(echo "$file" | sed "s/^\.\/opt\/llvm$1-sym/.\/usr/")"
     done
 
@@ -430,29 +438,29 @@ package_llvm-git-gentz() {
         'python-setuptools'
     )
     provides=(
-        "compiler-rt-git=$pkgver-$pkgrel"
-        "clang-git=$pkgver-$pkgrel"
-        "lld-git=$pkgver-$pkgrel"
-        "lldb-git=$pkgver-$pkgrel"
-        "llvm-ocaml-git=$pkgver-$pkgrel"
-        "llvm-git=$pkgver-$pkgrel"
-        "llvm-libs-git=$pkgver-$pkgrel"
+        "compiler-rt-git=${pkgver}-${pkgrel}"
+        "clang-git=${pkgver}-${pkgrel}"
+        "lld-git=${pkgver}-${pkgrel}"
+        "lldb-git=${pkgver}-${pkgrel}"
+        "llvm-ocaml-git=${pkgver}-${pkgrel}"
+        "llvm-git=${pkgver}-${pkgrel}"
+        "llvm-libs-git=${pkgver}-${pkgrel}"
 
-        "compiler-rt-svn=$pkgver-$pkgrel"
-        "clang-svn=$pkgver-$pkgrel"
-        "lld-svn=$pkgver-$pkgrel"
-        "lldb-svn=$pkgver-$pkgrel"
-        "llvm-ocaml-svn=$pkgver-$pkgrel"
-        "lvm-svn=$pkgver-$pkgrel"
-        "llvm-libs-svn=$pkgver-$pkgrel"
+        "compiler-rt-svn=${pkgver}-${pkgrel}"
+        "clang-svn=${pkgver}-${pkgrel}"
+        "lld-svn=${pkgver}-${pkgrel}"
+        "lldb-svn=${pkgver}-${pkgrel}"
+        "llvm-ocaml-svn=${pkgver}-${pkgrel}"
+        "lvm-svn=${pkgver}-${pkgrel}"
+        "llvm-libs-svn=${pkgver}-${pkgrel}"
 
-        "compiler-rt=$pkgver-$pkgrel"
-        "clang=$pkgver-$pkgrel"
-        "lld=$pkgver-$pkgrel"
-        "lldb=$pkgver-$pkgrel"
-        "llvm-ocaml=$pkgver-$pkgrel"
-        "llvm=$pkgver-$pkgrel"
-        "llvm-libs=$pkgver-$pkgrel"
+        "compiler-rt=${pkgver}-${pkgrel}"
+        "clang=${pkgver}-${pkgrel}"
+        "lld=${pkgver}-${pkgrel}"
+        "lldb=${pkgver}-${pkgrel}"
+        "llvm-ocaml=${pkgver}-${pkgrel}"
+        "llvm=${pkgver}-${pkgrel}"
+        "llvm-libs=${pkgver}-${pkgrel}"
     )
     conflicts=(
         'llvm'
@@ -464,9 +472,9 @@ package_llvm-git-gentz() {
         'llvm-libs'
     )
 
-    pushd "$srcdir"/_build64_final
+    pushd "${srcdir}/_build64_final"
     exports_64
-    DESTDIR="$pkgdir" ninja $NINJAFLAGS install
+    DESTDIR="${pkgdir}" ninja $NINJAFLAGS install
     popd
 
     # Clean up conflicting files
@@ -476,39 +484,44 @@ package_llvm-git-gentz() {
     rm -rf "${pkgdir}/opt/llvm64/lib/python2.7/site-packages/six.py"
 
     # Include lit for running lit-based tests in other projects
-    pushd "$srcdir"/llvm-project64/llvm/utils/lit
-    python setup.py install --root="$pkgdir" -O1
+    pushd "${srcdir}/llvm-project64/llvm/utils/lit"
+    python setup.py install --root="${pkgdir}" -O1
 
     # Doesn't install in opt for some annoying reason
-    mv "$pkgdir"/{usr,opt/llvm64}/bin/lit
+    mv "${pkgdir}/"{usr,opt/llvm64}/bin/lit
     popd
 
     # Move analyzer scripts out of /usr/libexec
-    mv "$pkgdir"/opt/llvm64/libexec/{ccc,c++}-analyzer "$pkgdir"/opt/llvm64/lib/clang/
-    rmdir "$pkgdir"/opt/llvm64/libexec
-    sed -i 's|libexec|lib/clang|' "$pkgdir"/opt/llvm64/bin/scan-build
+    mv "${pkgdir}/opt/llvm64/libexec/"{ccc,c++}-analyzer \
+        "${pkgdir}/opt/llvm64/lib/clang/"
+    rmdir "${pkgdir}/opt/llvm64/libexec"
+    sed -i 's|libexec|lib/clang|' "${pkgdir}/opt/llvm64/bin/scan-build"
 
     if [[ $CARCH == x86_64 ]]; then
         # Needed for multilib (https://bugs.archlinux.org/task/29951)
         # Header stub is taken from Fedora
-        mv "$pkgdir"/opt/llvm64/include/llvm/Config/llvm-config{,-64}.h
-        cp "$srcdir"/llvm-config.h "$pkgdir"/opt/llvm64/include/llvm/Config/llvm-config.h
+        mv "${pkgdir}/opt/llvm64/include/llvm/Config/llvm-config"{,-64}.h
+        cp "${srcdir}/llvm-config.h" \
+            "${pkgdir}/opt/llvm64/include/llvm/Config/llvm-config.h"
     fi
 
-    pushd "$srcdir"/llvm-project64/llvm
+    pushd "${srcdir}/llvm-project64/llvm"
     # Install Python bindings and optimize them
-    cp -a ./bindings/python/llvm  "$pkgdir"/opt/llvm64/lib/python3.7/site-packages/
-    cp -a ../clang/bindings/python/clang  "$pkgdir"/opt/llvm64/lib/python3.7/site-packages/
-    _python3_optimize "$pkgdir"/opt/llvm64/lib/python3.7/site-packages
+    cp -a ./bindings/python/llvm \
+        "${pkgdir}/opt/llvm64/lib/python3.7/site-packages/"
+    cp -a ../clang/bindings/python/clang \
+        "${pkgdir}/opt/llvm64/lib/python3.7/site-packages/"
+    _python3_optimize "${pkgdir}/opt/llvm64/lib/python3.7/site-packages"
 
     # optimize other python files except 2 problem cases
-    _python3_optimize "$pkgdir"/opt/llvm64/share -x 'clang-include-fixer|run-find-all-symbols'
-    _python2_optimize "$pkgdir/opt/llvm64/share/clang"
+    _python3_optimize "${pkgdir}/opt/llvm64/share" \
+        -x 'clang-include-fixer|run-find-all-symbols'
+    _python2_optimize "${pkgdir}/opt/llvm64/share/clang"
 
     # Symlink LLVMgold.so from /usr/lib/bfd-plugins
     # https://bugs.archlinux.org/task/28479
-    install -d "$pkgdir"/opt/llvm64/lib/bfd-plugins
-    ln -s ../LLVMgold.so "$pkgdir"/opt/llvm64/lib/bfd-plugins/LLVMgold.so
+    install -d "${pkgdir}/opt/llvm64/lib/bfd-plugins"
+    ln -s ../LLVMgold.so "${pkgdir}/opt/llvm64/lib/bfd-plugins/LLVMgold.so"
 
     symlink_to_opt 64
     popd
@@ -525,29 +538,29 @@ package_lib32-llvm-git-gentz() {
         'lib32-gcc-libs'
     )
     provides=(
-        "lib32-compiler-rt-git=$pkgver-$pkgrel"
-        "lib32-clang-git=$pkgver-$pkgrel"
-        "lib32-lld-git=$pkgver-$pkgrel"
-        "lib32-lldb-git=$pkgver-$pkgrel"
-        "lib32-llvm-ocaml-git=$pkgver-$pkgrel"
-        "lib32-llvm-git=$pkgver-$pkgrel"
-        "lib32-llvm-libs-git=$pkgver-$pkgrel"
+        "lib32-compiler-rt-git=${pkgver}-${pkgrel}"
+        "lib32-clang-git=${pkgver}-${pkgrel}"
+        "lib32-lld-git=${pkgver}-${pkgrel}"
+        "lib32-lldb-git=${pkgver}-${pkgrel}"
+        "lib32-llvm-ocaml-git=${pkgver}-${pkgrel}"
+        "lib32-llvm-git=${pkgver}-${pkgrel}"
+        "lib32-llvm-libs-git=${pkgver}-${pkgrel}"
 
-        "lib32-compiler-rt-svn=$pkgver-$pkgrel"
-        "lib32-clang-svn=$pkgver-$pkgrel"
-        "lib32-lld-svn=$pkgver-$pkgrel"
-        "lib32-lldb-svn=$pkgver-$pkgrel"
-        "lib32-llvm-ocaml-svn=$pkgver-$pkgrel"
-        "lib32-llvm-svn=$pkgver-$pkgrel"
-        "lib32-llvm-libs-svn=$pkgver-$pkgrel"
+        "lib32-compiler-rt-svn=${pkgver}-${pkgrel}"
+        "lib32-clang-svn=${pkgver}-${pkgrel}"
+        "lib32-lld-svn=${pkgver}-${pkgrel}"
+        "lib32-lldb-svn=${pkgver}-${pkgrel}"
+        "lib32-llvm-ocaml-svn=${pkgver}-${pkgrel}"
+        "lib32-llvm-svn=${pkgver}-${pkgrel}"
+        "lib32-llvm-libs-svn=${pkgver}-${pkgrel}"
 
-        "lib32-compiler-rt=$pkgver-$pkgrel"
-        "lib32-clang=$pkgver-$pkgrel"
-        "lib32-lld=$pkgver-$pkgrel"
-        "lib32-lldb=$pkgver-$pkgrel"
-        "lib32-llvm-ocaml=$pkgver-$pkgrel"
-        "lib32-llvm=$pkgver-$pkgrel"
-        "lib32-llvm-libs=$pkgver-$pkgrel"
+        "lib32-compiler-rt=${pkgver}-${pkgrel}"
+        "lib32-clang=${pkgver}-${pkgrel}"
+        "lib32-lld=${pkgver}-${pkgrel}"
+        "lib32-lldb=${pkgver}-${pkgrel}"
+        "lib32-llvm-ocaml=${pkgver}-${pkgrel}"
+        "lib32-llvm=${pkgver}-${pkgrel}"
+        "lib32-llvm-libs=${pkgver}-${pkgrel}"
     )
     conflicts=(
         'lib32-llvm'
@@ -560,30 +573,30 @@ package_lib32-llvm-git-gentz() {
     )
 
     exports_32
-    pushd "$srcdir"/_build32_final
-    DESTDIR="$pkgdir" ninja $NINJAFLAGS install
+    pushd "${srcdir}/_build32_final"
+    DESTDIR="${pkgdir}" ninja $NINJAFLAGS install
     popd
 
     # Symlink LLVMgold.so from /opt/llvm/lib/bfd-plugins
     # https://bugs.archlinux.org/task/28479
-    install -d "$pkgdir/opt/llvm32/lib32/bfd-plugins"
-    ln -s ../LLVMgold.so "$pkgdir/opt/llvm32/lib32/bfd-plugins/LLVMgold.so"
+    install -d "${pkgdir}/opt/llvm32/lib32/bfd-plugins"
+    ln -s ../LLVMgold.so "${pkgdir}/opt/llvm32/lib32/bfd-plugins/LLVMgold.so"
 
-    mv "$pkgdir"/opt/llvm32/bin/llvm-config "$srcdir"/dont_delete/llvm-config32
+    mv "${pkgdir}/opt/llvm32/bin/llvm-config" "${srcdir}/dont_delete/llvm-config32"
 
     # Needed for multilib (https://bugs.archlinux.org/task/29951) know.
     # Header stub is taken from Fedora
-    mv "$pkgdir"/opt/llvm32/include/llvm/Config/llvm-config.h \
-        "$srcdir"/dont_delete/llvm-config-32.h
+    mv "${pkgdir}/opt/llvm32/include/llvm/Config/llvm-config.h" \
+        "${srcdir}/dont_delete/llvm-config-32.h"
 
-    rm -rf "$pkgdir"/opt/llvm32/{bin,include,libexec,share}
+    rm -rf "${pkgdir}/opt/llvm32/"{bin,include,libexec,share}
 
-    install -d "$pkgdir"/opt/llvm32/include/llvm/Config
-    mv "$srcdir"/dont_delete/llvm-config-32.h \
-        "$pkgdir"/opt/llvm32/include/llvm/Config/
+    install -d "${pkgdir}/opt/llvm32/include/llvm/Config"
+    mv "${srcdir}/dont_delete/llvm-config-32.h" \
+        "${pkgdir}/opt/llvm32/include/llvm/Config/"
 
-    install -d "$pkgdir"/opt/llvm32/bin
-    mv "$srcdir"/dont_delete/llvm-config32 "$pkgdir"/opt/llvm32/bin/
+    install -d "${pkgdir}/opt/llvm32/bin"
+    mv "${srcdir}/dont_delete/llvm-config32" "${pkgdir}/opt/llvm32/bin/"
 
     symlink_to_opt 32
 }

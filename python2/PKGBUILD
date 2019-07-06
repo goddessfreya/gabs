@@ -4,29 +4,37 @@
 # Contributor: Allan McRae <allan@archlinux.org>
 # Contributor: Jason Chu <jason@archlinux.org>
 
-pkgname=('python2' 'lib32-python2')
+pkgbase=python2-gentz
+pkgname=('python2-gentz' 'lib32-python2-gentz')
 pkgver=2.7.16
-pkgrel=2
+pkgrel=9
 _pybasever=${pkgver%.*}
 arch=('x86_64')
 license=('PSF')
 url="https://www.python.org/"
-makedepends=('tk' 'bluez-libs' 'lib32-gcc-libs' 'lib32-tk' 'gdb' 'file' 'xorg-server-xvfb')
-source=("https://www.python.org/ftp/python/${pkgver%rc?}/Python-${pkgver}.tar.xz"{,.asc}
-        pyconfig.h
-        lib32-distutils-sysconfig.patch
-        python-config-32.patch)
+makedepends=(
+    'tk' 'bluez-libs' 'lib32-gcc-libs' 'lib32-tk' 'gdb' 'file' 
+    'xorg-server-xvfb'
+)
+source=(
+    "https://www.python.org/ftp/python/${pkgver%rc?}/Python-${pkgver}.tar.xz"{,.asc}
+    pyconfig.h
+    lib32-distutils-sysconfig.patch
+    python-config-32.patch
+)
+groups=('gentz_custom')
 sha512sums=('16e814e8dcffc707b595ca2919bd2fa3db0d15794c63d977364652c4a5b92e90e72b8c9e1cc83b5020398bd90a1b397dbdd7cb931c49f1aa4af6ef95414b43e0'
             'SKIP'
             'e0df774b373178632963c5744eeeff7e2b460e28c2208c8a7f6ddda7f316d5b2d12576bec52a41a3eed0636339266121a4bb068d4a00ed0050bbd5f9cbf800db'
             '3bda8aa91a8cddee7f15e42cf4e0d96555aaa2ef21a2b2a9bedd907a24ba3242d1a681229e99a81f5501abad4e6250f36d3fb105d3f4a62b79596599a959a530'
             '9f2ff9b9da9c326f9c9f97cc393ccac8ca1be170243882ca6b463238b078372394d30e1f9702b1a6906afc8884859b3fb0d10f54230a010adc4834b475c8608c')
-validpgpkeys=('C01E1CAD5EA2C4F0B8E3571504C367C218ADD4FF')  # Benjamin Peterson
-groups=('gentz_custom')
+
+# Benjamin Peterson
+validpgpkeys=('C01E1CAD5EA2C4F0B8E3571504C367C218ADD4FF') 
 
 prepare() {
-    mv Python-${pkgver}{,-64}
-    pushd Python-${pkgver}-64
+    mv "${srcdir}/Python-${pkgver}" "${srcdir}/${pkgbase}64"
+    pushd "${srcdir}/${pkgbase}64"
     # Temporary workaround for FS#22322
     # See http://bugs.python.org/issue10835 for upstream report
     sed -i "/progname =/s/python/python${_pybasever}/" Python/pythonrun.c
@@ -40,16 +48,18 @@ prepare() {
     sed -i "s/python2.3/python2/g" Lib/distutils/tests/test_build_scripts.py \
       Lib/distutils/tests/test_install_scripts.py
 
-    # Ensure that we are using the system copy of various libraries (expat, zlib and libffi),
-    # rather than copies shipped in the tarball
+    # Ensure that we are using the system copy of various libraries
+    # (expat, zlib and libffi), rather than copies shipped in the tarball
     rm -r Modules/expat
     rm -r Modules/zlib
     rm -r Modules/_ctypes/{darwin,libffi}*
 
     # clean up shebangs
-    find . -name '*.py' | xargs sed -i "s|#[ ]*![ ]*/usr/bin/env python$|#!/usr/bin/env python2|"
+    find . -name '*.py' \
+        | xargs sed -i "s|#[ ]*![ ]*/usr/bin/env python$|#!/usr/bin/env python2|"
 
-    # Workaround asdl_c.py/makeopcodetargets.py errors after we touched the shebangs
+    # Workaround asdl_c.py/makeopcodetargets.py errors after we touched the 
+    # shebangs
     touch Include/Python-ast.h Python/Python-ast.c Python/opcode_targets.h
 
     # https://bugs.python.org/issue34587
@@ -57,15 +67,17 @@ prepare() {
 
     popd
 
-    cp -r Python-${pkgver}{-64,-32}
+    cp -r "${srcdir}/${pkgbase}"{64,32}
 
-    pushd Python-${pkgver}-32
+    pushd "${srcdir}/${pkgbase}32"
     # Fix hard-coded paths
     sed -i "s|base}/lib|base}/lib32|g" "Lib/sysconfig.py"
-    sed -i "s|/include|/lib32/python{py_version_short}/include|g" "Lib/sysconfig.py"
+    sed -i "s|/include|/lib32/python{py_version_short}/include|g" \
+        "Lib/sysconfig.py"
     sed -i "s|lib/|lib32/|g" "Modules/getpath.c"
     sed -i "s|base/lib|base/lib32|g" "Lib/distutils/command/install.py"
-    sed -i "s|/include|/lib32/python{py_version_short}/include|g" "Lib/distutils/command/install.py"
+    sed -i "s|/include|/lib32/python{py_version_short}/include|g" \
+        "Lib/distutils/command/install.py"
     sed -i "s|prefix)/lib|prefix)/lib32|g" "Makefile.pre.in"
 
     patch -Np1 -i "../lib32-distutils-sysconfig.patch"
@@ -73,6 +85,17 @@ prepare() {
     # Give the configuration script an extention
     patch -Np1 -i "../python-config-32.patch"
     popd
+
+    configure_python "32" \
+        --libdir=/usr/lib32 \
+        --libexecdir=/usr/lib32 \
+        --includedir="/usr/lib32/python${_pybasever}/include" \
+        --exec_prefix="/usr/lib32/python${_pybasever}/" \
+        --bindir=/usr/bin \
+        --sbindir=/usr/bin \
+        --with-suffix='-32'
+
+    configure_python "64"
 }
 
 exports_32() {
@@ -89,9 +112,9 @@ exports_64() {
     export LDFLAGS="${LDFLAGS/-m32}"
 }
 
-build_python() {
+configure_python() {
     exports_$1
-    pushd Python-${pkgver}-$1
+    pushd "${srcdir}/${pkgbase}$1"
 
     # PGO should be done with -O3
     export CFLAGS="${CFLAGS/-O2/-O3}"
@@ -100,7 +123,7 @@ build_python() {
         --prefix=/usr 
         --enable-shared
         --with-threads
-        #--enable-optimizations
+        --enable-optimizations
         --with-lto
         --enable-ipv6
         --with-system-expat
@@ -114,26 +137,28 @@ build_python() {
         "${_python_configure_options[@]}" \
         "${@:2}"
 
+    popd
+}
+
+build_python() {
+    exports_$1
+    pushd "${srcdir}/${pkgbase}$1"
+
+    # PGO should be done with -O3
+    export CFLAGS="${CFLAGS/-O2/-O3}"
     OPT="${CFLAGS}" make
+
     popd
 } 
 
 build() {
-    build_python "32" \
-        --libdir=/usr/lib32 \
-        --libexecdir=/usr/lib32 \
-        --includedir=/usr/lib32/python${_pybasever}/include \
-        --exec_prefix=/usr/lib32/python${_pybasever}/ \
-        --bindir=/usr/bin \
-        --sbindir=/usr/bin \
-        --with-suffix='-32'
-
+    build_python "32" 
     build_python "64"
 }
 
 package_common() {
     exports_$1
-    cd Python-${pkgver}-$1
+    cd "${srcdir}/${pkgbase}$1"
 
     # Hack to avoid building again
     sed -i 's/^all:.*$/all: build_all/' Makefile
@@ -141,55 +166,62 @@ package_common() {
     make DESTDIR="${pkgdir}" altinstall maninstall
 
     # Provided by python
-    rm "${pkgdir}"/usr/share/man/man1/python.1
+    rm "${pkgdir}/usr/share/man/man1/python.1"
 
     # Why are these not done by default...
-    ln -s python${_pybasever}$2               "${pkgdir}"/usr/bin/python2$2
-    ln -s python${_pybasever}$2-config        "${pkgdir}"/usr/bin/python2$2-config
+    ln -s "python${_pybasever}$2" "${pkgdir}/usr/bin/python2$2"
+    ln -s "python${_pybasever}$2-config" "${pkgdir}/usr/bin/python2$2-config"
 
     # FS#33954
-    ln -sf python-${_pybasever}.pc    "${pkgdir}"/usr/lib$3/pkgconfig/python2.pc
+    ln -sf "python-${_pybasever}.pc" \
+        "${pkgdir}/usr/lib$3/pkgconfig/python2.pc"
 
-    ln -sf ../../libpython${_pybasever}.so "${pkgdir}"/usr/lib$3/python${_pybasever}/config/libpython${_pybasever}.so
+    ln -sf "../../libpython${_pybasever}.so" \
+        "${pkgdir}/usr/lib$3/python${_pybasever}/config/libpython${_pybasever}.so"
 
-    mv "${pkgdir}"/usr/bin/smtpd.py "${pkgdir}"/usr/lib$3/python${_pybasever}/
+    mv "${pkgdir}/usr/bin/smtpd.py" "${pkgdir}/usr/lib$3/python${_pybasever}/"
 
     # some useful "stuff"
-    install -dm755 "${pkgdir}"/usr/lib$3/python${_pybasever}/Tools/{i18n,scripts}
-    install -m755 Tools/i18n/{msgfmt,pygettext}.py "${pkgdir}"/usr/lib$3/python${_pybasever}/Tools/i18n/
-    install -m755 Tools/scripts/{README,*py} "${pkgdir}"/usr/lib$3/python${_pybasever}/Tools/scripts/
+    install -dm755 "${pkgdir}/usr/lib$3/python${_pybasever}/Tools/"{i18n,scripts}
+    install -m755 Tools/i18n/{msgfmt,pygettext}.py \
+        "${pkgdir}/usr/lib$3/python${_pybasever}/Tools/i18n/"
+    install -m755 Tools/scripts/{README,*py} \
+        "${pkgdir}/usr/lib$3/python${_pybasever}/Tools/scripts/"
 
     # clean-up reference to build directory
-    sed -i "s#${srcdir}/Python-${pkgver}-$1:##" "${pkgdir}"/usr/lib$3/python${_pybasever}/config/Makefile
+    sed -i "s#${srcdir}/${pkgbase}$1:##" \
+        "${pkgdir}/usr/lib$3/python${_pybasever}/config/Makefile"
 
     # license
-    install -Dm644 LICENSE "${pkgdir}"/usr/share/licenses/${pkgname}/LICENSE
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
 
-package_python2() {
+package_python2-gentz() {
     pkgdesc="A high-level scripting language"
     depends=('bzip2' 'expat' 'gdbm' 'libffi' 'libnsl' 'openssl' 'sqlite' 'zlib')
     optdepends=('tk: for IDLE'
                 'python2-setuptools'
                 'python2-pip')
-    conflicts=('python<3')
+    conflicts=('python<3' 'python2')
+    provides=("python2=$pkgver")
 
     package_common "64"
 
     # Why are these not done by default...
-    ln -sf python${_pybasever}.1      "${pkgdir}"/usr/share/man/man1/python2.1
+    ln -sf "python${_pybasever}.1" "${pkgdir}/usr/share/man/man1/python2.1"
 
     # fix conflicts with python
-    mv "${pkgdir}"/usr/bin/idle{,2}
-    mv "${pkgdir}"/usr/bin/pydoc{,2}
-    mv "${pkgdir}"/usr/bin/2to3{,-2.7}
+    mv "${pkgdir}/usr/bin/idle"{,2}
+    mv "${pkgdir}/usr/bin/pydoc"{,2}
+    mv "${pkgdir}/usr/bin/2to3"{,-2.7}
 
     # pyconfs
     mv "${pkgdir}/usr/include/python${_pybasever}/pyconfig"{,-64}.h
-    install -Dm644 ../pyconfig.h "${pkgdir}/usr/include/python${_pybasever}/pyconfig.h"
+    install -Dm644 ../pyconfig.h \
+        "${pkgdir}/usr/include/python${_pybasever}/pyconfig.h"
 }
 
-package_lib32-python2() {
+package_lib32-python2-gentz() {
     pkgdesc="A high-level scripting language (32-bits)"
     depends=(
         'python2'
@@ -207,16 +239,19 @@ package_lib32-python2() {
         'python-pip'
         'lib32-tk: for tkinter'
     )
-    conflicts=('python<3')
+    conflicts=('lib32-python<3' 'lib32-python2')
+    provides=("lib32-python2=$pkgver")
 
     package_common "32" "-32" "32"
 
-    rm -rf "${pkgdir}"/{etc,usr/{share,include}}
-    rm "${pkgdir}"/usr/bin/{pydoc*,idle*,2to3*}
+    rm -rf "${pkgdir}/"{etc,usr/{share,include}}
+    rm "${pkgdir}/usr/bin/"{pydoc*,idle*,2to3*}
 
     # pyconfs
-    install -Dm644 pyconfig.h "${pkgdir}/usr/include/python${_pybasever}/pyconfig-32.h"
+    install -Dm644 pyconfig.h \
+        "${pkgdir}/usr/include/python${_pybasever}/pyconfig-32.h"
 
     # clean up shebangs
-    find "${pkgdir}"/usr/lib32/python${_pybasever}/ -name '*.py' | xargs sed -i "s|#[ ]*![ ]*/usr/bin/env python$|#!/usr/bin/env python${_pybasever}-32|"
+    find "${pkgdir}/usr/lib32/python${_pybasever}/" -name '*.py' \
+        | xargs sed -i "s|#[ ]*![ ]*/usr/bin/env python$|#!/usr/bin/env python${_pybasever}-32|"
 }

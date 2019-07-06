@@ -1,14 +1,19 @@
-From b91cd7a488c0b53eb7ca99443a67521ce8af4dc2 Mon Sep 17 00:00:00 2001
+From fa5a0019333686f2c2350e4c1846db6ebf3df184 Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
 Date: Fri, 21 Jun 2019 17:12:47 -0600
-Subject: [PATCH 2/2] Puts RGBA visuals in the second config selection group.
- That way applications don't get windows that are compositor alpha-blended
- accidentally.
+Subject: [PATCH 2/2] egl: Puts RGBA visuals in the second config selection
+ group.
 
-In the ideal world, this would be done by the xserver as it is done for
-GLX, however, I failed to comprehend their code, so I'm putting it here
-instead.
+That way applications don't get windows that are compositor alpha-blended
+accidentally.
 
+In the ideal world, this would be done by the xserver, as it does for
+GLX, however, an appropriate place could not be found, so it's being
+placed here instead.
+
+Fixes: 049f343e8ac "egl: Allow 24-bit visuals for 32-bit RGBA8888 configs"
+Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=67676
+Cc: mesa-stable@lists.freedesktop.org
 Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
 ---
  src/egl/drivers/dri2/platform_x11.c | 10 +++++++++-

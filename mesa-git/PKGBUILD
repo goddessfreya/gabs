@@ -13,8 +13,8 @@
 pkgbase=mesa-git-gentz
 pkgname=('mesa-git-gentz' 'lib32-mesa-git-gentz')
 pkgdesc="an open-source implementation of the OpenGL specification, git version"
-pkgver=19.2.0_devel.112096.301bdda2b83
-pkgrel=0
+pkgver=19.2.0_devel.112351.a0c515ed313
+pkgrel=2
 arch=('x86_64')
 optdepends=('opengl-man-pages: for the OpenGL API man pages')
 url="https://www.mesa3d.org"
@@ -36,23 +36,28 @@ source=(
     '533.patch'
     '1145.patch'
     'llvm32.cross'
-    '0001-Fixes-transparency-with-EGL-and-X11.patch'
-	'0002-Puts-RGBA-visuals-in-the-second-config-selection-gro.patch'
+    '0001-glx-Fix-synthetic-error-generation-in-__glXSendError.patch'
+    '0001-egl-Fixes-transparency-with-EGL-and-X11.patch'
+    '0002-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch'
 )
-
-#_meson_flags="-D b_ndebug=true"
-
 sha512sums=('SKIP'
             '25da77914dded10c1f432ebcbf29941124138824ceecaf1367b3deedafaecabc082d463abcfa3d15abff59f177491472b505bcb5ba0c4a51bb6b93b4721a23c2'
             '2838c24aea0c3da3b9f5b5e89fd0ff2d4f9c3b3bb34cba713707425f9dadb8b277ff023ae254cd897aac962beaf3f2a92f5a31e127bef37f68de353abbf75af6'
-            '4e5b936a52e3592f69a4a6b4d164c24f6d30d9f7bd30db9a186befe93ef31588690b8ac3dee71fa6e7b1cb84874f38196c6e765f49fbb9cf6aac07c76cb0481c'
-            'a792f0dd95b77a54e9b9dbf3bb9d80496542c2ec5a6af1da9606cdacfebe6c36b7404cf8b70306df31c1e8b6b459a77b7ed90f95f87027966ab0306b4f8079f0'
-            'c023560ad4df7d4c221d03208caaac13e42931ee0bd92dd02367dc14c349b3ecd4bd445759bcc02618ed68d6047f8f9766618ed1f9953823db4a6f2f85537792')
+            '2721b232a9a42c4c61042fb8acbedf77f05213af0cad3f5eb79f57503946ce47c96a25b6659a952f4d52a6b602d72080f83efd6e0b4b9c7fb1f20ebb04c14bdb'
+            'c023560ad4df7d4c221d03208caaac13e42931ee0bd92dd02367dc14c349b3ecd4bd445759bcc02618ed68d6047f8f9766618ed1f9953823db4a6f2f85537792'
+            'eaafdf5bd19a3d450a9d7fc35cdea0c332d4a834bbe2bbe51660dc17d1099f78b87cd7ddf9a0cd2d81dbc25b61572cbfe474e7a47d61efc08ff9f3233e714e5c'
+            '9dfb301a33e55484460d9d458deecd792596cc2c91eeafc941746f6def08a6a06d630cbec857a98241163106681c3d5c7676973f246f812fb31a44de83e954fa'
+            '46cb8d1d88403b4f173151ed78159cd9799e35541fbd348f3a0261b3cd8ec982e5e9204c468ca2210ab2c6d556b40235c0a43f7c18947ae29fb232269d2eef53')
+
+#_meson_flags=("-D b_ndebug=true")
 
 pkgver() {
-    cd mesa
+    cd "${srcdir}/mesa"
     read -r _ver <VERSION
-    echo ${_ver/-/_}.$(git rev-list --count HEAD).$(git rev-parse --short HEAD)
+    printf '%s.%s.%s' \
+        "${_ver/-/_}" \
+        "$(git rev-list --count HEAD)" \
+        "$(git rev-parse --short HEAD)"
 }
 
 build_meson() {
@@ -60,18 +65,17 @@ build_meson() {
         return
     fi
 
-    meson setup mesa _build$1 \
-        ${@:2} \
-        $_meson_flags \
+    meson setup "${srcdir}/mesa" "${srcdir}/_build$1" \
+        "${@:2}" \
+        "${_meson_flags[@]}" \
         -D buildtype=plain \
         --wrap-mode=nofallback \
         -D prefix=/usr \
         -D sysconfdir=/etc \
         -D platforms=x11,wayland,drm,surfaceless \
         -D dri-drivers="" \
-        -D gallium-drivers=radeonsi,svga,swrast,virgl \
+        -D gallium-drivers=radeonsi,swrast,virgl \
         -D vulkan-drivers=amd \
-        -D swr-arches=avx,avx2 \
         -D dri3=true \
         -D egl=true \
         -D gallium-extra-hud=true \
@@ -79,7 +83,6 @@ build_meson() {
         -D gallium-nine=true \
         -D gallium-va=true \
         -D gallium-vdpau=true \
-        -D gallium-xa=true \
         -D gallium-xvmc=false \
         -D gbm=true \
         -D gles1=true \
@@ -94,9 +97,9 @@ build_meson() {
         -D valgrind=false \
         -D tools=[]
 
-    meson configure _build$1
+    meson configure "${srcdir}/_build$1"
 
-    ninja $NINJAFLAGS -C _build$1
+    ninja $NINJAFLAGS -C "${srcdir}/_build$1"
     touch ".build$1.built"
 }
 
@@ -111,8 +114,9 @@ prepare() {
     git am "../533.patch"
     git am "../1145.patch" -C2
 
-    git am "../0001-Fixes-transparency-with-EGL-and-X11.patch"
-    git am "../0002-Puts-RGBA-visuals-in-the-second-config-selection-gro.patch"
+    git am "../0001-egl-Fixes-transparency-with-EGL-and-X11.patch"
+    git am "../0002-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch"
+    #git am "../0001-glx-Fix-synthetic-error-generation-in-__glXSendError.patch"
     cd ..
 }
 
@@ -122,7 +126,7 @@ build () {
         -D gallium-omx=bellagio
 
     build_meson 32 \
-        --cross-file "$srcdir"/llvm32.cross \
+        --cross-file "${srcdir}/llvm32.cross" \
         --libdir=/usr/lib32 \
         -D gallium-opencl=disabled \
         -D gallium-omx=disabled
@@ -136,26 +140,32 @@ package_lib32-mesa-git-gentz() {
         'lib32-wayland' 'lib32-lm_sensors' 'glslang'
     )
     provides+=(
+        'lib32-mesa-git'
         'lib32-mesa' 'lib32-opencl-mesa' 'lib32-vulkan-intel'
         'lib32-vulkan-radeon' 'lib32-libva-mesa-driver' 'lib32-mesa-vdpau'
         'lib32-vulkan-driver' 'lib32-opengl-driver' 'lib32-opencl-driver'
+        'lib32-ati-dri' 'lib32-intel-dri' 'lib32-nouveau-dri' 'lib32-mesa-dri' 
+        'lib32-mesa-libgl'
     )
     conflicts+=(
         'lib32-mesa' 'lib32-opencl-mesa' 'lib32-vulkan-intel'
         'lib32-vulkan-radeon' 'lib32-libva-mesa-driver' 'lib32-mesa-vdpau'
         'lib32-vulkan-driver' 'lib32-opengl-driver' 'lib32-opencl-driver'
+        'lib32-ati-dri' 'lib32-intel-dri' 'lib32-nouveau-dri' 'lib32-mesa-dri' 
+        'lib32-mesa-libgl'
     )
-    DESTDIR="$pkgdir" ninja $NINJAFLAGS -C _build32 install
+    DESTDIR="${pkgdir}" ninja $NINJAFLAGS -C "${srcdir}/_build32" install
 
     # remove files provided by mesa-git
-    rm -rf "$pkgdir"/etc
-    rm -rf "$pkgdir"/usr/include
-    rm -rf "$pkgdir"/usr/share/glvnd/
-    rm -rf "$pkgdir"/usr/share/drirc.d/
-    rm -rf "$pkgdir"/usr/share/vulkan/explicit_layer.d/
+    rm -rf "${pkgdir}/etc"
+    rm -rf "${pkgdir}/usr/include"
+    rm -rf "${pkgdir}/usr/share/glvnd/"
+    rm -rf "${pkgdir}/usr/share/drirc.d/"
+    rm -rf "${pkgdir}/usr/share/vulkan/explicit_layer.d/"
 
     # indirect rendering
-    ln -s /usr/lib32/libGLX_mesa.so.0 "${pkgdir}/usr/lib32/libGLX_indirect.so.0"
+    ln -s /usr/lib32/libGLX_mesa.so.0 \
+        "${pkgdir}/usr/lib32/libGLX_indirect.so.0"
 }
 
 package_mesa-git-gentz() {
@@ -165,18 +175,21 @@ package_mesa-git-gentz() {
         'wayland' 'lm_sensors' 'glslang'
     )
     provides+=(
+        'mesa-git'
         'mesa' 'opencl-mesa' 'vulkan-intel' 'vulkan-radeon' 'libva-mesa-driver'
         'mesa-vdpau' 'vulkan-driver' 'opengl-driver' 'opencl-driver'
+        'ati-dri' 'intel-dri' 'nouveau-dri' 'svga-dri' 'mesa-dri' 'mesa-libgl'
     )
     conflicts+=(
         'mesa' 'opencl-mesa' 'vulkan-intel' 'vulkan-radeon' 'libva-mesa-driver'
         'mesa-vdpau' 'vulkan-driver' 'opengl-driver' 'opencl-driver'
+        'ati-dri' 'intel-dri' 'nouveau-dri' 'svga-dri' 'mesa-dri' 'mesa-libgl'
     )
 
-    DESTDIR="$pkgdir" ninja $NINJAFLAGS -C _build64 install
+    DESTDIR="${pkgdir}" ninja $NINJAFLAGS -C "${srcdir}/_build64" install
 
     # indirect rendering
-    ln -s /usr/lib/libGLX_mesa.so.0 ${pkgdir}/usr/lib/libGLX_indirect.so.0
+    ln -s /usr/lib/libGLX_mesa.so.0 "${pkgdir}/usr/lib/libGLX_indirect.so.0"
 
-    install -Dt "$pkgdir"/usr/share/licenses/$pkgbase "$srcdir"/LICENSE
+    install -Dt "${pkgdir}/usr/share/licenses/$pkgbase" "${srcdir}/LICENSE"
 }

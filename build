@@ -10,7 +10,6 @@ while true; do
     kill -0 $$ 2>/dev/null || exit
 done &
 
-local POSITIONAL=()
 local SHOULD_RESUME=false
 local RESUME_PKG=
 local PACKAGES=()
@@ -20,6 +19,7 @@ local EVERY_PARAMS=()
 local ONE_ONLY=false
 local DO_BACKUP_DIR=
 local RESUME_BACKUP_DIR=
+local CHROOT_NAME=
 
 source "$(pwd)/build_utils"
 
@@ -31,7 +31,6 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             SHOULD_RESUME=true
-            RESUME_PKG="$(cat last_pkg)"
 			shift # past argument
 		;;
 		-rp)
@@ -88,6 +87,16 @@ while [[ $# -gt 0 ]]; do
 			shift # past argument
 			shift # past argument
 		;;
+		-cn)
+            if [[ "$CHROOT_NAME" != "" ]]; then
+                echo Chroot name already passed.
+                exit 1
+            fi
+
+            CHROOT_NAME="$2"
+			shift # past argument
+			shift # past argument
+		;;
 
         --help)
             echo "====== HELP ======"
@@ -101,20 +110,29 @@ while [[ $# -gt 0 ]]; do
             echo "-o   : Only build one package"
             echo "-bk  : Do backups."
             echo "-rs  : Resume backups."
+            echo "-cn  : Chroot name."
             exit
         ;;
 		*) # unknown option
-			POSITIONAL+=("$1") # save it in an array for later
-			printf "Ignoring option \`$1\`\n"
-			shift # past argument
+			printf "Unkown option \`$1\`\n"
+            exit 1
 		;;
 	esac
 done
-set -- "${POSITIONAL[@]}" # restore positional parameters
 
 if [[ "${#EVERY_PARAMS[@]}" == "0" ]]; then
     echo "Falling back to using -w for every package"
     EVERY_PARAMS=("-w")
+fi
+
+if [[ "${CHROOT_NAME}" == "" ]]; then
+    echo "Falling back to using chroot name of \"chroot\""
+    CHROOT_NAME="chroot"
+fi
+
+if [[ "${SHOULD_RESUME}" == "true" && "${RESUME_PKG}" == "" ]]; then
+    echo "Falling back to using last_pkg"
+    RESUME_PKG="$(cat last_pkg.${CHROOT_NAME})"
 fi
 
 if [[ "${#PACKAGES[@]}" == "0" ]]; then
@@ -127,14 +145,12 @@ if [[ "${#PACKAGES[@]}" == "0" ]]; then
         "lib32-libedit"
         "llvm-git"
         "lib32-libomxil-bellagio"
+        "libx11-git"
         "mesa-git"
         "libglvnd-git"
-        #"wayland-git"
-        #"wayland-protocols-git"
-        #"xorg-server-git"
-        #"sddm-git"
-        #"xf86-video-amdgpu-git"
-        #"xf86-video-ati-git"
+        "xorg-server-git"
+        "xf86-video-amdgpu-git"
+        "xf86-video-ati-git"
     ) 
 fi
 
@@ -146,16 +162,28 @@ if [[ "$(diff /etc/makepkg.conf makepkg.conf | wc -l)" != "4" \
         | sort -u \
         | wc -l)" != "1" ]]; then
     echo "makepkg.conf was not updated"
-    exit
+    exit 1
 fi
 
-local CHROOT_SUFFIX=chroot
-local CHROOT_DIR="$(pwd)/$CHROOT_SUFFIX"
+for PKG_TO_BUILD in $PACKAGES; do
+    if [[ ! -d "$PKG_TO_BUILD" ]]; then
+        echo "Package \"$PKG_TO_BUILD\" is missing"
+        exit 1
+    fi
+
+    if [[ ! -f "$PKG_TO_BUILD/build" ]]; then
+        echo "Package \"$PKG_TO_BUILD\" is missing build script"
+        exit 1
+    fi
+done
+
+local CHROOT_DIR="$(pwd)/chroots/${CHROOT_NAME}"
 
 if [[ "$SHOULD_RESUME" == "false" ]]; then
-    cp alternatives provides
-    sudo rm -rf deps
-    mkdir -p deps
+    cp "alternatives.${CHROOT_NAME}" "provides.${CHROOT_NAME}"
+    sudo rm -rf "deps.${CHROOT_NAME}"
+    mkdir -p "deps.${CHROOT_NAME}"
+    mkdir -p "chroots"
 
     rm */*.pkg.tar-namcap.log
     rm */*-build.log*
@@ -164,11 +192,11 @@ if [[ "$SHOULD_RESUME" == "false" ]]; then
     rm */*-prepare.log*
     rm */*-check.log*
     rm */*-pkgver.log*
-    rm last_pkg || true
+    rm "last_pkg.${CHROOT_NAME}" || true
 
-    mkdir -p pkgs.old
-    mkdir -p pkgs
-    mv pkgs/* pkgs.old
+    mkdir -p "pkgs.old.${CHROOT_NAME}"
+    mkdir -p "pkgs.${CHROOT_NAME}"
+    mv "pkgs.${CHROOT_NAME}/"* "pkgs.old.${CHROOT_NAME}"
 
     sudo rm -rf "$CHROOT_DIR"
     mkdir -p "$CHROOT_DIR"
@@ -183,10 +211,10 @@ if [[ "$SHOULD_RESUME" == "false" ]]; then
     sudo /usr/bin/arch-nspawn "$CHROOT_DIR/root" \
         /bin/bash -c 'yes | pacman -Syu'
 
-    sudo mkdir -p "${CHROOT_DIR}/root/alt_pkgs/"
-    sudo cp alt_pkgs/*.pkg.tar "${CHROOT_DIR}/root/pkgs/"
-    local ALT_DEPS="$(sudo ls ${CHROOT_DIR}/root/alt_pkgs/ \
-        | sed "s/^/\/alt_pkgs\//" \
+    sudo mkdir -p "${CHROOT_DIR}/root/alt_pkgs.${CHROOT_NAME}/"
+    sudo cp "alt_pkgs.${CHROOT_NAME}/"*.pkg.tar "${CHROOT_DIR}/root/pkgs/"
+    local ALT_DEPS="$(sudo ls ${CHROOT_DIR}/root/alt_pkgs${CHROOT_NAME}/ \
+        | sed "s/^/\/alt_pkgs.${CHROOT_NAME}\//" \
         | tr '\n' ' ')"
     if [[ "$ALT_DEPS" != "" ]]; then
         sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
@@ -213,7 +241,7 @@ for PKG_TO_BUILD in $PACKAGES; do
 
     echo "Doing $PKG_TO_BUILD"
 
-    echo "$PKG_TO_BUILD" > last_pkg
+    echo "$PKG_TO_BUILD" > "last_pkg.${CHROOT_NAME}"
 
     local PARAMS=(${EVERY_PARAMS[@]})
 
@@ -244,8 +272,8 @@ for PKG_TO_BUILD in $PACKAGES; do
         }
 
     cd "$PKG_TO_BUILD"
-    local CHROOT_DIR2="$(pwd)/../$CHROOT_SUFFIX"
-    ./build "${PARAMS[@]}" -c "$CHROOT_DIR2" || {
+    local CHROOT_DIR2="$(pwd)/../chroots/${CHROOT_NAME}"
+    ./build "${PARAMS[@]}" -c "$CHROOT_DIR2" -cn "$CHROOT_NAME" || {
         echo "Failed to build $PKG_TO_BUILD"
         exit 1
     }

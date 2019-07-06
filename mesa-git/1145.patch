@@ -1,4 +1,4 @@
-From ce41b4e7b8d45a53ffd6647f434dd7772e3544ef Mon Sep 17 00:00:00 2001
+From 38b07f1197e0d27f8d9a4297e5229ee5cc5505e6 Mon Sep 17 00:00:00 2001
 From: Eric Anholt <eric@anholt.net>
 Date: Thu, 20 Jun 2019 09:18:20 -0700
 Subject: [PATCH 1/4] matypes: Drop some unused defines.
@@ -163,7 +163,7 @@ index 5b74c2af839..d3016d738b9 100644
 2.21.0
 
 
-From 52237abce0ed2a9fc29a0a6bb89d25337042c0e1 Mon Sep 17 00:00:00 2001
+From aae63cba4867f3f2a3023cda1199ed993f42a1d8 Mon Sep 17 00:00:00 2001
 From: Eric Anholt <eric@anholt.net>
 Date: Thu, 20 Jun 2019 10:18:41 -0700
 Subject: [PATCH 2/4] mesa: Replace gen_matypes with a simple header for
@@ -865,7 +865,7 @@ index e585968ed95..f6db5e3165b 100644
 2.21.0
 
 
-From 3d3060ab8053b63f92072f834055f5339ec48c20 Mon Sep 17 00:00:00 2001
+From 54679ccc02099b1d7bbcfaca3a71be834ba91809 Mon Sep 17 00:00:00 2001
 From: Eric Anholt <eric@anholt.net>
 Date: Thu, 20 Jun 2019 10:27:28 -0700
 Subject: [PATCH 3/4] mesa: Enable asm unconditionally, now that gen_matypes is
@@ -881,11 +881,11 @@ Subject: [PATCH 3/4] mesa: Enable asm unconditionally, now that gen_matypes is
  6 files changed, 33 insertions(+), 81 deletions(-)
 
 diff --git a/Android.common.mk b/Android.common.mk
-index 36d97c52dd1..9eb35532e69 100644
+index 327f13f5a38..825b60381d0 100644
 --- a/Android.common.mk
 +++ b/Android.common.mk
-@@ -98,12 +98,9 @@ ifeq ($(filter 5 6 7 8 9, $(MESA_ANDROID_MAJOR_VERSION)),)
- LOCAL_CFLAGS += -DHAVE_TIMESPEC_GET
+@@ -103,12 +103,9 @@ ifeq ($(shell test $(PLATFORM_SDK_VERSION) -ge 26 && echo true),true)
+ LOCAL_CFLAGS += -DHAVE_SYS_SHM_H
  endif
  
 -ifeq ($(strip $(MESA_ENABLE_ASM)),true)
@@ -916,7 +916,7 @@ index 5fe028c6d19..8d274e56836 100644
  MESA_ENABLE_LLVM := true
  endif
 diff --git a/meson.build b/meson.build
-index 28689857dc3..197c6f84bc1 100644
+index d8a48bd6994..65696be5da4 100644
 --- a/meson.build
 +++ b/meson.build
 @@ -49,7 +49,6 @@ with_vulkan_icd_dir = get_option('vulkan-icd-dir')
@@ -1083,7 +1083,7 @@ index ddfd03059c5..16153a3c5bd 100644
 2.21.0
 
 
-From f9a3cf0953a37e0ad9ece9ed86f5e0b105b24089 Mon Sep 17 00:00:00 2001
+From 9f88e05ba04f508c7f0b9f817912c2e3a6ee9445 Mon Sep 17 00:00:00 2001
 From: Eric Anholt <eric@anholt.net>
 Date: Thu, 20 Jun 2019 10:35:32 -0700
 Subject: [PATCH 4/4] sparc: Reuse m_vector_asm.h.

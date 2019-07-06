@@ -1,0 +1,56 @@
+From 233d534c9fc65e64d718ac2a7274886fe7cfafe6 Mon Sep 17 00:00:00 2001
+From: Hal Gentz <zegentzy@protonmail.com>
+Date: Thu, 27 Jun 2019 17:50:54 -0600
+Subject: [PATCH] glx: Fix synthetic error generation in __glXSendError
+
+To quote Uli Schlachter, who understands this stuff more than I do:
+
+>   The function __glXSendError() in mesa's src/glx/glx_error.c invents an X11
+> protocol error out of thin air. For the sequence number it uses dpy->request.
+> This is the sequence number of the last request that was sent. _XError() will
+> then update dpy->last_request_read based on the sequence number of the error
+> that just "came in".
+>
+>   If now another something comes in with a sequence number less than
+> dpy->last_request_read, since sequence numbers are monotonically increasing,
+> widen() will incorrectly add 1<<32 to the sequence number and things might go
+> downhill afterwards.
+
+> [Adding] a call to XSync(dpy, False) to the "invent an error"-functions [...]
+> should guarantee that dpy->request == dpy->last_request_read and so it does
+> not matter any more which of the two sequence numbers mesa uses.
+
+`__glXSendErrorForXcb` was also patched, as that's the function that
+`glXCreateContextAttribsARB` actually uses.
+
+Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=99781
+Cc: mesa-stable@lists.freedesktop.org
+Fixes: ad503c41 'apple: Initial import of libGL for OSX from AppleSGLX svn repository'
+Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
+---
+ src/glx/glx_error.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/glx/glx_error.c b/src/glx/glx_error.c
+index 653cbeb2d2a..905290f5b7b 100644
+--- a/src/glx/glx_error.c
++++ b/src/glx/glx_error.c
+@@ -60,6 +60,7 @@ __glXSendError(Display * dpy, int_fast8_t errorCode, uint_fast32_t resourceID,
+    error.majorCode = glx_dpy->majorOpcode;
+ 
+    _XError(dpy, &error);
++   XSync(dpy, False);
+ 
+    UnlockDisplay(dpy);
+ }
+@@ -79,6 +80,7 @@ __glXSendErrorForXcb(Display * dpy, const xcb_generic_error_t *err)
+    error.majorCode = err->major_code;
+ 
+    _XError(dpy, &error);
++   XSync(dpy, False);
+ 
+    UnlockDisplay(dpy);
+ }
+-- 
+2.22.0
+

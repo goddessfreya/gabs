@@ -1,14 +1,15 @@
-From 301bdda2b8392066b0975f1b327a9f20b1d2be18 Mon Sep 17 00:00:00 2001
+From bb1465bb0fb86b30f627115fa41b4b774f6d7a8e Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
 Date: Fri, 21 Jun 2019 15:09:34 -0600
-Subject: [PATCH 1/2] Fixes transparency with EGL and X11.
+Subject: [PATCH 1/2] egl: Fixes transparency with EGL and X11.
 
-This commit does this by allowing both RGB and RGBA visuals to match with EGL
-configs. We also expose the `EGL_MESA_config_select_group` egl
+This commit does this by allowing both RGB and RGBA visuals to match with
+EGL configs. We also expose the `EGL_MESA_config_select_group` egl
 extension, which is similar to GLX's visual select group extension, to
 allow the RGBA visuals to get less priority.
 
 Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=67676
+Fixes: 049f343e8ac "egl: Allow 24-bit visuals for 32-bit RGBA8888 configs"
 Cc: mesa-stable@lists.freedesktop.org
 Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
 ---
@@ -79,51 +80,6 @@ diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform
 index 0d62f83b411..c52befd5643 100644
 --- a/src/egl/drivers/dri2/platform_x11.c
 +++ b/src/egl/drivers/dri2/platform_x11.c
-@@ -266,7 +266,7 @@ dri2_x11_create_surface(_EGLDriver *drv, _EGLDisplay *disp, EGLint type,
-       _eglError(EGL_BAD_ALLOC, "dri2_create_surface");
-       return NULL;
-    }
--   
-+
-    if (!dri2_init_surface(&dri2_surf->base, disp, type, conf, attrib_list,
-                           false, native_surface))
-       goto cleanup_surf;
-@@ -411,7 +411,7 @@ dri2_x11_destroy_surface(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *surf)
-    (void) drv;
- 
-    dri2_dpy->core->destroyDrawable(dri2_surf->dri_drawable);
--   
-+
-    if (dri2_dpy->dri2) {
-       xcb_dri2_destroy_drawable (dri2_dpy->conn, dri2_surf->drawable);
-    } else {
-@@ -791,19 +791,19 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
-       visuals = xcb_depth_visuals(d.data);
- 
-       for (int i = 0; i < xcb_depth_visuals_length(d.data); i++) {
--	 if (class_added[visuals[i]._class])
--	    continue;
-+         if (class_added[visuals[i]._class])
-+            continue;
- 
--	 class_added[visuals[i]._class] = EGL_TRUE;
-+         class_added[visuals[i]._class] = EGL_TRUE;
- 
--	 for (int j = 0; dri2_dpy->driver_configs[j]; j++) {
-+         for (int j = 0; dri2_dpy->driver_configs[j]; j++) {
-             struct dri2_egl_config *dri2_conf;
-             const __DRIconfig *config = dri2_dpy->driver_configs[j];
- 
-             const EGLint config_attrs[] = {
--                    EGL_NATIVE_VISUAL_ID,    visuals[i].visual_id,
--                    EGL_NATIVE_VISUAL_TYPE,  visuals[i]._class,
--                    EGL_NONE
-+               EGL_NATIVE_VISUAL_ID,    visuals[i].visual_id,
-+               EGL_NATIVE_VISUAL_TYPE,  visuals[i]._class,
-+               EGL_NONE
-             };
- 
-             unsigned int rgba_masks[4] = {
 @@ -820,25 +820,21 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
                 if (dri2_conf->base.ConfigID == config_count + 1)
                    config_count++;
@@ -160,7 +116,7 @@ index 0d62f83b411..c52befd5643 100644
  
        xcb_depth_next(&d);
 diff --git a/src/egl/main/eglconfig.c b/src/egl/main/eglconfig.c
-index 72cd73d5179..6e38b5d403f 100644
+index 0a95e8ee05d..b3362363664 100644
 --- a/src/egl/main/eglconfig.c
 +++ b/src/egl/main/eglconfig.c
 @@ -258,6 +258,9 @@ static const struct {

@@ -1,24 +1,26 @@
 # Maintainer: Hal Gentz <zegentzy@protonmail.com>
 # Contributor: Alexandre Demers <alexandre.f.demers@gmail.com>
 
-_pkgbase=libomxil-bellagio
-pkgname=lib32-$_pkgbase
+pkgname=lib32-libomxil-bellagio-gentz
 pkgver=0.9.3
-pkgrel=0
+pkgrel=2
 pkgdesc="An opensource implementation of the OpenMAX Integration Layer API"
 arch=('x86_64')
 url="http://omxil.sourceforge.net"
 license=('LGPL')
-depends=("lib32-glibc" "$_pkgbase")
+depends=("lib32-glibc" "libomxil-bellagio")
+provides=("lib32-libomxil-bellagio")
 makedepends=("lib32-gcc-libs")
-source=("http://downloads.sourceforge.net/project/omxil/omxil/Bellagio%200.9.3/${_pkgbase}-${pkgver}.tar.gz"
-        fedora-fixes.patch)
-md5sums=('a1de827fdb75c02c84e55f740ca27cb8'
-         'c34f9facf0cf26171c81f2fc3d562ec6')
+source=(
+    "${pkgname}::http://downloads.sourceforge.net/project/omxil/omxil/Bellagio%200.9.3/libomxil-bellagio-${pkgver}.tar.gz"
+    fedora-fixes.patch
+)
 groups=('gentz_custom')
+sha512sums=('72b4c8c639f8cf767ba6323fdfc42b90ad4b62f0ece3ba786ae38afc7c5d64cb0ba464b7993a588c1c7fa2daafe2ac773c9c4367a154c32632e87ba0d6341d16'
+            '6a763c164ed21ad9a8c0da01e02e823ed40f2539b68ef96d8052739dd433daa472c7d05f86bb06b95269a819403aa2e27670d37475ecf108f808bf9fa3ede413')
 
 prepare() {
-    cd ${srcdir}/${_pkgbase}-$pkgver
+    cd "${srcdir}/libomxil-bellagio-$pkgver"
 
     # Fixes from fedora repo
     patch -Np1 -i ../fedora-fixes.patch
@@ -35,7 +37,7 @@ exports_32() {
 
 build() {
     exports_32
-    cd ${srcdir}/${_pkgbase}-${pkgver}
+    cd "${srcdir}/libomxil-bellagio-$pkgver"
 
     ./configure --prefix=/usr --disable-static --libdir=/usr/lib32
 
@@ -44,8 +46,8 @@ build() {
 
 package() {
     exports_32
-    cd ${srcdir}/${_pkgbase}-${pkgver}
+    cd "${srcdir}/libomxil-bellagio-$pkgver"
     make DESTDIR="${pkgdir}" install
 
-    rm -rf "$pkgdir"/usr/{bin,include,share}
+    rm -rf "${pkgdir}/usr/"{bin,include,share}
 }

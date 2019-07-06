@@ -1,20 +1,19 @@
 # Maintainer: Hal Gentz <zegentzy@protonmail.com>
 # Contributor: The arch people, idk
 
-_pkgbasename=libedit
-pkgname=lib32-libedit
-_pkgver=20190324_3.1
-pkgver=${_pkgver/-/_}
-pkgrel=0
+pkgname=lib32-libedit-gentz
+pkgver=20190324_3.1
+pkgrel=3
 pkgdesc='Command line editor library providing generic line editing, history, and tokenization functions (32-bit)'
 url='http://www.thrysoee.dk/editline/'
 arch=('x86_64')
 license=('BSD')
 depends=('lib32-glibc' 'lib32-ncurses' 'libedit')
+provides=('lib32-libedit')
 makedepends=('gcc-multilib')
 source=("http://www.thrysoee.dk/editline/libedit-${pkgver/_/-}.tar.gz")
-sha256sums=('ac8f0f51c1cf65492e4d1e3ed2be360bda41e54633444666422fbf393bba1bae')
 groups=('gentz_custom')
+sha512sums=('240098989e3c5c8c5e28a61036655ad5a57f1c484e1cce2eaf3da157ff238dfb9cd81c766f82efbefa0935b7b5c07328087788cbac007b11dfb558cfaccaedf3')
 
 exports_32() {
     export CFLAGS="$CFLAGS -m32"
@@ -25,17 +24,16 @@ exports_32() {
 
 build() {
     exports_32
-	cd "${srcdir}/${_pkgbasename}-${_pkgver/_/-}"
+    cd "${srcdir}/libedit-${pkgver/_/-}"
 	./configure --prefix=/usr --enable-widec --libdir=/usr/lib32
 	make
 }
 
 package() {
     exports_32
-	cd "${srcdir}/${_pkgbasename}-${_pkgver/_/-}"
+    cd "${srcdir}/libedit-${pkgver/_/-}"
 	make install DESTDIR="${pkgdir}"
 
-	rm -rf "${pkgdir}"/usr/{include,share,bin}
-	install -Dm644 COPYING "${pkgdir}"/usr/share/licenses/libedit/LICENSE.x86
-
+	rm -rf "${pkgdir}/usr/"{include,share,bin}
+	install -Dm644 COPYING "${pkgdir}/usr/share/licenses/libedit/LICENSE.x86"
 }
