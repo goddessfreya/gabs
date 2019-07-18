@@ -5,7 +5,7 @@
 
 pkgname=libglvnd-git-gentz
 pkgver=1.1.1.r2.g58c8c4a
-pkgrel=3
+pkgrel=4
 pkgdesc="The GL Vendor-Neutral Dispatch library"
 arch=('x86_64')
 url="https://github.com/NVIDIA/libglvnd"

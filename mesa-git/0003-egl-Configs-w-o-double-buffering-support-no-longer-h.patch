@@ -1,0 +1,90 @@
+From 776f397cc275d11ebc0c6ecce084c1b632502d18 Mon Sep 17 00:00:00 2001
+From: Hal Gentz <zegentzy@protonmail.com>
+Date: Tue, 16 Jul 2019 15:22:31 -0600
+Subject: [PATCH 3/3] egl: Configs w/o double buffering support no longer have
+ `EGL_WINDOW_BIT`.
+
+Stops telling clients that a config not supporting double
+buffering
+
+Some `dri2_egl_config`s will not have any `__DRIconfig`s supporting double
+buffering, which is frustrating. These configs when passed to
+`eglCreateWindowSurface` will cause it to fail, if it tries to make a doubled
+buffered window, with a `EGL_BAD_MATCH`.
+
+Given that such behaviour is completely unacceptable, we drop the
+`EGL_WINDOW_BIT` if we don't have at least one `__DRIconfig` supporting double
+buffering, otherwise dropping the `EGL_PIXMAP_BIT`.
+
+Fixes: 049f343e8ac "egl: Allow 24-bit visuals for 32-bit RGBA8888 configs"
+Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=67676
+Cc: mesa-stable@lists.freedesktop.org
+Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
+---
+ src/egl/drivers/dri2/egl_dri2.c | 22 ++++++++++++++++++++--
+ src/egl/main/eglconfig.h        |  1 +
+ 2 files changed, 21 insertions(+), 2 deletions(-)
+
+diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
+index 96c3debeb33..7015fbb519a 100644
+--- a/src/egl/drivers/dri2/egl_dri2.c
++++ b/src/egl/drivers/dri2/egl_dri2.c
+@@ -358,6 +358,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+       memcpy(&conf->base, &base, sizeof base);
+       conf->base.SurfaceType = 0;
+       conf->base.ConfigID = config_id;
++      conf->base.StickySurfaceType = surface_type;
+ 
+       _eglLinkConfig(&conf->base);
+    }
+@@ -366,16 +367,33 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+       return NULL;
+    }
+ 
+-   if (double_buffer) {
++   /*
++    * Some `dri2_egl_config`s will not have any `__DRIconfig`s supporting
++    * double buffering, which is frustrating. These configs when passed to
++    * `eglCreateWindowSurface` will cause it to fail, if it tries to make a
++    * doubled buffered window, with a `EGL_BAD_MATCH`.
++    *
++    * Given that such behaviour is completely unacceptable, we drop the
++    * `EGL_WINDOW_BIT` if we don't have at least one `__DRIconfig` supporting
++    * double buffering, otherwise dropping the `EGL_PIXMAP_BIT`.
++    */
++   surface_type = conf->base.StickySurfaceType;
++
++   if (conf->dri_config[true][false] || conf->dri_config[true][true]) {
+       surface_type &= ~EGL_PIXMAP_BIT;
++   } else {
++      surface_type &= ~EGL_WINDOW_BIT;
+    }
+ 
+    /* No support for pbuffer + MSAA for now.
+     *
+     * XXX TODO: pbuffer + MSAA does not work and causes crashes.
+     * See QT bugreport: https://bugreports.qt.io/browse/QTBUG-47509
++    *
++    * `_eglMatchConfig` makes sure that all the `_EGLConfig`s have matching
++    * `EGL_SAMPLES`, so we only need to check the first one.
+     */
+-   if (base.Samples) {
++   if (conf->base.Samples) {
+       surface_type &= ~EGL_PBUFFER_BIT;
+    }
+ 
+diff --git a/src/egl/main/eglconfig.h b/src/egl/main/eglconfig.h
+index 064187ff1dd..ed9404573cc 100644
+--- a/src/egl/main/eglconfig.h
++++ b/src/egl/main/eglconfig.h
+@@ -69,6 +69,7 @@ struct _egl_config
+    EGLint Samples;
+    EGLint SampleBuffers;
+    EGLint SurfaceType;
++   EGLint StickySurfaceType;
+    EGLint TransparentType;
+    EGLint TransparentBlueValue;
+    EGLint TransparentGreenValue;
+-- 
+2.22.0
+

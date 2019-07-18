@@ -1,7 +1,7 @@
-From fa5a0019333686f2c2350e4c1846db6ebf3df184 Mon Sep 17 00:00:00 2001
+From 7a37de5257ea3108f687c9d585358566382df87c Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
 Date: Fri, 21 Jun 2019 17:12:47 -0600
-Subject: [PATCH 2/2] egl: Puts RGBA visuals in the second config selection
+Subject: [PATCH 2/3] egl: Puts RGBA visuals in the second config selection
  group.
 
 That way applications don't get windows that are compositor alpha-blended
@@ -20,7 +20,7 @@ Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
  1 file changed, 9 insertions(+), 1 deletion(-)
 
 diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform_x11.c
-index c52befd5643..e738007ef60 100644
+index 7da26bd133f..a0d2c47c264 100644
 --- a/src/egl/drivers/dri2/platform_x11.c
 +++ b/src/egl/drivers/dri2/platform_x11.c
 @@ -831,9 +831,17 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,

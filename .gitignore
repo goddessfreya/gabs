@@ -6,6 +6,8 @@ alt_pkgs.*
 provides.*
 deps.*
 alternatives.*
+last_pkg.*
+mem
 
 */*.tar.gz
 */*.tar.xz
@@ -33,6 +35,8 @@ python2/python2-gentz64
 libx11-git/libx11
 xf86-video-amdgpu-git/xf86-video-amdgpu-git-gentz/
 firefox-nightly/*en-US.linux-x86_64.txt
+wine-staging/wine
+wine-staging/wine-staging
 
 */*.pkg.tar-namcap.log
 */*-build.log*
@@ -41,4 +45,3 @@ firefox-nightly/*en-US.linux-x86_64.txt
 */*-prepare.log*
 */*-check.log*
 */*-pkgver.log*
-last_pkg

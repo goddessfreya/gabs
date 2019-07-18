@@ -3,7 +3,7 @@
 
 pkgname=lib32-libedit-gentz
 pkgver=20190324_3.1
-pkgrel=3
+pkgrel=4
 pkgdesc='Command line editor library providing generic line editing, history, and tokenization functions (32-bit)'
 url='http://www.thrysoee.dk/editline/'
 arch=('x86_64')

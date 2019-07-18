@@ -151,6 +151,7 @@ if [[ "${#PACKAGES[@]}" == "0" ]]; then
         "xorg-server-git"
         "xf86-video-amdgpu-git"
         "xf86-video-ati-git"
+        "wine-staging"
     ) 
 fi
 
@@ -179,8 +180,9 @@ done
 
 local CHROOT_DIR="$(pwd)/chroots/${CHROOT_NAME}"
 
-if [[ "$SHOULD_RESUME" == "false" ]]; then
+if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
     cp "alternatives.${CHROOT_NAME}" "provides.${CHROOT_NAME}"
+    touch "provides.${CHROOT_NAME}"
     sudo rm -rf "deps.${CHROOT_NAME}"
     mkdir -p "deps.${CHROOT_NAME}"
     mkdir -p "chroots"
@@ -272,8 +274,7 @@ for PKG_TO_BUILD in $PACKAGES; do
         }
 
     cd "$PKG_TO_BUILD"
-    local CHROOT_DIR2="$(pwd)/../chroots/${CHROOT_NAME}"
-    ./build "${PARAMS[@]}" -c "$CHROOT_DIR2" -cn "$CHROOT_NAME" || {
+    ./build "${PARAMS[@]}" -c "$CHROOT_DIR" -cn "$CHROOT_NAME" || {
         echo "Failed to build $PKG_TO_BUILD"
         exit 1
     }

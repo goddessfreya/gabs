@@ -1,7 +1,7 @@
-From bb1465bb0fb86b30f627115fa41b4b774f6d7a8e Mon Sep 17 00:00:00 2001
+From ee6c25ecd37f243349c8071e940e84eceec422fc Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
-Date: Fri, 21 Jun 2019 15:09:34 -0600
-Subject: [PATCH 1/2] egl: Fixes transparency with EGL and X11.
+Date: Sun, 14 Jul 2019 15:30:30 -0600
+Subject: [PATCH 1/3] egl: Fixes transparency with EGL and X11.
 
 This commit does this by allowing both RGB and RGBA visuals to match with
 EGL configs. We also expose the `EGL_MESA_config_select_group` egl
@@ -13,19 +13,19 @@ Fixes: 049f343e8ac "egl: Allow 24-bit visuals for 32-bit RGBA8888 configs"
 Cc: mesa-stable@lists.freedesktop.org
 Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
 ---
- include/EGL/eglmesaext.h            |  5 ++++
+ include/EGL/eglmesaext.h            |  5 +++++
  include/GL/internal/dri_interface.h |  3 ++-
- src/egl/drivers/dri2/egl_dri2.c     |  4 +++
- src/egl/drivers/dri2/platform_x11.c | 40 +++++++++++++----------------
- src/egl/main/eglconfig.c            |  9 +++++++
+ src/egl/drivers/dri2/egl_dri2.c     |  4 ++++
+ src/egl/drivers/dri2/platform_x11.c | 22 +++++++++-------------
+ src/egl/main/eglconfig.c            |  9 +++++++++
  src/egl/main/eglconfig.h            |  2 ++
  src/egl/main/eglglobals.c           |  3 ++-
  src/mesa/drivers/dri/common/utils.c |  2 ++
  src/mesa/main/mtypes.h              |  3 +++
- 9 files changed, 47 insertions(+), 24 deletions(-)
+ 9 files changed, 38 insertions(+), 15 deletions(-)
 
 diff --git a/include/EGL/eglmesaext.h b/include/EGL/eglmesaext.h
-index f4332b279f8..3864f0dd416 100644
+index f4332b279f8..b83e9441012 100644
 --- a/include/EGL/eglmesaext.h
 +++ b/include/EGL/eglmesaext.h
 @@ -86,6 +86,11 @@ typedef EGLBoolean (EGLAPIENTRYP PFNEGLSWAPBUFFERSREGIONNOK) (EGLDisplay dpy, EG
@@ -34,7 +34,7 @@ index f4332b279f8..3864f0dd416 100644
  
 +#ifndef EGL_MESA_config_select_group
 +#define EGL_MESA_config_select_group 1
-+#define EGL_CONFIG_SELECT_GROUP_MESA		0x31D9
++#define EGL_CONFIG_SELECT_GROUP_MESA		0x31DC
 +#endif
 +
  #ifdef __cplusplus
@@ -77,7 +77,7 @@ index ee4faaab34f..96c3debeb33 100644
        return EGL_FALSE;
  
 diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform_x11.c
-index 0d62f83b411..c52befd5643 100644
+index 0d62f83b411..7da26bd133f 100644
 --- a/src/egl/drivers/dri2/platform_x11.c
 +++ b/src/egl/drivers/dri2/platform_x11.c
 @@ -820,25 +820,21 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
@@ -204,7 +204,7 @@ index 5a66bcf8e05..18a3c6f0806 100644
      /* The struct field doesn't matter here, these are handled by the
       * switch in driGetConfigAttribIndex.  We need them in the array
 diff --git a/src/mesa/main/mtypes.h b/src/mesa/main/mtypes.h
-index 13e18e6e8ab..c7d09a2f54b 100644
+index 2b87c701116..0a86ec330db 100644
 --- a/src/mesa/main/mtypes.h
 +++ b/src/mesa/main/mtypes.h
 @@ -216,6 +216,9 @@ struct gl_config

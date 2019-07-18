@@ -9,7 +9,7 @@ pkgname=(
     'xorg-server-xnest-git-gentz' 'xorg-server-xwayland-git-gentz' 
     'xorg-server-common-git-gentz' 'xorg-server-devel-git-gentz'
 )
-pkgver=1.20.0.367.r17001.gff6b771ee
+pkgver=1.20.0.374.r17008.gfe4cd0e7f
 pkgrel=1
 arch=('x86_64')
 license=('custom')
