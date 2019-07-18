@@ -19,24 +19,22 @@ mem
 
 */.SRCINFO
 
-libglvnd-git/libglvnd-git-gentz/
-llvm-git/llvm-project64
-mesa-git/mesa
-wayland-git/wayland
-wayland-protocols-git/wayland-protocols
-xf86-video-ati-git/xf86-video-ati
-xorg-server-git/xserver
-lib32-libedit/lib32-libedit-gentz
-lib32-libomxil-bellagio/lib32-libomxil-bellagio-gentz
-lib32-mpdecimal/lib32-mpdecimal-gentz
-lib32-tk/lib32-tk-gentz
-python/python-gentz64
-python2/python2-gentz64
-libx11-git/libx11
-xf86-video-amdgpu-git/xf86-video-amdgpu-git-gentz/
+libglvnd-git-gentz/libglvnd-git-gentz/
+llvm-git-gentz/llvm-project64
+mesa-git-gentz/mesa
+xf86-video-ati-git-gentz/xf86-video-ati
+xorg-server-git-gentz/xserver
+lib32-libedit-gentz/lib32-libedit-gentz
+lib32-libomxil-bellagio-gentz/lib32-libomxil-bellagio-gentz
+lib32-mpdecimal-gentz/lib32-mpdecimal-gentz
+lib32-tk-gentz/lib32-tk-gentz
+python-gentz/python-gentz64
+python2-gentz/python2-gentz64
+libx11-git-gentz/libx11
+xf86-video-amdgpu-git-gentz/xf86-video-amdgpu-git-gentz/
 firefox-nightly/*en-US.linux-x86_64.txt
-wine-staging/wine
-wine-staging/wine-staging
+wine-staging-git-gentz/wine
+wine-staging-git-gentz/wine-staging
 
 */*.pkg.tar-namcap.log
 */*-build.log*
