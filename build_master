@@ -1,7 +1,7 @@
 #!/bin/zsh -x
 
 local MAKEPKG_PARAM=()
-local MAKECHROOTPKG_PARAM=("-c" "-d" "/home/gentz/.ccache:/ccache")
+local MAKECHROOTPKG_PARAM=("-c")
 local CHROOT_DIR=
 local RESUME_DIR=
 local BACKUP_DIR=
@@ -143,9 +143,10 @@ if [[ "${CHROOT_NAME}" == "" ]]; then
     exit 1
 fi
 
+[[ -d "$HOME/.ccache" ]] && MAKECHROOTPKG_PARAM+=("-d" "$HOME/.ccache:/ccache")
+
 # Install deps because for some reason pacman fails to do this when called from
 # makechrootpkg
-
 local DEPS_PREFIX="$(pwd)/../deps.${CHROOT_NAME}/$(basename $(pwd))"
 mkdir -p "$DEPS_PREFIX"
 
@@ -206,7 +207,7 @@ sudo rm  -rf "${CHROOT_DIR}/root/pkgs/"
 
 if [[ "$RESUME_DIR" != "" ]]; then
     sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
-        "$RESUME_DIR/" "${CHROOT_DIR}/gentz/build"
+        "$RESUME_DIR/" "${CHROOT_DIR}/$USER/build"
 fi
 
 # Then actually build it
@@ -217,11 +218,11 @@ fi
 
 [[ "$BACKUP_DIR" != "" ]] && \
     sudo rsync -chavPASWX --stats --inplace --compress-level=0 \
-        "${CHROOT_DIR}/gentz/build/" "$BACKUP_DIR" 
+        "${CHROOT_DIR}/$USER/build/" "$BACKUP_DIR" 
 
 [[ "$NO_BUILD" == "true" ]] && exit
 
-if [[ "$(ls *.pkg.tar | wc -l)" == "false" ]]; then
+if [[ "$(ls *.pkg.tar | wc -l)" == "0" ]]; then
     echo WARN: No packages generated.
     exit 1
 fi
