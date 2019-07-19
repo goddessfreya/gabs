@@ -155,15 +155,22 @@ if [[ "${#PACKAGES[@]}" == "0" ]]; then
     ) 
 fi
 
-if [[ "$(diff /etc/makepkg.conf makepkg.conf | wc -l)" != "4" \
-    || "$(diff /etc/makepkg.conf makepkg.conf \
-        | grep '^>\|^<' \
-        | sed 's/\!sign/sign/' \
-        | sed 's/^</>/' \
-        | sort -u \
-        | wc -l)" != "1" ]]; then
-    echo "makepkg.conf was not updated"
-    exit 1
+[[ ! -f "makepkg.conf" ]] && cp /etc/makepkg.conf makepkg.conf
+if [[ "$(cat /etc/makepkg.conf | grep "^BUILDENV=" | grep "\!sign")" == "" ]]; then
+    if [[ "$(diff /etc/makepkg.conf makepkg.conf | wc -l)" != "4" \
+        || "$(diff /etc/makepkg.conf makepkg.conf \
+            | grep '^>\|^<' \
+            | sed 's/\!sign/sign/' \
+            | sed 's/^</>/' \
+            | sort -u \
+            | wc -l)" != "1" ]]; then
+        echo "makepkg.conf was not updated."
+        echo "Please manually set !sign."
+        cp /etc/makepkg.conf makepkg.conf
+        exit 1
+    fi
+else
+    cp /etc/makepkg.conf makepkg.conf
 fi
 
 for PKG_TO_BUILD in $PACKAGES; do

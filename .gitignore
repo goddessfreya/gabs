@@ -43,3 +43,5 @@ wine-staging-git-gentz/wine-staging
 */*-prepare.log*
 */*-check.log*
 */*-pkgver.log*
+
+makepkg.conf
