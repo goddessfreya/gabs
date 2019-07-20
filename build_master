@@ -202,7 +202,7 @@ local DEPS="$(cat $DEPS_PREFIX/deps.final | sed "s/^ /\"/" | sed "s/$/\"/")"
         || exit \$?" || exit $?
 
 # Remove old packages
-sudo rm *.pkg.tar
+sudo rm *.pkg*
 sudo rm  -rf "${CHROOT_DIR}/root/pkgs/"
 
 if [[ "$RESUME_DIR" != "" ]]; then
@@ -222,14 +222,14 @@ fi
 
 [[ "$NO_BUILD" == "true" ]] && exit
 
-if [[ "$(ls *.pkg.tar | wc -l)" == "0" ]]; then
+if [[ "$(ls *.pkg* | wc -l)" == "0" ]]; then
     echo WARN: No packages generated.
     exit 1
 fi
 
 # Add this package to the list of our git packages then install it
 sudo mkdir -p "${CHROOT_DIR}/root/pkgs/"
-sudo mv *.pkg.tar "${CHROOT_DIR}/root/pkgs/"
+sudo mv *.pkg* "${CHROOT_DIR}/root/pkgs/"
 sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
     /bin/bash -c "yes | pacman -U \
         $(sudo ls ${CHROOT_DIR}/root/pkgs/ \

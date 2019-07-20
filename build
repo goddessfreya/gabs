@@ -192,6 +192,7 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
     touch "provides.${CHROOT_NAME}"
     sudo rm -rf "deps.${CHROOT_NAME}"
     mkdir -p "deps.${CHROOT_NAME}"
+    mkdir -p "alt_pkgs.${CHROOT_NAME}"
     mkdir -p "chroots"
 
     rm */*.pkg.tar-namcap.log
@@ -210,7 +211,7 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
     sudo rm -rf "$CHROOT_DIR"
     mkdir -p "$CHROOT_DIR"
 
-    sudo /usr/bin/mkarchroot \
+    sudo /usr/b)in/mkarchroot \
         -C /etc/pacman.conf \
         -M "$(pwd)/makepkg.conf" \
         -c /var/cache/pacman/pkg \
@@ -221,7 +222,7 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
         /bin/bash -c 'yes | pacman -Syu'
 
     sudo mkdir -p "${CHROOT_DIR}/root/alt_pkgs.${CHROOT_NAME}/"
-    sudo cp "alt_pkgs.${CHROOT_NAME}/"*.pkg.tar "${CHROOT_DIR}/root/pkgs/"
+    sudo cp "alt_pkgs.${CHROOT_NAME}/"*.pkg* "${CHROOT_DIR}/root/pkgs/"
     local ALT_DEPS="$(sudo ls ${CHROOT_DIR}/root/alt_pkgs${CHROOT_NAME}/ \
         | sed "s/^/\/alt_pkgs.${CHROOT_NAME}\//" \
         | tr '\n' ' ')"
