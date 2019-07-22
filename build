@@ -211,7 +211,7 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
     sudo rm -rf "$CHROOT_DIR"
     mkdir -p "$CHROOT_DIR"
 
-    sudo /usr/b)in/mkarchroot \
+    sudo /usr/bin/mkarchroot \
         -C /etc/pacman.conf \
         -M "$(pwd)/makepkg.conf" \
         -c /var/cache/pacman/pkg \
