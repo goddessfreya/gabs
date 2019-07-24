@@ -7,7 +7,7 @@
 # Contributor: Giovanni Scafora <giovanni@archlinux.org>
 
 pkgname=wine-staging-git-gentz
-pkgver=4.12.1.r16.ga0735f08+wine.4.12.1.r0.g82543e7858
+pkgver=4.12.1.r20.g9fd7972c+wine.4.12.1.r0.g82543e7858
 pkgrel=1
 
 source=(

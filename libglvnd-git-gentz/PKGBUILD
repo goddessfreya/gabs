@@ -5,7 +5,7 @@
 
 pkgname=libglvnd-git-gentz
 pkgver=1.1.1.r2.g58c8c4a
-pkgrel=4
+pkgrel=7
 pkgdesc="The GL Vendor-Neutral Dispatch library"
 arch=('x86_64')
 url="https://github.com/NVIDIA/libglvnd"
@@ -23,7 +23,7 @@ depends=('libxext' 'mesa' 'opengl-driver')
 groups=('gentz_custom')
 sha512sums=('SKIP'
             'bf0f4a7e04220a407400f89226ecc1f798cc43035f2538cc8860e5088e1f84140baf0d4b0b28f66e4b802d4d6925769a1297c24e1ba39c1c093902b2931781a5'
-            '64928dbcbd837f7c45974deeaed3125e72132b4208bb6536449b9201e488a6c518bbf2b4c810be3a633b2b61a1a89b44cf33618ecdced13aa751a3c9c2bd5283')
+            '10fa0f8a89552649fbc78962deb42da7267f032042ae13591ffbcafaa74f312c77c31fac737ceb336f31c15f9b1658bac8dc9bfaf7fd42ccd2bfdc541d97c020')
 
 pkgver() {
 	cd "${srcdir}/${pkgname}"

@@ -203,9 +203,11 @@ comm -23 "$DEPS_PREFIX/deps.withbuildtimesorted" "../provides.${CHROOT_NAME}" \
     > "$DEPS_PREFIX/deps.final"
 local DEPS="$(cat $DEPS_PREFIX/deps.final | sed "s/^ /\"/" | sed "s/$/\"/")"
 
-[[ "$DEPS" != "" ]] && sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
-    /bin/bash -c "DEPS=($DEPS); yes | pacman -S --needed \"\${DEPS[@]}\" \
-        || exit \$?" || exit $?
+if [[ "$DEPS" != "" ]]; then
+    sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" /bin/bash \
+        -c "DEPS=($DEPS); yes | pacman -S --needed \"\${DEPS[@]}\" || exit \$?" \
+        || exit $?
+fi
 
 # Remove old packages
 sudo rm *.pkg*

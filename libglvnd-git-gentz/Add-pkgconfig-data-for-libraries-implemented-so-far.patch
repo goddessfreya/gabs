@@ -1,36 +1,10 @@
-From dfdf0da8e77e62550d39a67d5a0b8bf97b86c06d Mon Sep 17 00:00:00 2001
-From: Kyle De'Vir <kyle.devir@mykolab.com>
-Date: Sun, 28 Apr 2019 15:47:12 +1000
-Subject: [PATCH 1/2] Add pkgconfig data for libraries implemented so far
-
----
- configure.ac               |  5 +++++
- src/GL/Makefile.am         |  3 +++
- src/GL/gl.pc.in            | 10 ++++++++++
- src/GLESv1/Makefile.am     |  2 ++
- src/GLESv1/glesv1_cm.pc.in | 10 ++++++++++
- src/GLESv2/Makefile.am     |  2 ++
- src/GLESv2/glesv2.pc.in    | 10 ++++++++++
- src/GLX/Makefile.am        |  2 ++
- src/GLX/glx.pc.in          | 10 ++++++++++
- src/OpenGL/Makefile.am     |  2 ++
- src/OpenGL/opengl.pc.in    | 10 ++++++++++
- 11 files changed, 66 insertions(+)
- create mode 100644 src/GL/gl.pc.in
- create mode 100644 src/GLESv1/glesv1_cm.pc.in
- create mode 100644 src/GLESv2/glesv2.pc.in
- create mode 100644 src/GLX/glx.pc.in
- create mode 100644 src/OpenGL/opengl.pc.in
-
 diff --git a/configure.ac b/configure.ac
-index 4a2099a..ca1eb93 100644
+index cdbb138..be8fc4e 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -308,10 +308,15 @@ AC_CONFIG_FILES([Makefile
-                  libglvnd.pc
+@@ -324,11 +324,16 @@ AC_CONFIG_FILES([Makefile
                   include/Makefile
                   src/Makefile
-+                 src/GL/gl.pc
                   src/GL/Makefile
 +                 src/OpenGL/opengl.pc
                   src/OpenGL/Makefile
@@ -41,38 +15,39 @@ index 4a2099a..ca1eb93 100644
 +                 src/GLX/glx.pc
                   src/GLX/Makefile
                   src/EGL/Makefile
++                 src/EGL/egl.pc
                   src/GLdispatch/Makefile
-diff --git a/src/GL/Makefile.am b/src/GL/Makefile.am
-index ecdcbd0..bae93aa 100644
---- a/src/GL/Makefile.am
-+++ b/src/GL/Makefile.am
-@@ -70,3 +70,6 @@ libGL_la_LIBADD += ../GLdispatch/libGLdispatch.la
- libGL_la_LIBADD += ../GLdispatch/vnd-glapi/libglapi_gl.la
- libGL_la_LIBADD += ../util/libutils_misc.la
- libGL_la_LIBADD += @LIB_DL@
+                  src/GLdispatch/vnd-glapi/Makefile
+                  src/util/Makefile
+diff --git a/src/EGL/Makefile.am b/src/EGL/Makefile.am
+index 5c036dc..c55c83e 100644
+--- a/src/EGL/Makefile.am
++++ b/src/EGL/Makefile.am
+@@ -106,3 +106,6 @@ g_egldispatchstubs.c : $(GENERATE_DEPS)
+ g_egldispatchstubs.h : $(GENERATE_DEPS)
+ 	$(AM_V_GEN)$(PYTHON) $(GENERATE_DISPATCH_SCRIPT) header $(GENERATE_LIST_FILES) > $@
+ endif
 +
 +pkgconfigdir = $(libdir)/pkgconfig
-+pkgconfig_DATA = gl.pc
-\ No newline at end of file
-diff --git a/src/GL/gl.pc.in b/src/GL/gl.pc.in
++pkgconfig_DATA = egl.pc
+diff --git a/src/EGL/egl.pc.in b/src/EGL/egl.pc.in
 new file mode 100644
-index 0000000..3e0787b
+index 0000000..6ed6933
 --- /dev/null
-+++ b/src/GL/gl.pc.in
++++ b/src/EGL/egl.pc.in
 @@ -0,0 +1,10 @@
 +prefix=@prefix@
 +exec_prefix=${prefix}
 +libdir=@libdir@
 +includedir=@includedir@
 +
-+Name: gl
-+Description: Legacy OpenGL and GLX library and headers
++Name: egl
++Description: Mesa EGL Library
 +Version: @PACKAGE_VERSION@
-+Libs: -L${libdir} -lGL
++Libs: -L${libdir} -lEGL
 +Cflags: -I${includedir}
-\ No newline at end of file
 diff --git a/src/GLESv1/Makefile.am b/src/GLESv1/Makefile.am
-index d20017d..90ac17e 100644
+index d20017d..88e07bc 100644
 --- a/src/GLESv1/Makefile.am
 +++ b/src/GLESv1/Makefile.am
 @@ -38,3 +38,5 @@ libGLESv1_CM_la_LIBADD = \
@@ -81,10 +56,9 @@ index d20017d..90ac17e 100644
  
 +pkgconfigdir = $(libdir)/pkgconfig
 +pkgconfig_DATA = glesv1_cm.pc
-\ No newline at end of file
 diff --git a/src/GLESv1/glesv1_cm.pc.in b/src/GLESv1/glesv1_cm.pc.in
 new file mode 100644
-index 0000000..5fa079c
+index 0000000..c0473e8
 --- /dev/null
 +++ b/src/GLESv1/glesv1_cm.pc.in
 @@ -0,0 +1,10 @@
@@ -98,9 +72,8 @@ index 0000000..5fa079c
 +Version: @PACKAGE_VERSION@
 +Libs: -L${libdir} -lGLESv1_CM
 +Cflags: -I${includedir}
-\ No newline at end of file
 diff --git a/src/GLESv2/Makefile.am b/src/GLESv2/Makefile.am
-index a9c2351..0a095d1 100644
+index a9c2351..f40e06f 100644
 --- a/src/GLESv2/Makefile.am
 +++ b/src/GLESv2/Makefile.am
 @@ -38,3 +38,5 @@ libGLESv2_la_LIBADD = \
@@ -109,10 +82,9 @@ index a9c2351..0a095d1 100644
  
 +pkgconfigdir = $(libdir)/pkgconfig
 +pkgconfig_DATA = glesv2.pc
-\ No newline at end of file
 diff --git a/src/GLESv2/glesv2.pc.in b/src/GLESv2/glesv2.pc.in
 new file mode 100644
-index 0000000..9ccfa9f
+index 0000000..d72b5ba
 --- /dev/null
 +++ b/src/GLESv2/glesv2.pc.in
 @@ -0,0 +1,10 @@
@@ -126,9 +98,8 @@ index 0000000..9ccfa9f
 +Version: @PACKAGE_VERSION@
 +Libs: -L${libdir} -lGLESv2
 +Cflags: -I${includedir}
-\ No newline at end of file
 diff --git a/src/GLX/Makefile.am b/src/GLX/Makefile.am
-index 030836b..85b7992 100644
+index 030836b..0d19674 100644
 --- a/src/GLX/Makefile.am
 +++ b/src/GLX/Makefile.am
 @@ -69,3 +69,5 @@ libGLX_la_SOURCES = \
@@ -137,10 +108,9 @@ index 030836b..85b7992 100644
  
 +pkgconfigdir = $(libdir)/pkgconfig
 +pkgconfig_DATA = glx.pc
-\ No newline at end of file
 diff --git a/src/GLX/glx.pc.in b/src/GLX/glx.pc.in
 new file mode 100644
-index 0000000..e15db71
+index 0000000..733d4cb
 --- /dev/null
 +++ b/src/GLX/glx.pc.in
 @@ -0,0 +1,10 @@
@@ -154,21 +124,9 @@ index 0000000..e15db71
 +Version: @PACKAGE_VERSION@
 +Libs: -L${libdir} -lGLX
 +Cflags: -I${includedir}
-\ No newline at end of file
-diff --git a/src/OpenGL/Makefile.am b/src/OpenGL/Makefile.am
-index 647d9e4..9a997f9 100644
---- a/src/OpenGL/Makefile.am
-+++ b/src/OpenGL/Makefile.am
-@@ -47,3 +47,5 @@ libOpenGL_la_LIBADD = \
- 	../GLdispatch/vnd-glapi/libglapi_opengl.la \
- 	../util/libutils_misc.la
- 
-+pkgconfigdir = $(libdir)/pkgconfig
-+pkgconfig_DATA = opengl.pc
-\ No newline at end of file
 diff --git a/src/OpenGL/opengl.pc.in b/src/OpenGL/opengl.pc.in
 new file mode 100644
-index 0000000..216222d
+index 0000000..3eb2903
 --- /dev/null
 +++ b/src/OpenGL/opengl.pc.in
 @@ -0,0 +1,10 @@
@@ -182,64 +140,13 @@ index 0000000..216222d
 +Version: @PACKAGE_VERSION@
 +Libs: -L${libdir} -lOpenGL
 +Cflags: -I${includedir}
-\ No newline at end of file
--- 
-2.21.0
-
-
-From 55021563d599d3ac08b551b878511a9d1ce34bae Mon Sep 17 00:00:00 2001
-From: Kyle De'Vir <kyle.devir@mykolab.com>
-Date: Sun, 28 Apr 2019 15:51:57 +1000
-Subject: [PATCH 2/2] Add pkgconfig data for libraries implemented so far
-
----
- configure.ac       |  1 -
- src/GL/Makefile.am |  3 ---
- src/GL/gl.pc.in    | 10 ----------
- 3 files changed, 14 deletions(-)
- delete mode 100644 src/GL/gl.pc.in
-
-diff --git a/configure.ac b/configure.ac
-index ca1eb93..ca213e1 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -308,7 +308,6 @@ AC_CONFIG_FILES([Makefile
-                  libglvnd.pc
-                  include/Makefile
-                  src/Makefile
--                 src/GL/gl.pc
-                  src/GL/Makefile
-                  src/OpenGL/opengl.pc
-                  src/OpenGL/Makefile
-diff --git a/src/GL/Makefile.am b/src/GL/Makefile.am
-index bae93aa..ecdcbd0 100644
---- a/src/GL/Makefile.am
-+++ b/src/GL/Makefile.am
-@@ -70,6 +70,3 @@ libGL_la_LIBADD += ../GLdispatch/libGLdispatch.la
- libGL_la_LIBADD += ../GLdispatch/vnd-glapi/libglapi_gl.la
- libGL_la_LIBADD += ../util/libutils_misc.la
- libGL_la_LIBADD += @LIB_DL@
--
--pkgconfigdir = $(libdir)/pkgconfig
--pkgconfig_DATA = gl.pc
-\ No newline at end of file
-diff --git a/src/GL/gl.pc.in b/src/GL/gl.pc.in
-deleted file mode 100644
-index 3e0787b..0000000
---- a/src/GL/gl.pc.in
-+++ /dev/null
-@@ -1,10 +0,0 @@
--prefix=@prefix@
--exec_prefix=${prefix}
--libdir=@libdir@
--includedir=@includedir@
--
--Name: gl
--Description: Legacy OpenGL and GLX library and headers
--Version: @PACKAGE_VERSION@
--Libs: -L${libdir} -lGL
--Cflags: -I${includedir}
-\ No newline at end of file
--- 
-2.21.0
-
+diff --git a/src/OpenGL/Makefile.am b/src/OpenGL/Makefile.am
+index 647d9e4..4b34dd5 100644
+--- a/src/OpenGL/Makefile.am
++++ b/src/OpenGL/Makefile.am
+@@ -47,3 +47,5 @@ libOpenGL_la_LIBADD = \
+ 	../GLdispatch/vnd-glapi/libglapi_opengl.la \
+ 	../util/libutils_misc.la
+ 
++pkgconfigdir = $(libdir)/pkgconfig
++pkgconfig_DATA = opengl.pc
