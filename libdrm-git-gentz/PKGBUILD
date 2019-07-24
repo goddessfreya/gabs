@@ -1,0 +1,86 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributor : Lone_Wolf <lonewolf at xs4all dot nl>
+# Contributor : Eric Engestrom <eric@engestrom.ch>
+# Contributor : Jan de Groot <jgc@archlinux.org>
+
+pkgbase=libdrm-git-gentz
+pkgname=('libdrm-git-gentz' 'lib32-libdrm-git-gentz')
+pkgver=2.4.99.r8.g3aba0f38
+pkgrel=2
+pkgdesc="Userspace interface to kernel DRM services, master git version"
+arch=(x86_64)
+license=('custom')
+makedepends=('libxslt' 'docbook-xsl' 'meson' 'gcc-multilib')
+checkdepends=('lib32-cairo' 'cairo')
+url="http://dri.freedesktop.org/"
+
+source=('libdrm::git://anongit.freedesktop.org/mesa/drm#branch=master'
+        COPYING)
+sha512sums=('SKIP'
+            'b0ca349b882a4326b19f81f22804fabdb6fb7aef31cdc7b16b0a7ae191bfbb50c7daddb2fc4e6c33f1136af06d060a273de36f6f3412ea326f16fa4309fda660')
+
+pkgver() {
+    cd libdrm
+    git describe --long --abbrev=8 | sed 's/^libdrm-//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+exports_32() {
+    export PKG_CONFIG="/usr/bin/pkg-config-32"
+    export CFLAGS="$CFLAGS -m32"
+    export CXXFLAGS="$CXXFLAGS -m32"
+    export LDFLAGS="$LDFLAGS -m32"
+}
+
+exports_64() {
+    export PKG_CONFIG="/usr/bin/pkg-config"
+    export CFLAGS="${CFLAGS/-m32}"
+    export CXXFLAGS="${CXXFLAGS/-m32}"
+    export LDFLAGS="${LDFLAGS/-m32}"
+}
+
+build_libdrm() {
+    exports_$1
+    meson setup libdrm _build$1 \
+        --prefix /usr \
+        --buildtype plain \
+        --wrap-mode nofallback \
+        -D udev=false \
+        -D valgrind=false \
+        "${@:2}"
+    meson configure _build$1
+    ninja -C _build$1
+}
+
+build() {
+    build_libdrm 64
+    build_libdrm 32 \
+        --libdir lib32
+}
+
+check() {
+    exports_64
+    meson test -C _build64
+    exports_32
+    meson test -C _build32
+}
+
+package_libdrm-git-gentz() {
+    depends=('libpciaccess')
+    provides=('libdrm' 'libdrm-git')
+    conflicts=('libdrm' 'libdrm-git')
+
+    exports_64
+    DESTDIR="$pkgdir" ninja -C _build64 install
+    install -Dt "$pkgdir"/usr/share/licenses/"$pkgname" -m644 COPYING
+}
+
+package_lib32-libdrm-git-gentz() {
+    depends=('libdrm-git' 'lib32-libpciaccess')
+    provides=('lib32-libdrm' 'lib32-libdrm-git')
+    conflicts=('lib32-libdrm' 'lib32-libdrm-git')
+
+    exports_32
+    DESTDIR="$pkgdir" ninja -C _build32 install
+    rm -rf "$pkgdir"/usr/{include,share,bin}
+    install -Dt "$pkgdir"/usr/share/licenses/"$pkgname" -m644 COPYING
+}

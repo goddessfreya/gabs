@@ -146,6 +146,7 @@ if [[ "${#PACKAGES[@]}" == "0" ]]; then
         "llvm-git-gentz"
         "lib32-libomxil-bellagio-gentz"
         "libx11-git-gentz"
+        "libdrm-git-gentz"
         "mesa-git-gentz"
         "libglvnd-git-gentz"
         "xorg-server-git-gentz"

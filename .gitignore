@@ -35,6 +35,7 @@ xf86-video-amdgpu-git-gentz/xf86-video-amdgpu-git-gentz/
 firefox-nightly/*en-US.linux-x86_64.txt
 wine-staging-git-gentz/wine
 wine-staging-git-gentz/wine-staging
+libdrm-git-gentz/libdrm
 
 */*.pkg.tar-namcap.log
 */*-build.log*

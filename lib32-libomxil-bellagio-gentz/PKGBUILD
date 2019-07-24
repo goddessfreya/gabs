@@ -3,7 +3,7 @@
 
 pkgname=lib32-libomxil-bellagio-gentz
 pkgver=0.9.3
-pkgrel=3
+pkgrel=4
 pkgdesc="An opensource implementation of the OpenMAX Integration Layer API"
 arch=('x86_64')
 url="http://omxil.sourceforge.net"

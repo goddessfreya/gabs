@@ -182,18 +182,24 @@ sort -u "$DEPS_PREFIX/deps" > "$DEPS_PREFIX/deps.sorted"
 comm -23 "$DEPS_PREFIX/deps.sorted" "$DEPS_PREFIX/provides.sorted" \
     > "$DEPS_PREFIX/deps.provideless"
 
-cp "$DEPS_PREFIX/deps."{provideless,withmake}
+cp "$DEPS_PREFIX/deps."{provideless,withbuildtime}
 
 # Make deps don't care about future deps, however, so we insert them here
 cat "$DEPS_PREFIX/printsrcinfo" \
     | grep -P "^\tmakedepends = " \
     | cut -d"=" -f2 \
-    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/deps.withmake"
+    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/deps.withbuildtime"
 
-sort -u "$DEPS_PREFIX/deps.withmake" > "$DEPS_PREFIX/deps.withmakesorted"
+# Nor do check depends
+cat "$DEPS_PREFIX/printsrcinfo" \
+    | grep -P "^\tcheckdepends = " \
+    | cut -d"=" -f2 \
+    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/deps.withbuildtime"
+
+sort -u "$DEPS_PREFIX/deps.withbuildtime" > "$DEPS_PREFIX/deps.withbuildtimesorted"
 
 # And we strip out provides.
-comm -23 "$DEPS_PREFIX/deps.withmakesorted" "../provides.${CHROOT_NAME}" \
+comm -23 "$DEPS_PREFIX/deps.withbuildtimesorted" "../provides.${CHROOT_NAME}" \
     > "$DEPS_PREFIX/deps.final"
 local DEPS="$(cat $DEPS_PREFIX/deps.final | sed "s/^ /\"/" | sed "s/$/\"/")"
 
