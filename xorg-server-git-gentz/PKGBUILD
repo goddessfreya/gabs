@@ -22,6 +22,7 @@ makedepends=(
     'xorg-font-util' 'libepoxy' 'xcb-util' 'xcb-util-image' 
     'xcb-util-renderutil' 'xcb-util-wm' 'xcb-util-keysyms' 'libxshmfence' 
     'libunwind' 'systemd' 'wayland-protocols' 'egl-wayland' 'meson' 'git'
+    'libepoxy` `lib32-libepoxy`
 ) 
 source=(
     git://anongit.freedesktop.org/xorg/xserver
