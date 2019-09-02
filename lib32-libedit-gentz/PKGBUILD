@@ -16,10 +16,10 @@ groups=('gentz_custom')
 sha512sums=('240098989e3c5c8c5e28a61036655ad5a57f1c484e1cce2eaf3da157ff238dfb9cd81c766f82efbefa0935b7b5c07328087788cbac007b11dfb558cfaccaedf3')
 
 exports_32() {
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32"
     export CXXFLAGS="$CXXFLAGS -m32"
     export LDFLAGS="$LDFLAGS -m32"
-    export PKG_CONFIG=/usr/bin/pkg-config-32  
 }
 
 build() {

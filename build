@@ -152,7 +152,6 @@ if [[ "${#PACKAGES[@]}" == "0" ]]; then
         "xorg-server-git-gentz"
         "xf86-video-amdgpu-git-gentz"
         "xf86-video-ati-git-gentz"
-        "wine-staging-git-gentz"
     ) 
 fi
 

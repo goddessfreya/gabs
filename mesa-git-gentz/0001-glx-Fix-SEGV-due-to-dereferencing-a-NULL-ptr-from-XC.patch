@@ -1,0 +1,88 @@
+From 0e82c2b05cb48b5c2ad5c77d6b9027c0266cae7f Mon Sep 17 00:00:00 2001
+From: Hal Gentz <zegentzy@protonmail.com>
+Date: Thu, 25 Jul 2019 15:40:50 -0600
+Subject: [PATCH 5/6] glx: Fix SEGV due to dereferencing a NULL ptr from
+ XCB-GLX.
+
+When run in optirun, applications that linked to `libGLX.so` and then
+proceeded to querying Mesa for extension strings caused a SEGV in Mesa.
+
+`glXQueryExtensionsString` was calling a chain of functions that
+eventually led to `__glXQueryServerString`. This function would call
+`xcb_glx_query_server_string` then `xcb_glx_query_server_string_reply`.
+The latter for some unknown reason returned `NULL`. Passing this `NULL`
+to `xcb_glx_query_server_string_string_length` would cause a SEGV as the
+function tried to dereference it.
+
+The reason behind the function returning `NULL` is yet to be determined,
+however, simply checking that the ptr is not `NULL` resolves this. A
+similar check has been added to `__glXGetString` for completeness sake,
+although not immediately necessary.
+
+In addition to that, we stumbled into a similar problem in
+`AllocAndFetchScreenConfigs` which tries to access the configs to free
+them if `__glXQueryServerString` fails. This, of course, SEGVs, because the
+configs are yet to have been allocated. Simply continuing past the configs
+if their config ptrs are `NULL` resolves this. We also switch to `calloc`
+to make sure that the config ptrs are `NULL` by default, and not some
+uninitialized value.
+
+Cc: mesa-stable@lists.freedesktop.org
+Fixes: 24b8a8cfe821 "glx: implement __glXGetString, hide __glXGetStringFromServer"
+Fixes: cb3610e37c4c "Import the GLX client side library, formerly from xc/lib/GL/glx. Build it "
+Reviewed-by: Adam Jackson <ajax@redhat.com>
+Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
+---
+ src/glx/glx_query.c | 6 ++++++
+ src/glx/glxext.c    | 4 +++-
+ 2 files changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/src/glx/glx_query.c b/src/glx/glx_query.c
+index 7064e7707bf..14e6f7c1c48 100644
+--- a/src/glx/glx_query.c
++++ b/src/glx/glx_query.c
+@@ -50,6 +50,9 @@ __glXQueryServerString(Display * dpy, int opcode, CARD32 screen, CARD32 name)
+                                                                     name),
+                                         NULL);
+ 
++   if (!reply)
++      return NULL;
++
+    /* The spec doesn't mention this, but the Xorg server replies with
+     * a string already terminated with '\0'. */
+    uint32_t len = xcb_glx_query_server_string_string_length(reply);
+@@ -74,6 +77,9 @@ __glXGetString(Display * dpy, int opcode, CARD32 contextTag, CARD32 name)
+                                                                  name),
+                                                                 NULL);
+ 
++   if (!reply)
++      return NULL;
++
+    /* The spec doesn't mention this, but the Xorg server replies with
+     * a string already terminated with '\0'. */
+    uint32_t len = xcb_glx_get_string_string_length(reply);
+diff --git a/src/glx/glxext.c b/src/glx/glxext.c
+index 459b6c2b07e..6e6525aeeae 100644
+--- a/src/glx/glxext.c
++++ b/src/glx/glxext.c
+@@ -214,6 +214,8 @@ FreeScreenConfigs(struct glx_display * priv)
+    screens = ScreenCount(priv->dpy);
+    for (i = 0; i < screens; i++) {
+       psc = priv->screens[i];
++      if (!psc)
++         continue;
+       glx_screen_cleanup(psc);
+ 
+ #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
+@@ -792,7 +794,7 @@ AllocAndFetchScreenConfigs(Display * dpy, struct glx_display * priv)
+     ** First allocate memory for the array of per screen configs.
+     */
+    screens = ScreenCount(dpy);
+-   priv->screens = malloc(screens * sizeof *priv->screens);
++   priv->screens = calloc(screens, sizeof *priv->screens);
+    if (!priv->screens)
+       return GL_FALSE;
+ 
+-- 
+2.23.0
+

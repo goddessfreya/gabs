@@ -1,7 +1,7 @@
-From 38444312ee1244e49bfdb96746f6e00ad9dfc69a Mon Sep 17 00:00:00 2001
+From 8955b39d2be54c3ee608807145a85d9fd6367ea2 Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
 Date: Tue, 26 Mar 2019 18:00:24 -0600
-Subject: [PATCH] gallium/osmesa: Fix the inability to set no context as
+Subject: [PATCH 1/6] gallium/osmesa: Fix the inability to set no context as
  current.
 
 Currently there is no way to make no context current w/gallium + osmesa.
@@ -16,7 +16,7 @@ Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
  1 file changed, 5 insertions(+)
 
 diff --git a/src/gallium/state_trackers/osmesa/osmesa.c b/src/gallium/state_trackers/osmesa/osmesa.c
-index e7e0ab13acb..67d57b0cfc4 100644
+index 41ff9216fc6..97db3d15653 100644
 --- a/src/gallium/state_trackers/osmesa/osmesa.c
 +++ b/src/gallium/state_trackers/osmesa/osmesa.c
 @@ -760,6 +760,11 @@ OSMesaMakeCurrent(OSMesaContext osmesa, void *buffer, GLenum type,
@@ -32,5 +32,5 @@ index e7e0ab13acb..67d57b0cfc4 100644
        return GL_FALSE;
     }
 -- 
-2.21.0
+2.23.0
 

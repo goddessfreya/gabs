@@ -7,7 +7,7 @@
 pkgbase=python2-gentz
 pkgname=('python2-gentz' 'lib32-python2-gentz')
 pkgver=2.7.16
-pkgrel=11
+pkgrel=12
 _pybasever=${pkgver%.*}
 arch=('x86_64')
 license=('PSF')
@@ -99,14 +99,14 @@ prepare() {
 }
 
 exports_32() {
-    export PKG_CONFIG="/usr/bin/pkg-config-32"
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32"
     export CXXFLAGS="$CXXFLAGS -m32"
     export LDFLAGS="$LDFLAGS -m32"
 }
 
 exports_64() {
-    export PKG_CONFIG="/usr/bin/pkg-config"
+    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
     export CFLAGS="${CFLAGS/-m32}"
     export CXXFLAGS="${CXXFLAGS/-m32}"
     export LDFLAGS="${LDFLAGS/-m32}"

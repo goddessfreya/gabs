@@ -46,23 +46,19 @@ configure_libx11() {
 }
 
 exports_32() {
-    #export PKG_CONFIG="/usr/bin/pkg-config-32"
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32 -g"
     export CXXFLAGS="$CXXFLAGS -m32 -g"
     export CPPFLAGS="$CXXFLAGS"
     export LDFLAGS="$LDFLAGS -m32"
-
-    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
 }
 
 exports_64() {
-    #export PKG_CONFIG="/usr/bin/pkg-config"
+    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
     export CFLAGS="${CFLAGS/-m32} -g"
     export CXXFLAGS="${CXXFLAGS/-m32} -g"
     export CPPFLAGS="$CXXFLAGS"
     export LDFLAGS="${LDFLAGS/-m32}"
-
-    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
 }
 
 make_x11() {

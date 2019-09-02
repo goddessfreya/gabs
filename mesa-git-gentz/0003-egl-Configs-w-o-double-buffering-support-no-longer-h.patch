@@ -1,7 +1,7 @@
-From 776f397cc275d11ebc0c6ecce084c1b632502d18 Mon Sep 17 00:00:00 2001
+From de491c3f765595764fcd6dd69c92fbce5326cc7f Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
 Date: Tue, 16 Jul 2019 15:22:31 -0600
-Subject: [PATCH 3/3] egl: Configs w/o double buffering support no longer have
+Subject: [PATCH 4/6] egl: Configs w/o double buffering support no longer have
  `EGL_WINDOW_BIT`.
 
 Stops telling clients that a config not supporting double
@@ -26,10 +26,10 @@ Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
  2 files changed, 21 insertions(+), 2 deletions(-)
 
 diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
-index 96c3debeb33..7015fbb519a 100644
+index a99f9ae39d2..d12c136eb08 100644
 --- a/src/egl/drivers/dri2/egl_dri2.c
 +++ b/src/egl/drivers/dri2/egl_dri2.c
-@@ -358,6 +358,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+@@ -460,6 +460,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
        memcpy(&conf->base, &base, sizeof base);
        conf->base.SurfaceType = 0;
        conf->base.ConfigID = config_id;
@@ -37,7 +37,7 @@ index 96c3debeb33..7015fbb519a 100644
  
        _eglLinkConfig(&conf->base);
     }
-@@ -366,16 +367,33 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+@@ -468,16 +469,33 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
        return NULL;
     }
  
@@ -86,5 +86,5 @@ index 064187ff1dd..ed9404573cc 100644
     EGLint TransparentBlueValue;
     EGLint TransparentGreenValue;
 -- 
-2.22.0
+2.23.0
 

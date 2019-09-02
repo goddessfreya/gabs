@@ -1,7 +1,7 @@
-From 7a37de5257ea3108f687c9d585358566382df87c Mon Sep 17 00:00:00 2001
+From e2bd08084a47b9830a1443e712e27e12b24664a6 Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
-Date: Fri, 21 Jun 2019 17:12:47 -0600
-Subject: [PATCH 2/3] egl: Puts RGBA visuals in the second config selection
+Date: Sun, 1 Sep 2019 14:30:50 -0600
+Subject: [PATCH 3/6] egl: Puts RGBA visuals in the second config selection
  group.
 
 That way applications don't get windows that are compositor alpha-blended
@@ -20,13 +20,13 @@ Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
  1 file changed, 9 insertions(+), 1 deletion(-)
 
 diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform_x11.c
-index 7da26bd133f..a0d2c47c264 100644
+index 9cef0e0b35a..8e43c659a8a 100644
 --- a/src/egl/drivers/dri2/platform_x11.c
 +++ b/src/egl/drivers/dri2/platform_x11.c
-@@ -831,9 +831,17 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
+@@ -883,9 +883,17 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
              dri2_conf = dri2_add_config(disp, config, config_count + 1,
                                          surface_type, config_attrs,
-                                         rgba_masks);
+                                         rgba_shifts, rgba_sizes);
 -            if (dri2_conf)
 +            if (dri2_conf) {
                 if (dri2_conf->base.ConfigID == config_count + 1)
@@ -43,5 +43,5 @@ index 7da26bd133f..a0d2c47c264 100644
        }
  
 -- 
-2.22.0
+2.23.0
 

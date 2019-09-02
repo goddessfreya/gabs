@@ -1,0 +1,52 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributer: Vesa Kaihlavirta <vegai@iki.fi>
+
+pkgname=openttd-btpro
+pkgver=1.9.2
+pkgrel=6
+pkgdesc='An engine for running Transport Tycoon Deluxe.'
+arch=('x86_64')
+url='https://www.openttd.org'
+license=('GPL')
+depends=('libpng' 'sdl' 'icu' 'fontconfig' 'lzo' 'hicolor-icon-theme' 'desktop-file-utils' 'xz' 'fluidsynth')
+optdepends=('openttd-opengfx: free graphics' 
+            'openttd-opensfx: free soundset')
+source=(
+    "https://proxy.binaries.openttd.org/openttd-releases/${pkgver}/openttd-${pkgver}-source.tar.xz"
+    "btpro.patch::http://openttd.btpro.nl/OpenTTD_versions/BTPro_Client_${pkgver}_A_19202.diff"
+    "http://openttd.btpro.nl/OpenTTD_versions/innerhighlight.grf"
+)
+sha256sums=('f9ff8c255145a1dd617798a9413179cc740a0cc91709455990880a15eeb7564a'
+            '1b5e4ee75332348b86dafbee826f8bc4ebefb00f7a8b8d849ba1df781605dddc'
+            '1b181a27fbb468c7301291fc61384087ce7b1592cb0023be00f04736eec6e79b')
+
+prepare() {
+    cd openttd-${pkgver} 
+    patch -p1 < ../btpro.patch
+}
+
+build() {
+    cd openttd-${pkgver} 
+
+    # http://site.icu-project.org/download/61#TOC-Migration-Issues
+    CXXFLAGS+=' -DU_USING_ICU_NAMESPACE=1'
+
+    ./configure \
+        --prefix-dir=/usr \
+        --binary-name=${pkgname} \
+        --binary-dir=bin \
+        --data-dir=share/${pkgname} \
+        --install-dir="${pkgdir}" \
+        --doc-dir=share/doc/${pkgname} \
+        --with-fluidsynth \
+        --menu-name="OpenTTD"
+
+    make
+}
+
+package() {
+    cd openttd-${pkgver} 
+
+    make install
+	cp {../,"${pkgdir}"/usr/share/openttd-btpro/baseset/}innerhighlight.grf 
+}

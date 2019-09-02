@@ -45,10 +45,7 @@ sha512sums=('SKIP'
 pkgver() {
     cd "${srcdir}/xserver"
 
-    printf '%s.r%s.%s' \
-        "$(git describe --long | cut -d "-" -f3-4 | tr - .)" \
-        "$(git rev-list HEAD --count)" \
-        "$(git describe --long | cut -d "-" -f5)"
+    git describe --long | cut -d "-" -f3-5 | sed "s/-/.r/" | tr - .
 }
 
 exports() {

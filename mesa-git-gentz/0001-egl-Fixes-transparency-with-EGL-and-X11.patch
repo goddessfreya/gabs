@@ -1,7 +1,7 @@
-From ee6c25ecd37f243349c8071e940e84eceec422fc Mon Sep 17 00:00:00 2001
+From cc310962c8f28eaabbd4bcce6695f54b7c4cb3eb Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
-Date: Sun, 14 Jul 2019 15:30:30 -0600
-Subject: [PATCH 1/3] egl: Fixes transparency with EGL and X11.
+Date: Sun, 1 Sep 2019 14:25:50 -0600
+Subject: [PATCH 2/6] egl: Fixes transparency with EGL and X11.
 
 This commit does this by allowing both RGB and RGBA visuals to match with
 EGL configs. We also expose the `EGL_MESA_config_select_group` egl
@@ -16,13 +16,13 @@ Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
  include/EGL/eglmesaext.h            |  5 +++++
  include/GL/internal/dri_interface.h |  3 ++-
  src/egl/drivers/dri2/egl_dri2.c     |  4 ++++
- src/egl/drivers/dri2/platform_x11.c | 22 +++++++++-------------
+ src/egl/drivers/dri2/platform_x11.c | 29 +++++++++++++----------------
  src/egl/main/eglconfig.c            |  9 +++++++++
  src/egl/main/eglconfig.h            |  2 ++
  src/egl/main/eglglobals.c           |  3 ++-
  src/mesa/drivers/dri/common/utils.c |  2 ++
  src/mesa/main/mtypes.h              |  3 +++
- 9 files changed, 38 insertions(+), 15 deletions(-)
+ 9 files changed, 42 insertions(+), 18 deletions(-)
 
 diff --git a/include/EGL/eglmesaext.h b/include/EGL/eglmesaext.h
 index f4332b279f8..b83e9441012 100644
@@ -41,24 +41,24 @@ index f4332b279f8..b83e9441012 100644
  }
  #endif
 diff --git a/include/GL/internal/dri_interface.h b/include/GL/internal/dri_interface.h
-index af0ee9c5667..052e2b04b27 100644
+index 4b5583820ed..f71708a88fb 100644
 --- a/include/GL/internal/dri_interface.h
 +++ b/include/GL/internal/dri_interface.h
-@@ -766,7 +766,8 @@ struct __DRIuseInvalidateExtensionRec {
- #define __DRI_ATTRIB_YINVERTED			47
- #define __DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE	48
- #define __DRI_ATTRIB_MUTABLE_RENDER_BUFFER	49 /* EGL_MUTABLE_RENDER_BUFFER_BIT_KHR */
--#define __DRI_ATTRIB_MAX			50
-+#define __DRI_ATTRIB_CONFIG_SELECT_GROUP	50
-+#define __DRI_ATTRIB_MAX			51
+@@ -813,7 +813,8 @@ struct __DRIuseInvalidateExtensionRec {
+ #define __DRI_ATTRIB_GREEN_SHIFT		51
+ #define __DRI_ATTRIB_BLUE_SHIFT			52
+ #define __DRI_ATTRIB_ALPHA_SHIFT		53
+-#define __DRI_ATTRIB_MAX			54
++#define __DRI_ATTRIB_CONFIG_SELECT_GROUP	54
++#define __DRI_ATTRIB_MAX			55
  
  /* __DRI_ATTRIB_RENDER_TYPE */
  #define __DRI_ATTRIB_RGBA_BIT			0x01	
 diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
-index ee4faaab34f..96c3debeb33 100644
+index 526cb1969c1..a99f9ae39d2 100644
 --- a/src/egl/drivers/dri2/egl_dri2.c
 +++ b/src/egl/drivers/dri2/egl_dri2.c
-@@ -167,6 +167,7 @@ static const EGLint dri2_to_egl_attribute_map[__DRI_ATTRIB_MAX] = {
+@@ -186,6 +186,7 @@ static const EGLint dri2_to_egl_attribute_map[__DRI_ATTRIB_MAX] = {
     [__DRI_ATTRIB_MAX_SWAP_INTERVAL]     = EGL_MAX_SWAP_INTERVAL,
     [__DRI_ATTRIB_MIN_SWAP_INTERVAL]     = EGL_MIN_SWAP_INTERVAL,
     [__DRI_ATTRIB_YINVERTED]             = EGL_Y_INVERTED_NOK,
@@ -66,7 +66,7 @@ index ee4faaab34f..96c3debeb33 100644
  };
  
  const __DRIconfig *
-@@ -182,6 +183,9 @@ dri2_get_dri_config(struct dri2_egl_config *conf, EGLint surface_type,
+@@ -201,6 +202,9 @@ dri2_get_dri_config(struct dri2_egl_config *conf, EGLint surface_type,
  static EGLBoolean
  dri2_match_config(const _EGLConfig *conf, const _EGLConfig *criteria)
  {
@@ -77,10 +77,10 @@ index ee4faaab34f..96c3debeb33 100644
        return EGL_FALSE;
  
 diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform_x11.c
-index 0d62f83b411..7da26bd133f 100644
+index 0fa0442f4af..9cef0e0b35a 100644
 --- a/src/egl/drivers/dri2/platform_x11.c
 +++ b/src/egl/drivers/dri2/platform_x11.c
-@@ -820,25 +820,21 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
+@@ -868,28 +868,25 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
                 if (dri2_conf->base.ConfigID == config_count + 1)
                    config_count++;
  
@@ -94,20 +94,27 @@ index 0d62f83b411..7da26bd133f 100644
               * wants... especially on drivers that only have 32-bit RGBA
               * EGLConfigs! */
 -            if (d.data->depth == 24 || d.data->depth == 30) {
--               rgba_masks[3] =
--                  ~(rgba_masks[0] | rgba_masks[1] | rgba_masks[2]);
+-               unsigned int rgba_mask = ~(visuals[i].red_mask |
+-                                          visuals[i].green_mask |
+-                                          visuals[i].blue_mask);
+-               rgba_shifts[3] = ffs(rgba_mask) - 1;
+-               rgba_sizes[3] = util_bitcount(rgba_mask);
 -               dri2_conf = dri2_add_config(disp, config, config_count + 1,
 -                                           surface_type, config_attrs,
--                                           rgba_masks);
+-                                           rgba_shifts, rgba_sizes);
 -               if (dri2_conf)
 -                  if (dri2_conf->base.ConfigID == config_count + 1)
 -                     config_count++;
 -            }
 -	 }
-+            rgba_masks[3] = ~(rgba_masks[0] | rgba_masks[1] | rgba_masks[2]);
++            unsigned int rgba_mask = ~(visuals[i].red_mask |
++                                       visuals[i].green_mask |
++                                       visuals[i].blue_mask);
++            rgba_shifts[3] = ffs(rgba_mask) - 1;
++            rgba_sizes[3] = util_bitcount(rgba_mask);
 +            dri2_conf = dri2_add_config(disp, config, config_count + 1,
 +                                        surface_type, config_attrs,
-+                                        rgba_masks);
++                                        rgba_shifts, rgba_sizes);
 +            if (dri2_conf)
 +               if (dri2_conf->base.ConfigID == config_count + 1)
 +                  config_count++;
@@ -184,10 +191,10 @@ index 0d7270333ec..71d1fccf75f 100644
     .PlatformExtensionString =
  #ifdef HAVE_WAYLAND_PLATFORM
 diff --git a/src/mesa/drivers/dri/common/utils.c b/src/mesa/drivers/dri/common/utils.c
-index 5a66bcf8e05..18a3c6f0806 100644
+index 44e4e0f3720..15a52eea276 100644
 --- a/src/mesa/drivers/dri/common/utils.c
 +++ b/src/mesa/drivers/dri/common/utils.c
-@@ -345,6 +345,7 @@ driCreateConfigs(mesa_format format,
+@@ -388,6 +388,7 @@ driCreateConfigs(mesa_format format,
  		    modes->yInverted = GL_TRUE;
  		    modes->sRGBCapable = is_srgb;
  		    modes->mutableRenderBuffer = mutable_render_buffer;
@@ -195,7 +202,7 @@ index 5a66bcf8e05..18a3c6f0806 100644
  		}
  	    }
  	}
-@@ -430,6 +431,7 @@ static const struct { unsigned int attrib, offset; } attribMap[] = {
+@@ -477,6 +478,7 @@ static const struct { unsigned int attrib, offset; } attribMap[] = {
      __ATTRIB(__DRI_ATTRIB_YINVERTED,			yInverted),
      __ATTRIB(__DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE,	sRGBCapable),
      __ATTRIB(__DRI_ATTRIB_MUTABLE_RENDER_BUFFER,	mutableRenderBuffer),
@@ -204,10 +211,10 @@ index 5a66bcf8e05..18a3c6f0806 100644
      /* The struct field doesn't matter here, these are handled by the
       * switch in driGetConfigAttribIndex.  We need them in the array
 diff --git a/src/mesa/main/mtypes.h b/src/mesa/main/mtypes.h
-index 2b87c701116..0a86ec330db 100644
+index b740671559b..9f2d6128387 100644
 --- a/src/mesa/main/mtypes.h
 +++ b/src/mesa/main/mtypes.h
-@@ -216,6 +216,9 @@ struct gl_config
+@@ -217,6 +217,9 @@ struct gl_config
  
     /* EGL_KHR_mutable_render_buffer */
     GLuint mutableRenderBuffer; /* bool */
@@ -218,5 +225,5 @@ index 2b87c701116..0a86ec330db 100644
  
  
 -- 
-2.22.0
+2.23.0
 

@@ -25,14 +25,14 @@ pkgver() {
 }
 
 exports_32() {
-    export PKG_CONFIG="/usr/bin/pkg-config-32"
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32"
     export CXXFLAGS="$CXXFLAGS -m32"
     export LDFLAGS="$LDFLAGS -m32"
 }
 
 exports_64() {
-    export PKG_CONFIG="/usr/bin/pkg-config"
+    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
     export CFLAGS="${CFLAGS/-m32}"
     export CXXFLAGS="${CXXFLAGS/-m32}"
     export LDFLAGS="${LDFLAGS/-m32}"

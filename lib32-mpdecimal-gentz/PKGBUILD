@@ -3,7 +3,7 @@
 
 pkgname=lib32-mpdecimal-gentz
 pkgver=2.4.2
-pkgrel=10
+pkgrel=11
 pkgdesc="Package for correctly-rounded arbitrary precision decimal floating point arithmetic"
 arch=('x86_64')
 url="https://www.bytereef.org/mpdecimal/index.html"
@@ -20,7 +20,7 @@ prepare() {
 }
 
 exports_32() {
-    export PKG_CONFIG="/usr/bin/pkg-config-32"
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32"
     export CXXFLAGS="$CXXFLAGS -m32"
     export LDFLAGS="$LDFLAGS -m32"

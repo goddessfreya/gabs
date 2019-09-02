@@ -33,8 +33,8 @@ groups=('gentz_custom')
 source=(
     'git+https://github.com/freedesktop/mesa.git'
     'LICENSE'
-    '533.patch'
     'llvm32.cross'
+    '0001-gallium-osmesa-Fix-the-inability-to-set-no-context-a.patch'
     '0001-glx-Fix-synthetic-error-generation-in-__glXSendError.patch'
     '0001-egl-Fixes-transparency-with-EGL-and-X11.patch'
     '0002-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch'
@@ -42,12 +42,12 @@ source=(
 )
 sha512sums=('SKIP'
             '25da77914dded10c1f432ebcbf29941124138824ceecaf1367b3deedafaecabc082d463abcfa3d15abff59f177491472b505bcb5ba0c4a51bb6b93b4721a23c2'
-            '2838c24aea0c3da3b9f5b5e89fd0ff2d4f9c3b3bb34cba713707425f9dadb8b277ff023ae254cd897aac962beaf3f2a92f5a31e127bef37f68de353abbf75af6'
-            'c023560ad4df7d4c221d03208caaac13e42931ee0bd92dd02367dc14c349b3ecd4bd445759bcc02618ed68d6047f8f9766618ed1f9953823db4a6f2f85537792'
+            '14728ffa4abd4c2dccaeb090abe747a7f3f5d6e16d2954644f16a5c7fc33a9408683c928d3dfc8f39db21ecfd30a54cb1bec7cb0851ee6d33a993b212a2ab2d3'
+            '53ad7a3c22c177f739e8b92a380c0a5d1a1f6b2abc4232723114b70975fe69854179dd382fe89c66096270d0874db2d3388c59005be823007b3fbf84cfcc4528'
             'eaafdf5bd19a3d450a9d7fc35cdea0c332d4a834bbe2bbe51660dc17d1099f78b87cd7ddf9a0cd2d81dbc25b61572cbfe474e7a47d61efc08ff9f3233e714e5c'
-            'ad8283905c917fa9e110d1b89e694fe994398ae431052bd2a745ef9d42ccbe6becc29b715d1f5265e33748193927a8930c291702fce831b8c725e75869b79f70'
-            '0e4f8f7331e141cf4296467e9ab57f373365603bdad2b8b739121825ea7c10f1215bf077e157b9ddcd33d4a1966a89f4e056fba72918a223618bb6f10064e4f4'
-            'bfa24bdb4fb6533b8fbadccdb124fa1749c7dd6802f98f25c1f49ef96deb959918392c903e1bab7b769049307d76976afede63b1b6c7d598b28a794f55a9efc7')
+            'f8ff7c40c16e0080150e1279f64ae6594f067746da52a650db43b45392febddeae5943301bc7862012cf4d60aa65e93397f4804f5923e26b4d31a2cffd3e998d'
+            'db9151f7461242ccecf0799cc8109d329e3cc4ae458b9bd4b0be3d1d245c5b0dd62462dc15ecfa77b2909dc3257157bae2aef8014113f89b3124324c78ac2576'
+            '6d42ab51d6aba926dca3860d86b7a0fde397e8a926c71ffc3f5319c7457fecc776c6b50479e811226a1a5a2e66d63f3db4d41cf67f8cdd5aea26861c60c1d5a8')
 
 #_meson_flags=("-D b_ndebug=true")
 
@@ -64,6 +64,8 @@ build_meson() {
     if [[ -f ".build$1.built" ]]; then
         return
     fi
+
+    exports_$1
 
     meson setup "${srcdir}/mesa" "${srcdir}/_build$1" \
         "${@:2}" \
@@ -103,6 +105,20 @@ build_meson() {
     touch ".build$1.built"
 }
 
+exports_32() {
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
+    #export CFLAGS="$CFLAGS -m32"
+    #export CXXFLAGS="$CXXFLAGS -m32"
+    #export LDFLAGS="$LDFLAGS -m32"
+}
+
+exports_64() {
+    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
+    #export CFLAGS="${CFLAGS/-m32}"
+    #export CXXFLAGS="${CXXFLAGS/-m32}"
+    #export LDFLAGS="${LDFLAGS/-m32}"
+}
+
 prepare() {
     # So git am works.
     # Yeah, we could use git apply, but I want to be able to run diff and only
@@ -111,7 +127,7 @@ prepare() {
     git config --global user.name "Hal Gentz"
 
     cd mesa
-    git am "../533.patch"
+    git am "../0001-gallium-osmesa-Fix-the-inability-to-set-no-context-a.patch"
 
     git am "../0001-egl-Fixes-transparency-with-EGL-and-X11.patch"
     git am "../0002-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch"
