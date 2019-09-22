@@ -4,8 +4,8 @@
 # Contributor: Felix Yan <felixonmars@archlinux.org>
 
 pkgname=libglvnd-git-gentz
-pkgver=1.1.1.r2.g58c8c4a
-pkgrel=7
+pkgver=1.1.1.r17.gbe09e1e
+pkgrel=1
 pkgdesc="The GL Vendor-Neutral Dispatch library"
 arch=('x86_64')
 url="https://github.com/NVIDIA/libglvnd"
@@ -16,23 +16,16 @@ conflicts=("libglvnd")
 source=(
     "${pkgname}::git+https://github.com/NVIDIA/libglvnd.git"
     LICENSE
-    Add-pkgconfig-data-for-libraries-implemented-so-far.patch
 )
 # libglvnd needs mesa for indirect rendering
 depends=('libxext' 'mesa' 'opengl-driver')
 groups=('gentz_custom')
 sha512sums=('SKIP'
-            'bf0f4a7e04220a407400f89226ecc1f798cc43035f2538cc8860e5088e1f84140baf0d4b0b28f66e4b802d4d6925769a1297c24e1ba39c1c093902b2931781a5'
-            '10fa0f8a89552649fbc78962deb42da7267f032042ae13591ffbcafaa74f312c77c31fac737ceb336f31c15f9b1658bac8dc9bfaf7fd42ccd2bfdc541d97c020')
+            'bf0f4a7e04220a407400f89226ecc1f798cc43035f2538cc8860e5088e1f84140baf0d4b0b28f66e4b802d4d6925769a1297c24e1ba39c1c093902b2931781a5')
 
 pkgver() {
 	cd "${srcdir}/${pkgname}"
     git describe --long --tags | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
-}
-
-prepare() {
-	cd "${srcdir}/${pkgname}"
-    patch -p1 < ../Add-pkgconfig-data-for-libraries-implemented-so-far.patch
 }
 
 build() {
@@ -45,6 +38,16 @@ build() {
 package() {
 	cd "${srcdir}/${pkgname}"
     make DESTDIR="${pkgdir}" install
+
+    # NVIDIA is incompetent.
+    # They couldn't make make a package that doesn't conflict with mesa if 
+    # their lives fucking depended on it.
+    rm "${pkgdir}/usr/include/EGL" -rf
+    rm "${pkgdir}/usr/include/GL" -rf
+    rm "${pkgdir}/usr/include/GLES" -rf
+    rm "${pkgdir}/usr/include/GLES2" -rf
+    rm "${pkgdir}/usr/include/GLES3" -rf
+    rm "${pkgdir}/usr/include/KHR" -rf
 
     install -Dm644 ../LICENSE "${pkgdir}/usr/share/licenses/$pkgname/LICENSE"
 }

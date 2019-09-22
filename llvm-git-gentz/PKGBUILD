@@ -16,9 +16,8 @@
 
 pkgbase=llvm-git-gentz
 pkgname=('llvm-git-gentz' 'lib32-llvm-git-gentz')
-pkgver=10.0.0_r322223.af5d3b02fbc
+pkgver=10.0.0_r327464.db05a482bc5
 pkgrel=1
-_ocaml_ver=4.07.1
 arch=('x86_64')
 url="https://llvm.org/"
 license=('custom:University of Illinois/NCSA Open Source License')
@@ -31,7 +30,7 @@ makedepends=(
     'ncurses'
     'libxml2'
     'python-sphinx'
-    "ocaml=$_ocaml_ver"
+    "ocaml"
     'ocaml-ctypes'
     'ocaml-findlib'
     'python-sphinx'
@@ -65,12 +64,14 @@ source=(
     'llvm-config.h'
     'enable-SSP-and-PIE-by-default.patch'
     'atomic-link-32.patch'
+    'Fix-swig.patch'
 )
 groups=('gentz_custom')
 sha512sums=('SKIP'
             '75e743dea28b280943b3cc7f8bbb871b57d110a7f2b9da2e6845c1c36bf170dd883fca54e463f5f49e0c3effe07fbd0db0f8cf5a12a2469d3f792af21a73fcdd'
-            '2fdbae0b62d33411beaf191920ff280f83fa80fd505a71077671027f27ed8c61c5867de3e6ee6f26734c7605037e86796404212182f8ffa71f4af6ed2c316a40'
-            'd84bc260a0eeb80c3abb0d4710fbf58162fe4cacd36b771f9eefd54d29c9b90f8fc33d1df709bd413b9c588230c2dd9b4413f0d91a41552bf2a107346fb8268c')
+            '99e3ce7172457dc914d395c64efb03562b5741b1eb21f3f80769d450aaf7415c1bd667390072e1fa7f9a5e2fff13a65df60ea06eca3975dc823deecfb5e93b7b'
+            'd84bc260a0eeb80c3abb0d4710fbf58162fe4cacd36b771f9eefd54d29c9b90f8fc33d1df709bd413b9c588230c2dd9b4413f0d91a41552bf2a107346fb8268c'
+            '5fa021bcc431dbe0a0aca9365b0df80921b6bafa2982f0d80cfdd012294e79c133e939f9d0286688394d6b7907343e03349c511c5fe65cd594b5169b72284620')
 
 # The docs say we should build a stage 1 compiler, and use that to build the
 # instrumentation compiler, and stage 2 compiler, however, if we do that, we'll
@@ -137,8 +138,9 @@ prepare() {
     mkdir _build{64,32}{_stg1,_instr,_to_instr{1,2},_final}
     mkdir dont_delete
 
-    pushd llvm-project64/clang
+    pushd llvm-project64
     patch -Np1 -i "${srcdir}/enable-SSP-and-PIE-by-default.patch"
+    #patch -p1 -i "${srcdir}/Fix-swig.patch"
     popd
 
     cp llvm-project{64,32} -R
@@ -432,7 +434,7 @@ package_llvm-git-gentz() {
         'ncurses'
         'libxml2'
         'gcc'
-        "ocaml=$_ocaml_ver"
+        "ocaml"
         'ocaml-ctypes'
         'python'
         'lib32-python'

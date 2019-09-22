@@ -4,8 +4,8 @@
 
 pkgbase=libx11-git-gentz
 pkgname=('libx11-git-gentz' 'lib32-libx11-git-gentz')
-pkgver=1.6.8.r5.g951e772b
-pkgrel=2
+pkgver=1.6.8.r16.gedc7680e
+pkgrel=5
 pkgdesc="X11 client-side library"
 arch=(x86_64)
 url="https://xorg.freedesktop.org/"

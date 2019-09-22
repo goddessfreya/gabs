@@ -13,7 +13,7 @@
 pkgbase=mesa-git-gentz
 pkgname=('mesa-git-gentz' 'lib32-mesa-git-gentz')
 pkgdesc="an open-source implementation of the OpenGL specification, git version"
-pkgver=19.2.0_devel.113495.d078ccc87b3
+pkgver=19.3.0_devel.115577.8f584ca0904
 pkgrel=1
 arch=('x86_64')
 optdepends=('opengl-man-pages: for the OpenGL API man pages')
@@ -34,8 +34,6 @@ source=(
     'git+https://github.com/freedesktop/mesa.git'
     'LICENSE'
     'llvm32.cross'
-    '0001-gallium-osmesa-Fix-the-inability-to-set-no-context-a.patch'
-    '0001-glx-Fix-synthetic-error-generation-in-__glXSendError.patch'
     '0001-egl-Fixes-transparency-with-EGL-and-X11.patch'
     '0002-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch'
     '0003-egl-Configs-w-o-double-buffering-support-no-longer-h.patch'
@@ -43,11 +41,9 @@ source=(
 sha512sums=('SKIP'
             '25da77914dded10c1f432ebcbf29941124138824ceecaf1367b3deedafaecabc082d463abcfa3d15abff59f177491472b505bcb5ba0c4a51bb6b93b4721a23c2'
             '14728ffa4abd4c2dccaeb090abe747a7f3f5d6e16d2954644f16a5c7fc33a9408683c928d3dfc8f39db21ecfd30a54cb1bec7cb0851ee6d33a993b212a2ab2d3'
-            '53ad7a3c22c177f739e8b92a380c0a5d1a1f6b2abc4232723114b70975fe69854179dd382fe89c66096270d0874db2d3388c59005be823007b3fbf84cfcc4528'
-            'eaafdf5bd19a3d450a9d7fc35cdea0c332d4a834bbe2bbe51660dc17d1099f78b87cd7ddf9a0cd2d81dbc25b61572cbfe474e7a47d61efc08ff9f3233e714e5c'
-            'f8ff7c40c16e0080150e1279f64ae6594f067746da52a650db43b45392febddeae5943301bc7862012cf4d60aa65e93397f4804f5923e26b4d31a2cffd3e998d'
-            'db9151f7461242ccecf0799cc8109d329e3cc4ae458b9bd4b0be3d1d245c5b0dd62462dc15ecfa77b2909dc3257157bae2aef8014113f89b3124324c78ac2576'
-            '6d42ab51d6aba926dca3860d86b7a0fde397e8a926c71ffc3f5319c7457fecc776c6b50479e811226a1a5a2e66d63f3db4d41cf67f8cdd5aea26861c60c1d5a8')
+            'fe1a4350b7d6660fe678a931ee010286cc4a5f42ed655d76bc8ac6a296e80073d4cb6691d5ead119375fd571bf298ee49b4f182498c297d6a6d13ce9eaf4d217'
+            '04ffedeaf7c7c2cd036503b8acc795a31b1783bb2518e4962f3f0825c64afc5c59aae2e4433cb8883a1074d2e0e0fd912675cf341fdb7c528876539b4f8f196d'
+            'df3a9ae2be3e0fde5f903508765643af480e9eeacf8651867da4051102ea4064365a9553f889530cd6372d103d4b71a621d3e563f35879a4e8c067d6619ec1f9')
 
 #_meson_flags=("-D b_ndebug=true")
 
@@ -127,12 +123,9 @@ prepare() {
     git config --global user.name "Hal Gentz"
 
     cd mesa
-    git am "../0001-gallium-osmesa-Fix-the-inability-to-set-no-context-a.patch"
-
     git am "../0001-egl-Fixes-transparency-with-EGL-and-X11.patch"
     git am "../0002-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch"
     git am "../0003-egl-Configs-w-o-double-buffering-support-no-longer-h.patch"
-    #git am "../0001-glx-Fix-synthetic-error-generation-in-__glXSendError.patch"
     cd ..
 }
 

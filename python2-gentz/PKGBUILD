@@ -7,14 +7,13 @@
 pkgbase=python2-gentz
 pkgname=('python2-gentz' 'lib32-python2-gentz')
 pkgver=2.7.16
-pkgrel=12
+pkgrel=17
 _pybasever=${pkgver%.*}
 arch=('x86_64')
 license=('PSF')
 url="https://www.python.org/"
 makedepends=(
     'tk' 'bluez-libs' 'lib32-gcc-libs' 'lib32-tk' 'gdb' 'file' 
-    'xorg-server-xvfb'
 )
 source=(
     "https://www.python.org/ftp/python/${pkgver%rc?}/Python-${pkgver}.tar.xz"{,.asc}
@@ -126,6 +125,7 @@ configure_python() {
         --enable-optimizations
         --with-lto
         --enable-ipv6
+        --enable-unicode=ucs4
         --with-system-expat
         --with-dbmliborder=gdbm:ndbm
         --with-system-ffi

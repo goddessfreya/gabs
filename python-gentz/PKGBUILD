@@ -8,7 +8,7 @@
 pkgbase=python-gentz
 pkgname=('python-gentz' 'lib32-python-gentz')
 pkgver=3.7.4
-pkgrel=1
+pkgrel=8
 _pybasever=${pkgver%.*}
 arch=('x86_64')
 license=('custom')
@@ -135,7 +135,7 @@ configure_python() {
         --enable-shared
         --with-threads
         --with-computed-gotos
-        #--enable-optimizations
+        --enable-optimizations
         --with-lto
         --enable-ipv6
         --with-system-expat

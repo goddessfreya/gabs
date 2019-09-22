@@ -3,7 +3,7 @@
 
 pkgname=lib32-mpdecimal-gentz
 pkgver=2.4.2
-pkgrel=11
+pkgrel=16
 pkgdesc="Package for correctly-rounded arbitrary precision decimal floating point arithmetic"
 arch=('x86_64')
 url="https://www.bytereef.org/mpdecimal/index.html"

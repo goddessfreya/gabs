@@ -1,16 +1,12 @@
-From de491c3f765595764fcd6dd69c92fbce5326cc7f Mon Sep 17 00:00:00 2001
+From 84845932db7b634128e08f7f460341cb363f929d Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
-Date: Tue, 16 Jul 2019 15:22:31 -0600
-Subject: [PATCH 4/6] egl: Configs w/o double buffering support no longer have
+Date: Sun, 16 Sep 2019 17:00:50 -0600
+Subject: [PATCH 3/3] egl: Configs w/o double buffering support have no 
  `EGL_WINDOW_BIT`.
 
-Stops telling clients that a config not supporting double
-buffering
-
-Some `dri2_egl_config`s will not have any `__DRIconfig`s supporting double
-buffering, which is frustrating. These configs when passed to
-`eglCreateWindowSurface` will cause it to fail, if it tries to make a doubled
-buffered window, with a `EGL_BAD_MATCH`.
+When users pass a config to `eglCreateWindowSurface` it requests double 
+buffering, but if the config doesn't have the appropriate `__DRIconfig`, 
+`eglCreateWindowSurface` fails with a `EGL_BAD_MATCH`.
 
 Given that such behaviour is completely unacceptable, we drop the
 `EGL_WINDOW_BIT` if we don't have at least one `__DRIconfig` supporting double
@@ -21,70 +17,250 @@ Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=67676
 Cc: mesa-stable@lists.freedesktop.org
 Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
 ---
- src/egl/drivers/dri2/egl_dri2.c | 22 ++++++++++++++++++++--
- src/egl/main/eglconfig.h        |  1 +
- 2 files changed, 21 insertions(+), 2 deletions(-)
+ src/egl/drivers/dri2/egl_dri2.c             | 64 ++++++++++++++++++---
+ src/egl/drivers/dri2/egl_dri2.h             |  3 +
+ src/egl/drivers/dri2/platform_android.c     |  2 +
+ src/egl/drivers/dri2/platform_device.c      |  2 +
+ src/egl/drivers/dri2/platform_drm.c         |  2 +
+ src/egl/drivers/dri2/platform_surfaceless.c |  2 +
+ src/egl/drivers/dri2/platform_wayland.c     |  2 +
+ src/egl/drivers/dri2/platform_x11.c         |  8 ++-
+ src/egl/drivers/haiku/egl_haiku.cpp         |  2 +-
+ src/egl/main/eglconfig.c                    | 10 ++++
+ src/egl/main/eglconfig.h                    |  3 +
+ 11 files changed, 88 insertions(+), 12 deletions(-)
 
 diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
-index a99f9ae39d2..d12c136eb08 100644
+index 45aca5af00f..15e28feff0d 100644
 --- a/src/egl/drivers/dri2/egl_dri2.c
 +++ b/src/egl/drivers/dri2/egl_dri2.c
-@@ -460,6 +460,7 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
-       memcpy(&conf->base, &base, sizeof base);
-       conf->base.SurfaceType = 0;
-       conf->base.ConfigID = config_id;
-+      conf->base.StickySurfaceType = surface_type;
+@@ -217,7 +217,7 @@ dri2_match_config(const _EGLConfig *conf, const _EGLConfig *criteria)
+ void
+ dri2_get_shifts_and_sizes(const __DRIcoreExtension *core,
+                           const __DRIconfig *config, int *shifts,
+-		          unsigned int *sizes)
++		                    unsigned int *sizes)
+ {
+    unsigned int mask;
  
-       _eglLinkConfig(&conf->base);
-    }
-@@ -468,16 +469,33 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
-       return NULL;
+@@ -424,10 +424,6 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+          base.BindToTextureRGBA = bind_to_texture_rgba;
     }
  
 -   if (double_buffer) {
-+   /*
-+    * Some `dri2_egl_config`s will not have any `__DRIconfig`s supporting
-+    * double buffering, which is frustrating. These configs when passed to
-+    * `eglCreateWindowSurface` will cause it to fail, if it tries to make a
-+    * doubled buffered window, with a `EGL_BAD_MATCH`.
-+    *
-+    * Given that such behaviour is completely unacceptable, we drop the
-+    * `EGL_WINDOW_BIT` if we don't have at least one `__DRIconfig` supporting
-+    * double buffering, otherwise dropping the `EGL_PIXMAP_BIT`.
-+    */
-+   surface_type = conf->base.StickySurfaceType;
-+
-+   if (conf->dri_config[true][false] || conf->dri_config[true][true]) {
-       surface_type &= ~EGL_PIXMAP_BIT;
-+   } else {
-+      surface_type &= ~EGL_WINDOW_BIT;
-    }
- 
+-      surface_type &= ~EGL_PIXMAP_BIT;
+-   }
+-
     /* No support for pbuffer + MSAA for now.
      *
      * XXX TODO: pbuffer + MSAA does not work and causes crashes.
-     * See QT bugreport: https://bugreports.qt.io/browse/QTBUG-47509
-+    *
-+    * `_eglMatchConfig` makes sure that all the `_EGLConfig`s have matching
-+    * `EGL_SAMPLES`, so we only need to check the first one.
-     */
--   if (base.Samples) {
-+   if (conf->base.Samples) {
+@@ -437,9 +433,6 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
        surface_type &= ~EGL_PBUFFER_BIT;
     }
  
+-   if (!surface_type)
+-      return NULL;
+-
+    base.RenderableType = disp->ClientAPIs;
+    base.Conformant = disp->ClientAPIs;
+ 
+@@ -489,6 +482,56 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+    return conf;
+ }
+ 
++/*
++ * We finalize the set of `SurfaceType`s supported by a config, and only
++ * reinsert it if it actually supports something.
++ */
++void
++dri2_finalize_config_surface_types(_EGLDisplay *disp)
++{
++   _EGLArray *configs = _eglWipeConfigs(disp);
++
++   for (int i = 0; i < configs->Size; ++i)
++   {
++      // Since `base` is the first member of `dri2_egl_config`, `base`'s ptr
++      // should equal `dri2_egl_config`'s. This is why this cast is safe.
++      struct dri2_egl_config *conf
++         = (struct dri2_egl_config *) configs->Elements[i];
++
++      const bool double_buffer = conf->dri_config[true][false]
++         || conf->dri_config[true][true];
++
++      const bool single_buffer = conf->dri_config[false][false]
++         || conf->dri_config[false][true];
++
++      /* No support for pixmaps without single buffered dri configs.
++       *
++       * When users pass a config to `eglCreateWindowSurface` it requests
++       * double buffering, but if the config doesn't have the appropriate
++       * `__DRIconfig`, `eglCreateWindowSurface` fails with a `EGL_BAD_MATCH`.
++       *
++       * Given that such behaviour is completely unacceptable, we drop the
++       * `EGL_WINDOW_BIT` if we don't have at least one `__DRIconfig`
++       * supporting double buffering.
++       */
++      if (!single_buffer) {
++         conf->base.SurfaceType &= ~EGL_PIXMAP_BIT;
++      }
++
++      if (!double_buffer) {
++         conf->base.SurfaceType &= ~EGL_WINDOW_BIT;
++      }
++
++      // Dont reinsert configs without some supported surface type.
++      if (!conf->base.SurfaceType) {
++         free(conf);
++         continue;
++      }
++
++      _eglLinkConfig(&conf->base);
++   }
++}
++
+ __DRIimage *
+ dri2_lookup_egl_image(__DRIscreen *screen, void *image, void *data)
+ {
+diff --git a/src/egl/drivers/dri2/egl_dri2.h b/src/egl/drivers/dri2/egl_dri2.h
+index 2a8307ab321..0b21a889e90 100644
+--- a/src/egl/drivers/dri2/egl_dri2.h
++++ b/src/egl/drivers/dri2/egl_dri2.h
+@@ -419,6 +419,9 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+                 EGLint surface_type, const EGLint *attr_list,
+                 const int *rgba_shifts, const unsigned int *rgba_sizes);
+ 
++void
++dri2_finalize_config_surface_types(_EGLDisplay *disp);
++
+ _EGLImage *
+ dri2_create_image_khr(_EGLDriver *drv, _EGLDisplay *disp,
+                       _EGLContext *ctx, EGLenum target,
+diff --git a/src/egl/drivers/dri2/platform_android.c b/src/egl/drivers/dri2/platform_android.c
+index 35d40e567dc..e395bb27cb2 100644
+--- a/src/egl/drivers/dri2/platform_android.c
++++ b/src/egl/drivers/dri2/platform_android.c
+@@ -1225,6 +1225,8 @@ droid_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
+          has_rgba = true;
+    }
+ 
++   dri2_finalize_config_surface_types(disp);
++
+    for (int i = 0; i < ARRAY_SIZE(format_count); i++) {
+       if (!format_count[i]) {
+          _eglLog(_EGL_DEBUG, "No DRI config supports native format 0x%x",
+diff --git a/src/egl/drivers/dri2/platform_device.c b/src/egl/drivers/dri2/platform_device.c
+index 9bd7a93270d..b36033ba504 100644
+--- a/src/egl/drivers/dri2/platform_device.c
++++ b/src/egl/drivers/dri2/platform_device.c
+@@ -216,6 +216,8 @@ device_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
+       }
+    }
+ 
++   dri2_finalize_config_surface_types(disp);
++
+    for (unsigned i = 0; i < ARRAY_SIZE(format_count); i++) {
+       if (!format_count[i]) {
+          _eglLog(_EGL_DEBUG, "No DRI config supports native format %s",
+diff --git a/src/egl/drivers/dri2/platform_drm.c b/src/egl/drivers/dri2/platform_drm.c
+index 7b13129ee3a..45b778b441f 100644
+--- a/src/egl/drivers/dri2/platform_drm.c
++++ b/src/egl/drivers/dri2/platform_drm.c
+@@ -656,6 +656,8 @@ drm_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
+       }
+    }
+ 
++   dri2_finalize_config_surface_types(disp);
++
+    for (unsigned i = 0; i < ARRAY_SIZE(format_count); i++) {
+       if (!format_count[i]) {
+          struct gbm_format_name_desc desc;
+diff --git a/src/egl/drivers/dri2/platform_surfaceless.c b/src/egl/drivers/dri2/platform_surfaceless.c
+index d624533dcf3..18bca373497 100644
+--- a/src/egl/drivers/dri2/platform_surfaceless.c
++++ b/src/egl/drivers/dri2/platform_surfaceless.c
+@@ -210,6 +210,8 @@ surfaceless_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
+       }
+    }
+ 
++   dri2_finalize_config_surface_types(disp);
++
+    for (unsigned i = 0; i < ARRAY_SIZE(format_count); i++) {
+       if (!format_count[i]) {
+          _eglLog(_EGL_DEBUG, "No DRI config supports native format %s",
+diff --git a/src/egl/drivers/dri2/platform_wayland.c b/src/egl/drivers/dri2/platform_wayland.c
+index 6f538835617..490f3b54fcb 100644
+--- a/src/egl/drivers/dri2/platform_wayland.c
++++ b/src/egl/drivers/dri2/platform_wayland.c
+@@ -1411,6 +1411,8 @@ dri2_wl_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
+       }
+    }
+ 
++   dri2_finalize_config_surface_types(disp);
++
+    for (unsigned i = 0; i < ARRAY_SIZE(format_count); i++) {
+       if (!format_count[i]) {
+          _eglLog(_EGL_DEBUG, "No DRI config supports native format %s",
+diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform_x11.c
+index 8e43c659a8a..207e2d88cf0 100644
+--- a/src/egl/drivers/dri2/platform_x11.c
++++ b/src/egl/drivers/dri2/platform_x11.c
+@@ -937,6 +937,8 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
+       }
+    }
+ 
++   dri2_finalize_config_surface_types(disp);
++
+    if (!config_count) {
+       _eglLog(_EGL_WARNING, "DRI2: failed to create any config");
+       return EGL_FALSE;
+diff --git a/src/egl/drivers/haiku/egl_haiku.cpp b/src/egl/drivers/haiku/egl_haiku.cpp
+index 6edd551b53d..699b0f1babf 100644
+--- a/src/egl/drivers/haiku/egl_haiku.cpp
++++ b/src/egl/drivers/haiku/egl_haiku.cpp
+@@ -57,7 +57,7 @@ _EGL_DRIVER_STANDARD_TYPECASTS(haiku_egl)
+ 
+ struct haiku_egl_config
+ {
+-	_EGLConfig         base;
++    _EGLConfig base;
+ };
+ 
+ struct haiku_egl_context
+diff --git a/src/egl/main/eglconfig.c b/src/egl/main/eglconfig.c
+index b3362363664..b15ba758278 100644
+--- a/src/egl/main/eglconfig.c
++++ b/src/egl/main/eglconfig.c
+@@ -71,6 +71,16 @@ _eglInitConfig(_EGLConfig *conf, _EGLDisplay *disp, EGLint id)
+    conf->ComponentType = EGL_COLOR_COMPONENT_TYPE_FIXED_EXT;
+ }
+ 
++/*
++ * Wipe the configs list and return the old list
++ */
++_EGLArray *
++_eglWipeConfigs(_EGLDisplay *disp)
++{
++   _EGLArray *configs = disp->Configs;
++   disp->Configs = NULL;
++   return configs;
++}
+ 
+ /**
+  * Link a config to its display and return the handle of the link.
 diff --git a/src/egl/main/eglconfig.h b/src/egl/main/eglconfig.h
-index 064187ff1dd..ed9404573cc 100644
+index 064187ff1dd..e9b87d98a9d 100644
 --- a/src/egl/main/eglconfig.h
 +++ b/src/egl/main/eglconfig.h
-@@ -69,6 +69,7 @@ struct _egl_config
-    EGLint Samples;
-    EGLint SampleBuffers;
-    EGLint SurfaceType;
-+   EGLint StickySurfaceType;
-    EGLint TransparentType;
-    EGLint TransparentBlueValue;
-    EGLint TransparentGreenValue;
+@@ -179,6 +179,9 @@ _eglGetConfigKey(const _EGLConfig *conf, EGLint key)
+ extern void
+ _eglInitConfig(_EGLConfig *config, _EGLDisplay *disp, EGLint id);
+ 
++extern _EGLArray *
++_eglWipeConfigs(_EGLDisplay *disp);
++
+ 
+ extern EGLConfig
+ _eglLinkConfig(_EGLConfig *conf);
 -- 
 2.23.0
 

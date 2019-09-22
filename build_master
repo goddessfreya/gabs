@@ -34,7 +34,7 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             WIPE_SRC=very_false
-            MAKEPKG_PARAM+=("--noextract" "--noprepare")
+            MAKEPKG_PARAM+=("--noextract" "--noprepare" "--skipinteg" "--nodeps")
             TO_REMOVE=("-c")
             remove_from_array MAKECHROOTPKG_PARAM TO_REMOVE
             MAKECHROOTPKG_PARAM=("${RFA_RETURN[@]}")
@@ -145,68 +145,70 @@ fi
 
 [[ -d "$HOME/.ccache" ]] && MAKECHROOTPKG_PARAM+=("-d" "$HOME/.ccache:/ccache")
 
-# Install deps because for some reason pacman fails to do this when called from
-# makechrootpkg
-local DEPS_PREFIX="$(pwd)/../deps.${CHROOT_NAME}/$(basename $(pwd))"
-mkdir -p "$DEPS_PREFIX"
-
-sort -u "../provides.${CHROOT_NAME}" > "../provides.${CHROOT_NAME}.new"
-mv "../provides.${CHROOT_NAME}"{.new,}
-
-makepkg --printsrcinfo > "$DEPS_PREFIX/printsrcinfo"
-
 [[ "$WIPE_SRC" == "true" ]] && MAKEPKG_PARAM+=("-C")
+local DEPS_PREFIX="$(pwd)/../deps.${CHROOT_NAME}/$(basename $(pwd))"
 
-# first we find all the packages we depend on
-cat "$DEPS_PREFIX/printsrcinfo" \
-    | grep -P "^\tdepends = " \
-    | cut -d"=" -f2 \
-    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' > "$DEPS_PREFIX/deps"
+if [[ "$WIPE_SRC" == "true" || ! -f "$DEPS_PREFIX/provides" ]]; then
+    # Install deps because for some reason pacman fails to do this when called from
+    # makechrootpkg
+    mkdir -p "$DEPS_PREFIX"
 
-# This pkg's provides to our provide list
-cat "$DEPS_PREFIX/printsrcinfo" \
-    | grep -P "^\tprovides = " \
-    | cut -d"=" -f2 \
-    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' > "$DEPS_PREFIX/provides"
+    sort -u "../provides.${CHROOT_NAME}" > "../provides.${CHROOT_NAME}.new"
+    mv "../provides.${CHROOT_NAME}"{.new,}
 
-# Append this pkg to our provide list
-cat "$DEPS_PREFIX/printsrcinfo" \
-    | grep -P "^pkgname = " \
-    | cut -d"=" -f2 \
-    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/provides"
+    makepkg --printsrcinfo > "$DEPS_PREFIX/printsrcinfo"
 
-sort -u "$DEPS_PREFIX/provides" > "$DEPS_PREFIX/provides.sorted"
-sort -u "$DEPS_PREFIX/deps" > "$DEPS_PREFIX/deps.sorted"
+    # first we find all the packages we depend on
+    cat "$DEPS_PREFIX/printsrcinfo" \
+        | grep -P "^\tdepends = " \
+        | cut -d"=" -f2 \
+        | grep -Eo '^ [a-zA-Z0-9@,._+-]*' > "$DEPS_PREFIX/deps"
 
-# But we only need ones we don't provide 
-comm -23 "$DEPS_PREFIX/deps.sorted" "$DEPS_PREFIX/provides.sorted" \
-    > "$DEPS_PREFIX/deps.provideless"
+    # This pkg's provides to our provide list
+    cat "$DEPS_PREFIX/printsrcinfo" \
+        | grep -P "^\tprovides = " \
+        | cut -d"=" -f2 \
+        | grep -Eo '^ [a-zA-Z0-9@,._+-]*' > "$DEPS_PREFIX/provides"
 
-cp "$DEPS_PREFIX/deps."{provideless,withbuildtime}
+    # Append this pkg to our provide list
+    cat "$DEPS_PREFIX/printsrcinfo" \
+        | grep -P "^pkgname = " \
+        | cut -d"=" -f2 \
+        | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/provides"
 
-# Make deps don't care about future deps, however, so we insert them here
-cat "$DEPS_PREFIX/printsrcinfo" \
-    | grep -P "^\tmakedepends = " \
-    | cut -d"=" -f2 \
-    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/deps.withbuildtime"
+    sort -u "$DEPS_PREFIX/provides" > "$DEPS_PREFIX/provides.sorted"
+    sort -u "$DEPS_PREFIX/deps" > "$DEPS_PREFIX/deps.sorted"
 
-# Nor do check depends
-cat "$DEPS_PREFIX/printsrcinfo" \
-    | grep -P "^\tcheckdepends = " \
-    | cut -d"=" -f2 \
-    | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/deps.withbuildtime"
+    # But we only need ones we don't provide 
+    comm -23 "$DEPS_PREFIX/deps.sorted" "$DEPS_PREFIX/provides.sorted" \
+        > "$DEPS_PREFIX/deps.provideless"
 
-sort -u "$DEPS_PREFIX/deps.withbuildtime" > "$DEPS_PREFIX/deps.withbuildtimesorted"
+    cp "$DEPS_PREFIX/deps."{provideless,withbuildtime}
 
-# And we strip out provides.
-comm -23 "$DEPS_PREFIX/deps.withbuildtimesorted" "../provides.${CHROOT_NAME}" \
-    > "$DEPS_PREFIX/deps.final"
-local DEPS="$(cat $DEPS_PREFIX/deps.final | sed "s/^ /\"/" | sed "s/$/\"/")"
+    # Make deps don't care about future deps, however, so we insert them here
+    cat "$DEPS_PREFIX/printsrcinfo" \
+        | grep -P "^\tmakedepends = " \
+        | cut -d"=" -f2 \
+        | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/deps.withbuildtime"
 
-if [[ "$DEPS" != "" ]]; then
-    sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" /bin/bash \
-        -c "DEPS=($DEPS); yes | pacman -S --needed \"\${DEPS[@]}\" || exit \$?" \
-        || exit $?
+    # Nor do check depends
+    cat "$DEPS_PREFIX/printsrcinfo" \
+        | grep -P "^\tcheckdepends = " \
+        | cut -d"=" -f2 \
+        | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/deps.withbuildtime"
+
+    sort -u "$DEPS_PREFIX/deps.withbuildtime" > "$DEPS_PREFIX/deps.withbuildtimesorted"
+
+    # And we strip out provides.
+    comm -23 "$DEPS_PREFIX/deps.withbuildtimesorted" "../provides.${CHROOT_NAME}" \
+        > "$DEPS_PREFIX/deps.final"
+    local DEPS="$(cat $DEPS_PREFIX/deps.final | sed "s/^ /\"/" | sed "s/$/\"/")"
+
+    if [[ "$DEPS" != "" ]]; then
+        sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" /bin/bash \
+            -c "DEPS=($DEPS); pacman -S --needed \"\${DEPS[@]}\" --noconfirm || exit \$?" \
+            || exit $?
+    fi
 fi
 
 # Remove old packages

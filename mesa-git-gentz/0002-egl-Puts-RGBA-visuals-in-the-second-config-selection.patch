@@ -1,7 +1,7 @@
 From e2bd08084a47b9830a1443e712e27e12b24664a6 Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
-Date: Sun, 1 Sep 2019 14:30:50 -0600
-Subject: [PATCH 3/6] egl: Puts RGBA visuals in the second config selection
+Date: Sun, 15 Sep 2019 15:29:50 -0600
+Subject: [PATCH 2/3] egl: Puts RGBA visuals in the second config selection
  group.
 
 That way applications don't get windows that are compositor alpha-blended

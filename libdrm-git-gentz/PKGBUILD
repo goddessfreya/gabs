@@ -5,8 +5,8 @@
 
 pkgbase=libdrm-git-gentz
 pkgname=('libdrm-git-gentz' 'lib32-libdrm-git-gentz')
-pkgver=2.4.99.r8.g3aba0f38
-pkgrel=2
+pkgver=2.4.99.r23.g0c427545
+pkgrel=3
 pkgdesc="Userspace interface to kernel DRM services, master git version"
 arch=(x86_64)
 license=('custom')

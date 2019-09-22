@@ -8,7 +8,7 @@
 pkgname=xf86-video-ati-git-gentz
 _realpkgname=xf86-video-ati
 pkgver=19.0.1.r7.gc7ed12cb
-pkgrel=1
+pkgrel=6
 pkgdesc="X.org ati video driver. Git version"
 arch=('i686' 'x86_64')
 url="http://xorg.freedesktop.org/"

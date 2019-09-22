@@ -9,8 +9,8 @@ pkgname=(
     'xorg-server-xnest-git-gentz' 'xorg-server-xwayland-git-gentz' 
     'xorg-server-common-git-gentz' 'xorg-server-devel-git-gentz'
 )
-pkgver=1.20.0.389.r17023.ga02697277
-pkgrel=1
+pkgver=1.20.0.r429.g429ee86ab
+pkgrel=2
 arch=('x86_64')
 license=('custom')
 groups=('xorg')
@@ -28,6 +28,7 @@ source=(
     git://anongit.freedesktop.org/xorg/xserver
     xvfb-run # with updates from FC master
     xvfb-run.1
+    libglvnd-compat.patch
 )
 validpgpkeys=(
     '7B27A3F1A6E18CD9588B4AE8310180050905E40C'
@@ -38,7 +39,8 @@ validpgpkeys=(
 groups=('gentz_custom')
 sha512sums=('SKIP'
             '55bbf520333f6e818b0125b37179a7039b69a0d3d2242b80a08da003d94cbf6c1fb912d880abcce318a85d7947e3eff8fbc4cdf57d7118572e8ebc56c4569af6'
-            'de5e2cb3c6825e6cf1f07ca0d52423e17f34d70ec7935e9dd24be5fb9883bf1e03b50ff584931bd3b41095c510ab2aa44d2573fd5feaebdcb59363b65607ff22')
+            'de5e2cb3c6825e6cf1f07ca0d52423e17f34d70ec7935e9dd24be5fb9883bf1e03b50ff584931bd3b41095c510ab2aa44d2573fd5feaebdcb59363b65607ff22'
+            'ada1c915e9440e558dfe89830424e9a310bc0846c4c8894782d32e27e5f23c9cfe75f54476a5f8222ff0e5454026db6b517f1a7da5f15fc104b40174a7863fa3')
 
 #_meson_flags=("-D b_ndebug=true")
 
@@ -65,6 +67,10 @@ exports() {
 
 prepare() {
     exports
+
+    pushd "${srcdir}/xserver"
+    patch -p1 < ../libglvnd-compat.patch
+    popd
 
     arch-meson "${srcdir}/xserver" "${srcdir}/build" \
         "${_meson_flags[@]}" \

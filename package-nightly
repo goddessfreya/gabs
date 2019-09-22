@@ -1,3 +1,4 @@
 #!/bin/zsh -x
 
-ionice -c 2 -n 7 nice -19 ./build -p firefox-nightly -cn firefox-nightly -o -ep -w -ep -dbr
+ionice -c 2 -n 7 nice -19 ./build -p firefox-nightly -cn firefox-nightly -o -ep -w -ep -dbr -rp firefox-nightly
+sudo pacman -U pkgs.firefox-nightly/*
