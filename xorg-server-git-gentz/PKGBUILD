@@ -10,7 +10,7 @@ pkgname=(
     'xorg-server-common-git-gentz' 'xorg-server-devel-git-gentz'
 )
 pkgver=1.20.0.r429.g429ee86ab
-pkgrel=2
+pkgrel=3
 arch=('x86_64')
 license=('custom')
 groups=('xorg')

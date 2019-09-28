@@ -13,7 +13,7 @@
 pkgbase=mesa-git-gentz
 pkgname=('mesa-git-gentz' 'lib32-mesa-git-gentz')
 pkgdesc="an open-source implementation of the OpenGL specification, git version"
-pkgver=19.3.0_devel.115577.8f584ca0904
+pkgver=19.3.0_devel.115578.c7d94a3dca1
 pkgrel=1
 arch=('x86_64')
 optdepends=('opengl-man-pages: for the OpenGL API man pages')

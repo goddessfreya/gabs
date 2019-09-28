@@ -152,6 +152,8 @@ if [[ "${#PACKAGES[@]}" == "0" ]]; then
         "xorg-server-git-gentz"
         "xf86-video-amdgpu-git-gentz"
         "xf86-video-ati-git-gentz"
+        "wine-staging-git-gentz"
+        "valgrind-git-gentz"
     ) 
 fi
 
@@ -230,6 +232,15 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
         sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
             /bin/bash -c "yes | pacman -U $ALT_DEPS"
     fi
+else
+    sudo cp makepkg.conf "${CHROOT_DIR}/root/etc/makepkg.conf"
+    sudo cp makepkg.conf "${CHROOT_DIR}/${USER}/etc/makepkg.conf"
+    sudo chown root:root \
+        "${CHROOT_DIR}/${USER}/etc/makepkg.conf" \
+        "${CHROOT_DIR}/root/etc/makepkg.conf"
+    sudo chmod 644 \
+        "${CHROOT_DIR}/${USER}/etc/makepkg.conf" \
+        "${CHROOT_DIR}/root/etc/makepkg.conf"
 fi
 
 [[ "$RESUME_BACKUP_DIR" != "" ]] && mkdir -p "$RESUME_BACKUP_DIR"
