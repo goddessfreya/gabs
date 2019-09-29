@@ -92,7 +92,7 @@ build_meson() {
         -D lmsensors=true \
         -D osmesa=gallium \
         -D shared-glapi=true \
-        -D valgrind=false \
+        -D valgrind=true \
         -D tools=[]
 
     meson configure "${srcdir}/_build$1"

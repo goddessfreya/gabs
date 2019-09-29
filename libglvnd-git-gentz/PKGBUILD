@@ -40,7 +40,7 @@ package() {
     make DESTDIR="${pkgdir}" install
 
     # NVIDIA is incompetent.
-    # They couldn't make make a package that doesn't conflict with mesa if 
+    # They couldn't make a package that doesn't conflict with mesa if 
     # their lives fucking depended on it.
     rm "${pkgdir}/usr/include/EGL" -rf
     rm "${pkgdir}/usr/include/GL" -rf

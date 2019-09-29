@@ -37,6 +37,7 @@ wine-staging-git-gentz/wine
 wine-staging-git-gentz/wine-staging
 libdrm-git-gentz/libdrm
 valgrind-git-gentz/valgrind
+openmpi-git-gentz/openmpi
 
 */*.pkg.tar-namcap.log
 */*-build.log*
