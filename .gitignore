@@ -14,6 +14,7 @@ mem
 */*.tar.xz.asc
 */*.src.tar.sig
 */*.src.tar
+*/*.pkg.tar
 */*.tar.bz2
 */*.tar.bz2.asc
 
@@ -38,6 +39,7 @@ wine-staging-git-gentz/wine-staging
 libdrm-git-gentz/libdrm
 valgrind-git-gentz/valgrind
 openmpi-git-gentz/openmpi
+xorgproto-git-gentz/xorgproto
 
 */*.pkg.tar-namcap.log
 */*-build.log*

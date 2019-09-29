@@ -7,8 +7,8 @@
 # Contributor: Giovanni Scafora <giovanni@archlinux.org>
 
 pkgname=wine-staging-git-gentz
-pkgver=4.16.r22.gc7d0330c+wine.4.16.r247.gf4ecef4565
-pkgrel=3
+pkgver=4.16.r0.gc323ef47+wine.4.16.r0.g3bf7473b88
+pkgrel=4
 
 source=('git://source.winehq.org/git/wine.git'
         'git+https://github.com/wine-staging/wine-staging.git'
@@ -150,6 +150,9 @@ do_version() {
 prepare() {
     mkdir wine-{32,64}-build
 
+    #do_version wine-staging v4.17
+    do_version wine-staging v4.16
+
     while true; do
         do_version wine "$(wine-staging/patches/patchinstall.sh --upstream-commit)"
 
@@ -173,6 +176,10 @@ build() {
     export CFLAGS="${CFLAGS/-fno-plt/}"
     export CFLAGS="${CFLAGS/-ffast-math/}"
     export LDFLAGS="${LDFLAGS/,-z,now/}"
+
+    export CFLAGS="${CFLAGS/-fstack-protector-strong/}"
+    export CFLAGS="${CFLAGS/-funroll-loops/}"
+    export CFLAGS="${CFLAGS/-O3/} -O2"
 
     cd "$srcdir"
 
