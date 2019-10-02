@@ -8,6 +8,7 @@ pkgdesc='An engine for running Transport Tycoon Deluxe.'
 arch=('x86_64')
 url='https://www.openttd.org'
 license=('GPL')
+groups=('gentz_custom')
 depends=('libpng' 'sdl' 'icu' 'fontconfig' 'lzo' 'hicolor-icon-theme' 'desktop-file-utils' 'xz' 'fluidsynth')
 optdepends=('openttd-opengfx: free graphics' 
             'openttd-opensfx: free soundset')
@@ -22,7 +23,7 @@ sha256sums=('f9ff8c255145a1dd617798a9413179cc740a0cc91709455990880a15eeb7564a'
 
 prepare() {
     cd openttd-${pkgver} 
-    patch -p1 < ../btpro.patch
+    patch -Np1 -i ../btpro.patch
 }
 
 build() {

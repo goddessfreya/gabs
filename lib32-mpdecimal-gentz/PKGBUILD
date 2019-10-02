@@ -3,15 +3,15 @@
 
 pkgname=lib32-mpdecimal-gentz
 pkgver=2.4.2
-pkgrel=16
-pkgdesc="Package for correctly-rounded arbitrary precision decimal floating point arithmetic"
+pkgrel=17
+pkgdesc="Package for correctly-rounded arbitrary precision decimal floating point arithmetic (32-bit)"
 arch=('x86_64')
 url="https://www.bytereef.org/mpdecimal/index.html"
 license=('custom')
+groups=('gentz_custom')
 depends=('lib32-glibc' 'lib32-gcc-libs' 'mpdecimal')
 provides=("lib32-mpdecimal")
 source=("https://www.bytereef.org/software/mpdecimal/releases/mpdecimal-${pkgver}.tar.gz")
-groups=('gentz_custom')
 sha512sums=('eb18ad53b81b93c469db4d915bbb3fae21b36ad82a88e01fef3a6946ac5f50b54376e259a5ecbe23836f1efd59d226b942ecdee87eaba7f9e75cdcaaa9499ef7')
 
 prepare() {
@@ -19,7 +19,7 @@ prepare() {
     autoreconf -fiv
 }
 
-exports_32() {
+_exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32"
     export CXXFLAGS="$CXXFLAGS -m32"
@@ -27,7 +27,7 @@ exports_32() {
 }
 
 build() {
-    exports_32
+    _exports_32
     cd "${srcdir}/mpdecimal-${pkgver}"
  
     ./configure \
@@ -38,8 +38,8 @@ build() {
 
 package() {
     cd "${srcdir}/mpdecimal-${pkgver}"
-    exports_32
+    _exports_32
     make DESTDIR="${pkgdir}" install
     rm -rf "${pkgdir}/usr/"{bin,include,share}
-    install -Dm644 LICENSE.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.txt"
+    install -Dm644 LICENSE.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }

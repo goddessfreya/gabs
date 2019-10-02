@@ -8,11 +8,12 @@
 pkgbase=python-gentz
 pkgname=('python-gentz' 'lib32-python-gentz')
 pkgver=3.7.4
-pkgrel=8
-_pybasever=${pkgver%.*}
+pkgrel=9
+pkgdesc="Next generation of the python high-level scripting language"
 arch=('x86_64')
-license=('custom')
 url="http://www.python.org/"
+license=('custom')
+groups=('gentz_custom')
 makedepends=(
     'tk' 'sqlite' 'valgrind' 'bluez-libs' 'mpdecimal' 'llvm' 'gdb' 
     'xorg-server-xvfb' 'lib32-gcc-libs' 'lib32-tk' 'lib32-sqlite' 
@@ -28,7 +29,6 @@ source=(
     lib32-distutils-sysconfig.patch
     python-config-32.patch
 )
-groups=('gentz_custom')
 sha512sums=('71f64668c259f3ed07bd4aa239dbba6cc1b6b0a84d50bbff160664845d7986f757e4d65fca327e62a2d12ba593742ca83a22f7cb6093aff8715ec916c2ba9416'
             'SKIP'
             '2ef96708d5b13ae2a3d2cc62c87b4780e60ecfce914e190564492def3a11d5e56977659f41c7f9d12266e58050c766bce4e2b5d50b708eb792794fa8357920c4'
@@ -41,14 +41,16 @@ sha512sums=('71f64668c259f3ed07bd4aa239dbba6cc1b6b0a84d50bbff160664845d7986f757e
 # Ned Deily (Python release signing key) <nad@python.org>
 validpgpkeys=('0D96DF4D4110E5C43FBFB17F2D347EA6AA65421D') 
 
+_pybasever=${pkgver%.*}
+
 prepare() {
     mv "${srcdir}/Python-${pkgver}" "${srcdir}/${pkgbase}64"
     pushd "${srcdir}/${pkgbase}64"
     # FS#45809
-    patch -p1 -i ../dont-make-libpython-readonly.patch
+    patch -Np1 -i ../dont-make-libpython-readonly.patch
 
     # FS#59997
-    patch -p1 -i ../0001-compileall-Fix-ddir-when-recursing.patch
+    patch -Np1 -i ../0001-compileall-Fix-ddir-when-recursing.patch
 
     # These tests hang when installing. We don't need them.
     rm -rf Lib/test/*
@@ -69,7 +71,7 @@ prepare() {
     cp -r "${srcdir}/${pkgbase}"{64,32}
 
     pushd "${srcdir}/${pkgbase}32"
-    patch -p1 -i ../Use-right-mpdecimal.patch
+    patch -Np1 -i ../Use-right-mpdecimal.patch
 
     # Fix hard-coded paths
     sed -i "s|base}/lib|base}/lib32|g" "Lib/sysconfig.py"
@@ -88,7 +90,7 @@ prepare() {
 
     popd
 
-    configure_python "32" \
+    _configure_python "32" \
         --libdir=/usr/lib32 \
         --libexecdir=/usr/lib32 \
         --includedir=/usr/lib32/python${_pybasever}m/include \
@@ -97,24 +99,24 @@ prepare() {
         --sbindir=/usr/bin \
         --with-suffix='-32'
 
-    configure_python "64"
+    _configure_python "64"
 }
 
-exports_32() {
+_exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32"
     export CXXFLAGS="$CXXFLAGS -m32"
     export LDFLAGS="$LDFLAGS -m32"
 }
 
-exports_64() {
+_exports_64() {
     export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
     export CFLAGS="${CFLAGS/-m32}"
     export CXXFLAGS="${CXXFLAGS/-m32}"
     export LDFLAGS="${LDFLAGS/-m32}"
 }
 
-obtain_server() {
+_obtain_server() {
     # Obtain next free server number for xvfb-run; this even works in a chroot 
     # environment.
     export servernum=99
@@ -123,8 +125,8 @@ obtain_server() {
     done
 }
 
-configure_python() {
-    exports_$1
+_configure_python() {
+    _exports_$1
     pushd "${srcdir}/${pkgbase}$1"
 
     # PGO should be done with -O3
@@ -152,14 +154,14 @@ configure_python() {
         "${@:2}"
 }
 
-build_python() {
+_build_python() {
     exports_$1
     pushd "${srcdir}/${pkgbase}$1"
 
     # PGO should be done with -O3
     export CFLAGS="${CFLAGS/-O2/-O3}"
 
-    obtain_server
+    _obtain_server
 
     LC_CTYPE=en_US.UTF-8 xvfb-run \
         -s "-screen 0 1280x720x24 -ac +extension GLX" \
@@ -167,13 +169,13 @@ build_python() {
     popd
 } 
 
-build() {
-    build_python "32" 
-    build_python "64"
+_build() {
+    _build_python "32" 
+    _build_python "64"
 }
 
-package_common() {
-    exports_$1
+_package_common() {
+    _exports_$1
     cd "${srcdir}/${pkgbase}$1"
 
     # Hack to avoid building again
@@ -200,19 +202,20 @@ package_common() {
 }
 
 package_python-gentz() {
-    pkgdesc="Next generation of the python high-level scripting language"
     depends=('expat' 'bzip2' 'gdbm' 'openssl' 'libffi' 'zlib' 'libnsl')
-    optdepends=('python-setuptools'
-                'python-pip'
-                'sqlite'
-                'mpdecimal: for decimal'
-                'xz: for lzma'
-                'tk: for tkinter')
+    optdepends=(
+        'python-setuptools'
+        'python-pip'
+        'sqlite'
+        'mpdecimal: for decimal'
+        'xz: for lzma'
+        'tk: for tkinter'
+    )
     provides=('python3' "python=$pkgver")
     conflicts=('python3' 'python')
     replaces=('python3')
 
-    package_common "64"
+    _package_common "64"
 
     # Why are these not done by default...
     ln -s "python${_pybasever}.1" "${pkgdir}/usr/share/man/man1/python.1"
@@ -226,7 +229,7 @@ package_python-gentz() {
 }
 
 package_lib32-python-gentz() {
-    pkgdesc="Next generation of the python high-level scripting language (32-bit)"
+    pkgdesc+=" (32-bit)"
     depends=(
         'python'
         'lib32-expat' 
@@ -249,7 +252,7 @@ package_lib32-python-gentz() {
     conflicts=('lib32-python3' 'lib32-python')
     replaces=('lib32-python3')
 
-    package_common "32" "-32" "32"
+    _package_common "32" "-32" "32"
 
     # clean up shebangs
     find "${pkgdir}/usr/lib32/python${_pybasever}/" -name '*.py' \

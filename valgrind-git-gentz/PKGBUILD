@@ -5,18 +5,19 @@
 # Contributor: Allan McRae <allan@archlinux.org>
 
 pkgname=valgrind-git-gentz
-pkgver=3.15.0+91+g5759d1deb
-pkgrel=2
+pkgver=3.15.0+92+gfe7ec1eca
+pkgrel=1
 pkgdesc='Tool to help find memory-management problems in programs'
 arch=('x86_64')
-license=('GPL')
 url='http://valgrind.org/'
+license=('GPL')
+groups=('gentz_custom')
 depends=('glibc' 'perl')
 makedepends=('gdb' 'openmpi' 'lib32-glibc' 'lib32-gcc-libs' 'git' 'docbook-xml'
              'docbook-xsl' 'docbook-sgml')
-checkdepends=('procps-ng')
 optdepends=('openmpi: MPI support'
             'lib32-glibc: 32-bit ABI support')
+checkdepends=('procps-ng')
 provides=('valgrind-multilib' 'valgrind' 'valgrind-git')
 conflicts=('valgrind-multilib' 'valgrind' 'valgrind-git')
 replaces=('valgrind-multilib')

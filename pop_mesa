@@ -28,10 +28,16 @@ make_branch() {
     for PATCH in "${@:2}"; do
         git am "$PATCH" || exit $?
     done
+    rm "${@:2}"
+    git format-patch HEAD~"$(( $# - 1 ))" | xargs -I% mv % "$BASE_PATH"
     git push --set-upstream origin "$1" --force || exit $?
 }
 
 make_branch egl-trans-sup \
-    "$BASE_PATH/0001-egl-Fixes-transparency-with-EGL-and-X11.patch" \
-    "$BASE_PATH/0002-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch" \
-    "$BASE_PATH/0003-egl-Configs-w-o-double-buffering-support-no-longer-h.patch" 
+    "$BASE_PATH/0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch" \
+    "$BASE_PATH/0002-egl-Fixes-transparency-with-EGL-and-X11.patch" \
+    "$BASE_PATH/0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch" \
+    "$BASE_PATH/0004-egl-Configs-w-o-double-buffering-support-have-no-EGL.patch"
+
+cd "$BASE_PATH"
+updpkgsums

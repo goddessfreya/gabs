@@ -2,21 +2,20 @@
 # Contributor: Yurii Kolesnykov <root@yurikoles.com>
 # Contributor: Laurent Carlier <lordheavym@gmail.com>
 
-pkgname=xf86-video-amdgpu-git-gentz
 _pkgname=xf86-video-amdgpu
+pkgname=xf86-video-amdgpu-git-gentz
 pkgver=19.0.1.12
-pkgrel=3
+pkgrel=4
 pkgdesc="X.org amdgpu video driver (git version)"
 arch=('x86_64')
 url="https://xorg.freedesktop.org/"
 license=('custom')
+groups=('xorg-drivers' 'gentz_custom')
 depends=(''systemd-libs'' 'mesa')
 makedepends=('xorg-server-devel' 'systemd' 'git' 'pixman')
-conflicts=('xf86-video-amdgpu' 'xorg-server<1.20.0')
 provides=('xf86-video-amdgpu' 'xf86-video-amdgpu-git')
-groups=('xorg-drivers')
+conflicts=('xf86-video-amdgpu' 'xorg-server<1.20.0')
 source=("${pkgname}::git+https://gitlab.freedesktop.org/xorg/driver/${_pkgname}.git")
-groups=('gentz_custom')
 sha512sums=('SKIP')
 
 pkgver() {
@@ -29,7 +28,7 @@ pkgver() {
     printf '%s.%s' "${version#v}" "${count}" | sed 's/^xf86-video-amdgpu-//'
 }
 
-exports() {
+_exports() {
     # Since pacman 5.0.2-2, hardened flags are now enabled in makepkg.conf
     # With them, module fail to load with undefined symbol.
     #
@@ -47,22 +46,21 @@ exports() {
 build() {
     cd "${srcdir}/${pkgname}"
 
-    exports
+    _exports
     ./autogen.sh --prefix=/usr --enable-glamor
     make
 }
 
 check() {
     cd "${srcdir}/${pkgname}"
-    exports
+    _exports
     make check
 }
 
 package() {
     cd "${srcdir}/${pkgname}"
 
-    exports
+    _exports
     make "DESTDIR=${pkgdir}" install
-    install -m755 -d "${pkgdir}/usr/share/licenses/${pkgname}"
-    install -m644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/"
+    install -Dm644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
 }

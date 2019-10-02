@@ -10,11 +10,11 @@ pkgname=(
     'xorg-server-common-git-gentz' 'xorg-server-devel-git-gentz'
 )
 pkgver=1.20.0.r435.g0d8cc7bb1
-pkgrel=1
+pkgrel=3
 arch=('x86_64')
-license=('custom')
-groups=('xorg')
 url="http://xorg.freedesktop.org"
+license=('custom')
+groups=('xorg' 'gentz_custom')
 makedepends=(
     'xorgproto' 'pixman' 'libx11' 'mesa' 'mesa-libgl' 'xtrans' 'libxkbfile' 
     'libxfont2' 'libpciaccess' 'libxv' 'libxmu' 'libxrender' 'libxi' 'libxaw' 
@@ -28,7 +28,6 @@ source=(
     git://anongit.freedesktop.org/xorg/xserver
     xvfb-run # with updates from FC master
     xvfb-run.1
-    libglvnd-compat.patch
 )
 validpgpkeys=(
     '7B27A3F1A6E18CD9588B4AE8310180050905E40C'
@@ -36,11 +35,9 @@ validpgpkeys=(
     'DD38563A8A8224537D1F90E45B8A2D50A0ECD0D3'
     '995ED5C8A6138EB0961F18474C09DD83CAAA50B2'
 )
-groups=('gentz_custom')
 sha512sums=('SKIP'
             '55bbf520333f6e818b0125b37179a7039b69a0d3d2242b80a08da003d94cbf6c1fb912d880abcce318a85d7947e3eff8fbc4cdf57d7118572e8ebc56c4569af6'
-            'de5e2cb3c6825e6cf1f07ca0d52423e17f34d70ec7935e9dd24be5fb9883bf1e03b50ff584931bd3b41095c510ab2aa44d2573fd5feaebdcb59363b65607ff22'
-            'ada1c915e9440e558dfe89830424e9a310bc0846c4c8894782d32e27e5f23c9cfe75f54476a5f8222ff0e5454026db6b517f1a7da5f15fc104b40174a7863fa3')
+            'de5e2cb3c6825e6cf1f07ca0d52423e17f34d70ec7935e9dd24be5fb9883bf1e03b50ff584931bd3b41095c510ab2aa44d2573fd5feaebdcb59363b65607ff22')
 
 #_meson_flags=("-D b_ndebug=true")
 
@@ -50,7 +47,7 @@ pkgver() {
     git describe --long | cut -d "-" -f3-5 | sed "s/-/.r/" | tr - .
 }
 
-exports() {
+_exports() {
     # Since pacman 5.0.2-2, hardened flags are now enabled in makepkg.conf
     # With them, module fail to load with undefined symbol.
     #
@@ -66,11 +63,7 @@ exports() {
 }
 
 prepare() {
-    exports
-
-    pushd "${srcdir}/xserver"
-    patch -p1 < ../libglvnd-compat.patch
-    popd
+    _exports
 
     arch-meson "${srcdir}/xserver" "${srcdir}/build" \
         "${_meson_flags[@]}" \
@@ -105,7 +98,7 @@ build() {
         )"
     done
 
-    exports
+    _exports
     ninja $NINJAFLAGS -C "${srcdir}/build"
 
     # fake installation to be seperated into packages
@@ -128,8 +121,8 @@ _install() {
 package_xorg-server-common-git-gentz() {
     pkgdesc="Xorg server common files"
     depends=(xkeyboard-config xorg-xkbcomp xorg-setxkbmap)
-    conflicts=('xorg-server-common')
     provides=('xorg-server-common' 'xorg-server-common-git')
+    conflicts=('xorg-server-common')
 
     pushd "${srcdir}/fakeinstall"
     _install "./usr/lib/xorg/protocol.txt"
@@ -191,8 +184,8 @@ package_xorg-server-xephyr-git-gentz() {
         xorg-server-common xcb-util-image xcb-util-renderutil xcb-util-wm 
         xcb-util-keysyms nettle libtirpc
     )
-    conflicts=('xorg-server-xephyr')
     provides=('xorg-server-xephyr' 'xorg-server-xephyr-git')
+    conflicts=('xorg-server-xephyr')
 
     pushd "${srcdir}/fakeinstall"
     _install "./usr/bin/Xephyr"
@@ -209,8 +202,8 @@ package_xorg-server-xvfb-git-gentz() {
     depends=(
         libxfont2 libunwind pixman xorg-server-common xorg-xauth libgl nettle
     )
-    conflicts=('xorg-server-xvfb')
     provides=('xorg-server-xvfb' 'xorg-server-xvfb-git')
+    conflicts=('xorg-server-xvfb')
 
     pushd "${srcdir}/fakeinstall"
     _install "./usr/bin/Xvfb"
@@ -228,8 +221,8 @@ package_xorg-server-xvfb-git-gentz() {
 package_xorg-server-xnest-git-gentz() {
     pkgdesc="A nested X server that runs as an X application"
     depends=(libxfont2 libxext pixman xorg-server-common nettle libtirpc)
-    conflicts=('xorg-server-xnest')
     provides=('xorg-server-xnest' 'xorg-server-xnest-git')
+    conflicts=('xorg-server-xnest')
 
     pushd "${srcdir}/fakeinstall"
     _install "./usr/bin/Xnest"
@@ -247,8 +240,8 @@ package_xorg-server-xdmx-git-gentz() {
         libxfont2 libxi libxaw libxrender libdmx libxfixes pixman 
         xorg-server-common nettle
     )
-    conflicts=('xorg-server-xdmx')
     provides=('xorg-server-xdmx' 'xorg-server-xdmx-git')
+    conflicts=('xorg-server-xdmx')
 
     pushd "${srcdir}/fakeinstall"
     _install "./usr/bin/"{Xdmx,dmx*,vdltodmx,xdmxconfig}
@@ -266,8 +259,8 @@ package_xorg-server-xwayland-git-gentz() {
         libxfont2 libepoxy libunwind systemd-libs libgl pixman 
         xorg-server-common nettle libtirpc
     )
-    conflicts=('xorg-server-xwayland')
     provides=('xorg-server-xwayland' 'xorg-server-xwayland-git')
+    conflicts=('xorg-server-xwayland')
 
     pushd "${srcdir}/fakeinstall"
     _install "./usr/bin/Xwayland"
@@ -281,8 +274,8 @@ package_xorg-server-xwayland-git-gentz() {
 package_xorg-server-devel-git-gentz() {
     pkgdesc="Development files for the X.Org X server"
     depends=('xorgproto' 'mesa' 'libpciaccess' 'xorg-util-macros')
-    conflicts=('xorg-server-devel')
     provides=('xorg-server-devel' 'xorg-server-devel-git')
+    conflicts=('xorg-server-devel')
 
     pushd "${srcdir}/fakeinstall"
     _install "./usr/include/xorg/"*

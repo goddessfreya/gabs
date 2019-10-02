@@ -7,25 +7,13 @@
 # Contributor: Giovanni Scafora <giovanni@archlinux.org>
 
 pkgname=wine-staging-git-gentz
-pkgver=4.16.r0.gc323ef47+wine.4.16.r0.g3bf7473b88
-pkgrel=4
-
-source=('git://source.winehq.org/git/wine.git'
-        'git+https://github.com/wine-staging/wine-staging.git'
-        '30-win32-aliases.conf'
-        'wine-binfmt.conf')
-sha512sums=('SKIP'
-            'SKIP'
-            '6e54ece7ec7022b3c9d94ad64bdf1017338da16c618966e8baf398e6f18f80f7b0576edf1d1da47ed77b96d577e4cbb2bb0156b0b11c183a0accf22654b0a2bb'
-            'bdde7ae015d8a98ba55e84b86dc05aca1d4f8de85be7e4bd6187054bfe4ac83b5a20538945b63fb073caab78022141e9545685e4e3698c97ff173cf30859e285')
-validpgpkeys=(5AC1A08B03BD7A313E0A955AF5E6E9EEB9461DD7
-              DA23579A74D4AD9AF9D3F945CEFAC8EAAF17519D)
-
+pkgver=4.17.r1.g0c7512f5+wine.4.17.r0.g65fba09873
+pkgrel=2
 pkgdesc="A compatibility layer for running Windows programs - Staging branch"
-url="http://www.wine-staging.com"
 arch=(x86_64)
-options=(staticlibs)
+url="http://www.wine-staging.com"
 license=(LGPL)
+groups=('gentz_custom')
 
 depends=(
     attr             lib32-attr
@@ -119,7 +107,18 @@ optdepends=(
     "wine-staging-git=$(printf '%s' "$pkgver" | sed 's/\+wine.*//')"
 )
 conflicts=('wine' 'wine-wow64' 'wine-staging' 'wine-staging-git' 'wine-staging-gentz')
+options=(staticlibs)
 install=wine-staging.install
+source=('git://source.winehq.org/git/wine.git'
+        'git+https://github.com/wine-staging/wine-staging.git'
+        '30-win32-aliases.conf'
+        'wine-binfmt.conf')
+sha512sums=('SKIP'
+            'SKIP'
+            '6e54ece7ec7022b3c9d94ad64bdf1017338da16c618966e8baf398e6f18f80f7b0576edf1d1da47ed77b96d577e4cbb2bb0156b0b11c183a0accf22654b0a2bb'
+            'bdde7ae015d8a98ba55e84b86dc05aca1d4f8de85be7e4bd6187054bfe4ac83b5a20538945b63fb073caab78022141e9545685e4e3698c97ff173cf30859e285')
+validpgpkeys=(5AC1A08B03BD7A313E0A955AF5E6E9EEB9461DD7
+              DA23579A74D4AD9AF9D3F945CEFAC8EAAF17519D)
 
 pkgver() {
     local _staging_tag
@@ -137,7 +136,7 @@ pkgver() {
     printf '%s+%s' "$_staging_version" "$_wine_version"
 }
 
-do_version() {
+_do_version() {
     pushd "$1"
     git reset --hard HEAD 
     git clean -xdf        
@@ -150,11 +149,8 @@ do_version() {
 prepare() {
     mkdir wine-{32,64}-build
 
-    #do_version wine-staging v4.17
-    do_version wine-staging v4.16
-
     while true; do
-        do_version wine "$(wine-staging/patches/patchinstall.sh --upstream-commit)"
+        _do_version wine "$(wine-staging/patches/patchinstall.sh --upstream-commit)"
 
         # apply wine-staging patchset
         pushd wine-staging/patches
@@ -163,7 +159,7 @@ prepare() {
             break;
         else
             msg2 "Patches did not apply, retrying"
-            do_version .. "HEAD~"
+            _do_version .. "HEAD~"
             popd
         fi
     done
@@ -174,12 +170,16 @@ prepare() {
 build() {
     # Doesn't compile without remove these flags as of 4.10
     export CFLAGS="${CFLAGS/-fno-plt/}"
-    export CFLAGS="${CFLAGS/-ffast-math/}"
     export LDFLAGS="${LDFLAGS/,-z,now/}"
 
-    export CFLAGS="${CFLAGS/-fstack-protector-strong/}"
+    # https://bugs.winehq.org/show_bug.cgi?id=47750
+    export CFLAGS="${CFLAGS/-ffast-math/}"
+    # https://bugs.winehq.org/show_bug.cgi?id=47835
     export CFLAGS="${CFLAGS/-funroll-loops/}"
-    export CFLAGS="${CFLAGS/-O3/} -O2"
+
+    # There are bugs mentioning -fstack-protector and -fstack-protector-all
+    # let us not risk it.
+    export CFLAGS="${CFLAGS/-fstack-protector-strong/}"
 
     cd "$srcdir"
 

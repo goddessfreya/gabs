@@ -16,11 +16,13 @@
 
 pkgbase=llvm-git-gentz
 pkgname=('llvm-git-gentz' 'lib32-llvm-git-gentz')
-pkgver=10.0.0_r328055.120a5e9a745
-pkgrel=1
+pkgver=10.0.0_r328295.075bc48a7f4
+pkgrel=5
+pkgdesc="Collection of compiler and toolchain technologies. Inc/ clang and many other tools"
 arch=('x86_64')
 url="https://llvm.org/"
 license=('custom:University of Illinois/NCSA Open Source License')
+groups=('gentz_custom')
 makedepends=(
     'git'
     'cmake'
@@ -65,11 +67,10 @@ source=(
     'enable-SSP-and-PIE-by-default.patch'
     'atomic-link-32.patch'
 )
-groups=('gentz_custom')
 sha512sums=('SKIP'
             '75e743dea28b280943b3cc7f8bbb871b57d110a7f2b9da2e6845c1c36bf170dd883fca54e463f5f49e0c3effe07fbd0db0f8cf5a12a2469d3f792af21a73fcdd'
             '99e3ce7172457dc914d395c64efb03562b5741b1eb21f3f80769d450aaf7415c1bd667390072e1fa7f9a5e2fff13a65df60ea06eca3975dc823deecfb5e93b7b'
-            'd84bc260a0eeb80c3abb0d4710fbf58162fe4cacd36b771f9eefd54d29c9b90f8fc33d1df709bd413b9c588230c2dd9b4413f0d91a41552bf2a107346fb8268c')
+            'aff5c2b5944cc103ceeedcfa42b353d9a4477b1f8a544b29b839e1d24f0953208a824f61065a30ff7970be7bff0fcf35faf0cc125fef1ad337080b27f0e134af')
 
 # The docs say we should build a stage 1 compiler, and use that to build the
 # instrumentation compiler, and stage 2 compiler, however, if we do that, we'll
@@ -135,22 +136,24 @@ pkgver() {
 prepare() {
     mkdir _build{64,32}{_stg1,_instr,_to_instr{1,2},_final}
     mkdir dont_delete
+    cp llvm-project{64,32} -R
 
     pushd llvm-project64
     patch -Np1 -i "${srcdir}/enable-SSP-and-PIE-by-default.patch"
+    #patch -Rp0 -i "${srcdir}/D68178.diff"
     popd
 
-    cp llvm-project{64,32} -R
     sed -i '/^[[:blank:]]*find_library(FFI_LIBRARY_PATH/i\
         list(INSERT CMAKE_LIBRARY_PATH 0 /usr/lib32)' \
         llvm-project32/llvm/cmake/config-ix.cmake
 
-    pushd llvm-project32/clang-tools-extra/clangd
+    pushd llvm-project32
+    patch -Np1 -i "${srcdir}/enable-SSP-and-PIE-by-default.patch"
     patch -Np1 -i "${srcdir}/atomic-link-32.patch"
     popd
 }
 
-build_cmake_sub() {
+_build_cmake_sub() {
     local _cmake_compile_options=(
         # Cargo culted from similar packages.
         -D LLVM_APPEND_VC_REV=ON
@@ -205,7 +208,7 @@ build_cmake_sub() {
     ninja $NINJAFLAGS all
 }
 
-build_cmake_test() {
+_build_cmake_test() {
     # Tests hang 99% of the time, so just return
     return 
 
@@ -216,8 +219,8 @@ build_cmake_test() {
     done
 }
 
-build_cmake() {
-    exports_$1
+_build_cmake() {
+    _exports_$1
 
     local _low_perf_compile_opts=(
         -D LLVM_ENABLE_LTO=OFF
@@ -253,14 +256,14 @@ build_cmake() {
     if [[ "${_bootstrap}" -eq "1" ]]; then
         if [[ ! -f "${srcdir}/.build$1_stg1.built" ]]; then
             cd "${srcdir}/_build$1_stg1"
-            build_cmake_sub "$1" \
+            _build_cmake_sub "$1" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
                 "${_low_perf_compile_opts[@]}" \
                 "${_stage_1_opts[@]}" \
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld"
 
-            build_cmake_test llvm clang lld
+            _build_cmake_test llvm clang lld
             touch "${srcdir}/build$1_stg1.built"
         fi
 
@@ -281,7 +284,7 @@ build_cmake() {
     if [[ "${_bootstrap}" -ne "2" ]]; then
         if [[ ! -f "${srcdir}/.build$1_instr.built" ]]; then
             cd "${srcdir}/_build$1_instr"
-            build_cmake_sub "$1" \
+            _build_cmake_sub "$1" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
                 "${_stage_1_opts[@]}" \
@@ -291,7 +294,7 @@ build_cmake() {
                 -D LLVM_BUILD_RUNTIME=No \
                 -D LLVM_BUILD_INSTRUMENTED=IR
 
-            build_cmake_test llvm clang lld
+            _build_cmake_test llvm clang lld
             touch "${srcdir}/.build$1_instr.built"
         fi
 
@@ -305,7 +308,7 @@ build_cmake() {
 
         if [[ ! -f "${srcdir}/.build$1_to_instr1.built" ]]; then
             cd "${srcdir}/_build$1_to_instr1"
-            build_cmake_sub "$1" \
+            _build_cmake_sub "$1" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
                 "${_instr_opts[@]}" \
@@ -313,7 +316,7 @@ build_cmake() {
                 "${_high_perf_compile_opts[@]}" \
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld;lldb;clang-tools-extra"
 
-            build_cmake_test llvm clang lld lldb
+            _build_cmake_test llvm clang lld lldb
             touch "${srcdir}/.build$1_to_instr1.built"
             cd ..
         fi
@@ -323,14 +326,14 @@ build_cmake() {
             && "${_low_perf_fallback}" -ne "1" \
         ]]; then
             cd "${srcdir}/_build$1_to_instr2"
-            build_cmake_sub "$1" \
+            _build_cmake_sub "$1" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
                 "${_instr_opts[@]}" \
                 "${_stage_1_tablegen[@]}" \
                 "${_low_perf_compile_opts[@]}" \
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld;lldb;clang-tools-extra" \
-            build_cmake_test llvm clang lld lldb
+            _build_cmake_test llvm clang lld lldb
             touch "${srcdir}/.build$1_to_instr2.built"
             cd ..
         fi
@@ -344,7 +347,7 @@ build_cmake() {
 
     if [[ ! -f "${srcdir}/.build$1_final.built" ]]; then
         cd "${srcdir}/_build$1_final"
-        build_cmake_sub "$1" \
+        _build_cmake_sub "$1" \
             -D CMAKE_BUILD_TYPE="${_final_build_type}" \
             "${@:2}" \
             "${_stage_1_opts[@]}" \
@@ -357,14 +360,14 @@ build_cmake() {
     fi
 }
 
-exports_32() {
+_exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32"
     export CXXFLAGS="$CXXFLAGS -m32"
     export LDFLAGS="$LDFLAGS -m32"
 }
 
-exports_64() {
+_exports_64() {
     export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
     export CFLAGS="${CFLAGS/-m32}"
     export CXXFLAGS="${CXXFLAGS/-m32}"
@@ -372,7 +375,7 @@ exports_64() {
 }
 
 build() {
-    build_cmake 32 \
+    _build_cmake 32 \
         -D LLVM_DEFAULT_TARGET_TRIPLE="i686-pc-linux-gnu" \
         -D LLVM_LIBDIR_SUFFIX=32 \
         -D LLVM_TARGET_ARCH:STRING=i686 \
@@ -381,23 +384,23 @@ build() {
         -D LLVM_ENABLE_BINDINGS=OFF \
         -D PYTHON_EXECUTABLE=/usr/bin/python-32
 
-    build_cmake 64 \
+    _build_cmake 64 \
         -D PYTHON_EXECUTABLE=/usr/bin/python
 }
 
 check() {
     pushd _build64_final
-    exports_64
-    build_cmake_test llvm clang lld lldb
+    _exports_64
+    _build_cmake_test llvm clang lld lldb
     popd
 
     pushd _build32_final
-    exports_32
-    build_cmake_test llvm clang lld lldb
+    _exports_32
+    _build_cmake_test llvm clang lld lldb
     popd
 }
 
-symlink_to_opt() {
+_symlink_to_opt() {
     pushd "${pkgdir}"
 
     # Symlink can easily be swapped to some more local installs, use by other
@@ -418,8 +421,27 @@ symlink_to_opt() {
     popd
 }
 
+_move_licences() {
+    install -Dm644 "$srcdir/llvm-project$1/llvm/LICENSE.TXT" \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-llvm"
+
+    install -Dm644 "$srcdir/llvm-project$1/clang/LICENSE.TXT" \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-clang"
+
+    install -Dm644 "$srcdir/llvm-project$1/clang-tools-extra/LICENSE.TXT" \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-clang-tools-extra"
+
+    install -Dm644 "$srcdir/llvm-project$1/compiler-rt/LICENSE.TXT" \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-compiler-rt"
+
+    install -Dm644 "$srcdir/llvm-project$1/lld/LICENSE.TXT" \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-lld"
+
+    install -Dm644 "$srcdir/llvm-project$1/lldb/LICENSE.TXT" \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-lldb"
+}
+
 package_llvm-git-gentz() {
-    pkgdesc="LLVM development version. includes clang and many other tools"
     depends=(
         'llvm-libs-git'
         'perl'
@@ -474,7 +496,7 @@ package_llvm-git-gentz() {
     )
 
     pushd "${srcdir}/_build64_final"
-    exports_64
+    _exports_64
     DESTDIR="${pkgdir}" ninja $NINJAFLAGS install
     popd
 
@@ -492,19 +514,17 @@ package_llvm-git-gentz() {
     mv "${pkgdir}/"{usr,opt/llvm64}/bin/lit
     popd
 
-    # Move analyzer scripts out of /usr/libexec
+    # Move analyzer scripts out of /opt/llbm64/libexec
     mv "${pkgdir}/opt/llvm64/libexec/"{ccc,c++}-analyzer \
         "${pkgdir}/opt/llvm64/lib/clang/"
     rmdir "${pkgdir}/opt/llvm64/libexec"
     sed -i 's|libexec|lib/clang|' "${pkgdir}/opt/llvm64/bin/scan-build"
 
-    if [[ $CARCH == x86_64 ]]; then
-        # Needed for multilib (https://bugs.archlinux.org/task/29951)
-        # Header stub is taken from Fedora
-        mv "${pkgdir}/opt/llvm64/include/llvm/Config/llvm-config"{,-64}.h
-        cp "${srcdir}/llvm-config.h" \
-            "${pkgdir}/opt/llvm64/include/llvm/Config/llvm-config.h"
-    fi
+    # Needed for multilib (https://bugs.archlinux.org/task/29951)
+    # Header stub is taken from Fedora
+    mv "${pkgdir}/opt/llvm64/include/llvm/Config/llvm-config"{,-64}.h
+    cp "${srcdir}/llvm-config.h" \
+        "${pkgdir}/opt/llvm64/include/llvm/Config/llvm-config.h"
 
     pushd "${srcdir}/llvm-project64/llvm"
     # Install Python bindings and optimize them
@@ -524,11 +544,13 @@ package_llvm-git-gentz() {
     install -d "${pkgdir}/opt/llvm64/lib/bfd-plugins"
     ln -s ../LLVMgold.so "${pkgdir}/opt/llvm64/lib/bfd-plugins/LLVMgold.so"
 
-    symlink_to_opt 64
+    _symlink_to_opt 64
+    _move_licences 64
     popd
 }
 
 package_lib32-llvm-git-gentz() {
+    pkgdesc+=" (32-bit)"
     depends=(
         'llvm-git'
         'lib32-gcc-libs'
@@ -573,7 +595,7 @@ package_lib32-llvm-git-gentz() {
         'lib32-llvm-libs'
     )
 
-    exports_32
+    _exports_32
     pushd "${srcdir}/_build32_final"
     DESTDIR="${pkgdir}" ninja $NINJAFLAGS install
     popd
@@ -599,5 +621,6 @@ package_lib32-llvm-git-gentz() {
     install -d "${pkgdir}/opt/llvm32/bin"
     mv "${srcdir}/dont_delete/llvm-config32" "${pkgdir}/opt/llvm32/bin/"
 
-    symlink_to_opt 32
+    _symlink_to_opt 32
+    _move_licences 32
 }

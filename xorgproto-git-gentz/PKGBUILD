@@ -9,6 +9,7 @@ pkgdesc="combined X.Org X11 Protocol headers"
 arch=('any')
 url="https://xorg.freedesktop.org/"
 license=('custom')
+groups=('gentz_custom')
 makedepends=(
     'xorg-util-macros' 'meson' 'xmlto' 'libxslt' 'linuxdoc-tools' 'docbook-sgml' 
     'fop'

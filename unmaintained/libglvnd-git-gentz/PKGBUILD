@@ -1,4 +1,5 @@
-# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# UNMAINTAINED.
+# Contributor: Hal Gentz <zegentzy@protonmail.com>
 # Contributor: Lone_Wolf <lonewolf@xs4all.nl>
 # Contributor: Rafał Kozdrój <kozeid2@gmail.com>
 # Contributor: Felix Yan <felixonmars@archlinux.org>
@@ -10,6 +11,9 @@ pkgdesc="The GL Vendor-Neutral Dispatch library"
 arch=('x86_64')
 url="https://github.com/NVIDIA/libglvnd"
 license=('custom:BSD-like')
+groups=('gentz_custom')
+# libglvnd needs mesa for indirect rendering
+depends=('libxext' 'mesa' 'opengl-driver')
 makedepends=('libxext' 'libx11' 'glproto' 'python' 'git')
 provides=('libgl' 'libegl' 'libgles' "libglvnd=${pkgver}" "libglvnd-git=${pkgver}")
 conflicts=("libglvnd")
@@ -17,9 +21,6 @@ source=(
     "${pkgname}::git+https://github.com/NVIDIA/libglvnd.git"
     LICENSE
 )
-# libglvnd needs mesa for indirect rendering
-depends=('libxext' 'mesa' 'opengl-driver')
-groups=('gentz_custom')
 sha512sums=('SKIP'
             'bf0f4a7e04220a407400f89226ecc1f798cc43035f2538cc8860e5088e1f84140baf0d4b0b28f66e4b802d4d6925769a1297c24e1ba39c1c093902b2931781a5')
 

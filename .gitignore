@@ -8,19 +8,9 @@ deps.*
 alternatives.*
 last_pkg.*
 mem
+gits/*
 
-*/*.tar.gz
-*/*.tar.xz
-*/*.tar.xz.asc
-*/*.src.tar.sig
-*/*.src.tar
-*/*.pkg.tar
-*/*.tar.bz2
-*/*.tar.bz2.asc
-
-*/.SRCINFO
-
-libglvnd-git-gentz/libglvnd-git-gentz/
+unmaintained/libglvnd-git-gentz/libglvnd-git-gentz/
 llvm-git-gentz/llvm-project64
 mesa-git-gentz/mesa
 xf86-video-ati-git-gentz/xf86-video-ati
@@ -40,6 +30,7 @@ libdrm-git-gentz/libdrm
 valgrind-git-gentz/valgrind
 openmpi-git-gentz/openmpi
 xorgproto-git-gentz/xorgproto
+winetricks-git/winetricks-git
 
 */*.pkg.tar-namcap.log
 */*-build.log*
@@ -48,5 +39,34 @@ xorgproto-git-gentz/xorgproto
 */*-prepare.log*
 */*-check.log*
 */*-pkgver.log*
+
+unmaintained/*/*.pkg.tar-namcap.log
+unmaintained/*/*-build.log*
+unmaintained/*/*-package*.log*
+unmaintained/*/*-namcap.log*
+unmaintained/*/*-prepare.log*
+unmaintained/*/*-check.log*
+unmaintained/*/*-pkgver.log*
+
+*/*.tar.gz
+*/*.tar.xz
+*/*.tar.xz.asc
+*/*.src.tar.sig
+*/*.src.tar
+*/*.pkg.tar
+*/*.tar.bz2
+*/*.tar.bz2.asc
+
+unmaintained/*/*.tar.gz
+unmaintained/*/*.tar.xz
+unmaintained/*/*.tar.xz.asc
+unmaintained/*/*.src.tar.sig
+unmaintained/*/*.src.tar
+unmaintained/*/*.pkg.tar
+unmaintained/*/*.tar.bz2
+unmaintained/*/*.tar.bz2.asc
+
+*/.SRCINFO
+unmaintained/*/.SRCINFO
 
 makepkg.conf

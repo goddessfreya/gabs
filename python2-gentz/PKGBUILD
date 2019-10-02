@@ -7,11 +7,12 @@
 pkgbase=python2-gentz
 pkgname=('python2-gentz' 'lib32-python2-gentz')
 pkgver=2.7.16
-pkgrel=17
-_pybasever=${pkgver%.*}
+pkgrel=18
+pkgdesc="A high-level scripting language"
 arch=('x86_64')
-license=('PSF')
 url="https://www.python.org/"
+license=('PSF')
+groups=('gentz_custom')
 makedepends=(
     'tk' 'bluez-libs' 'lib32-gcc-libs' 'lib32-tk' 'gdb' 'file' 
 )
@@ -21,7 +22,6 @@ source=(
     lib32-distutils-sysconfig.patch
     python-config-32.patch
 )
-groups=('gentz_custom')
 sha512sums=('16e814e8dcffc707b595ca2919bd2fa3db0d15794c63d977364652c4a5b92e90e72b8c9e1cc83b5020398bd90a1b397dbdd7cb931c49f1aa4af6ef95414b43e0'
             'SKIP'
             'e0df774b373178632963c5744eeeff7e2b460e28c2208c8a7f6ddda7f316d5b2d12576bec52a41a3eed0636339266121a4bb068d4a00ed0050bbd5f9cbf800db'
@@ -30,6 +30,8 @@ sha512sums=('16e814e8dcffc707b595ca2919bd2fa3db0d15794c63d977364652c4a5b92e90e72
 
 # Benjamin Peterson
 validpgpkeys=('C01E1CAD5EA2C4F0B8E3571504C367C218ADD4FF') 
+
+_pybasever=${pkgver%.*}
 
 prepare() {
     mv "${srcdir}/Python-${pkgver}" "${srcdir}/${pkgbase}64"
@@ -85,7 +87,7 @@ prepare() {
     patch -Np1 -i "../python-config-32.patch"
     popd
 
-    configure_python "32" \
+    _configure_python "32" \
         --libdir=/usr/lib32 \
         --libexecdir=/usr/lib32 \
         --includedir="/usr/lib32/python${_pybasever}/include" \
@@ -94,25 +96,25 @@ prepare() {
         --sbindir=/usr/bin \
         --with-suffix='-32'
 
-    configure_python "64"
+    _configure_python "64"
 }
 
-exports_32() {
+_exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32"
     export CXXFLAGS="$CXXFLAGS -m32"
     export LDFLAGS="$LDFLAGS -m32"
 }
 
-exports_64() {
+_exports_64() {
     export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
     export CFLAGS="${CFLAGS/-m32}"
     export CXXFLAGS="${CXXFLAGS/-m32}"
     export LDFLAGS="${LDFLAGS/-m32}"
 }
 
-configure_python() {
-    exports_$1
+_configure_python() {
+    _exports_$1
     pushd "${srcdir}/${pkgbase}$1"
 
     # PGO should be done with -O3
@@ -140,8 +142,8 @@ configure_python() {
     popd
 }
 
-build_python() {
-    exports_$1
+_build_python() {
+    _exports_$1
     pushd "${srcdir}/${pkgbase}$1"
 
     # PGO should be done with -O3
@@ -152,12 +154,12 @@ build_python() {
 } 
 
 build() {
-    build_python "32" 
-    build_python "64"
+    _build_python "32" 
+    _build_python "64"
 }
 
-package_common() {
-    exports_$1
+_package_common() {
+    _exports_$1
     cd "${srcdir}/${pkgbase}$1"
 
     # Hack to avoid building again
@@ -197,15 +199,14 @@ package_common() {
 }
 
 package_python2-gentz() {
-    pkgdesc="A high-level scripting language"
     depends=('bzip2' 'expat' 'gdbm' 'libffi' 'libnsl' 'openssl' 'sqlite' 'zlib')
     optdepends=('tk: for IDLE'
                 'python2-setuptools'
                 'python2-pip')
-    conflicts=('python<3' 'python2')
     provides=("python2=$pkgver")
+    conflicts=('python<3' 'python2')
 
-    package_common "64"
+    _package_common "64"
 
     # Why are these not done by default...
     ln -sf "python${_pybasever}.1" "${pkgdir}/usr/share/man/man1/python2.1"
@@ -222,7 +223,7 @@ package_python2-gentz() {
 }
 
 package_lib32-python2-gentz() {
-    pkgdesc="A high-level scripting language (32-bits)"
+    pkgdesc+=" (32-bit)"
     depends=(
         'python2'
         'lib32-expat' 
@@ -239,10 +240,10 @@ package_lib32-python2-gentz() {
         'python-pip'
         'lib32-tk: for tkinter'
     )
-    conflicts=('lib32-python<3' 'lib32-python2')
     provides=("lib32-python2=$pkgver")
+    conflicts=('lib32-python<3' 'lib32-python2')
 
-    package_common "32" "-32" "32"
+    _package_common "32" "-32" "32"
 
     rm -rf "${pkgdir}/"{etc,usr/{share,include}}
     rm "${pkgdir}/usr/bin/"{pydoc*,idle*,2to3*}

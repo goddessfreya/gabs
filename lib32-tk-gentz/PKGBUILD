@@ -4,19 +4,19 @@
 
 pkgname=lib32-tk-gentz
 pkgver=8.6.9
-pkgrel=31
-pkgdesc="A windowing toolkit for use with tcl"
+pkgrel=32
+pkgdesc="A windowing toolkit for use with tcl (32-bit)"
 arch=('x86_64')
 url="http://tcl.sourceforge.net/"
 license=('custom')
+groups=('gentz_custom')
 depends=('lib32-libxss' 'lib32-libxft' "lib32-tcl>=${pkgver}" 'tk' 'xorgproto')
 provides=('lib32-tk')
 options=('staticlibs')
 source=("http://downloads.sourceforge.net/sourceforge/tcl/tk${pkgver}-src.tar.gz")
-groups=('gentz_custom')
 sha512sums=('654d73aad006e628110057681477b958b7ec0a42287bc78259fb4b84635e7ebe757e69099d66c0c73479bc506ca66fa5baf13f13b0f403d60b2c54fd48a4a686')
 
-exports_32() {
+_exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32"
     export CXXFLAGS="$CXXFLAGS -m32"
@@ -25,7 +25,7 @@ exports_32() {
 
 build() {
     cd "${srcdir}/tk${pkgver}/unix"
-    exports_32
+    _exports_32
     ./configure --prefix=/usr --mandir=/usr/share/man \
         --enable-threads --disable-rpath \
         --libdir=/usr/lib32 \
@@ -36,14 +36,14 @@ build() {
 
 check() {
     cd "${srcdir}/tk${pkgver}/unix"
-    exports_32
+    _exports_32
     make test
 }
 
 package() {
     cd "${srcdir}/tk${pkgver}/unix"
 
-    exports_32
+    _exports_32
     make INSTALL_ROOT="${pkgdir}" install install-private-headers
     mv "${pkgdir}/usr/bin/wish${pkgver%.*}" \
         "${pkgdir}/usr/bin/wish${pkgver%.*}-32"

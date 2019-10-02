@@ -144,38 +144,42 @@ if [[ "${#PACKAGES[@]}" == "0" ]]; then
         "python-gentz"
         "lib32-libedit-gentz"
         "llvm-git-gentz"
+        "openmpi-git-gentz"
+        "valgrind-git-gentz"
         "lib32-libomxil-bellagio-gentz"
         "libx11-git-gentz"
         "libdrm-git-gentz"
         "mesa-git-gentz"
-        "libglvnd-git-gentz"
         "xorgproto-git-gentz"
         "xorg-server-git-gentz"
         "xf86-video-amdgpu-git-gentz"
         "xf86-video-ati-git-gentz"
         "wine-staging-git-gentz"
-        "openmpi-git-gentz"
-        "valgrind-git-gentz"
+        "winetricks-git"
     ) 
 fi
 
-[[ ! -f "makepkg.conf" ]] && cp /etc/makepkg.conf makepkg.conf
-if [[ "$(cat /etc/makepkg.conf | grep "^BUILDENV=" | grep "\!sign")" == "" ]]; then
-    if [[ "$(diff /etc/makepkg.conf makepkg.conf | wc -l)" != "4" \
-        || "$(diff /etc/makepkg.conf makepkg.conf \
-            | grep '^>\|^<' \
-            | sed 's/\!sign/sign/' \
-            | sed 's/^</>/' \
-            | sort -u \
-            | wc -l)" != "1" ]]; then
-        echo "makepkg.conf was not updated."
-        echo "Please manually set !sign."
-        cp /etc/makepkg.conf makepkg.conf
-        exit 1
-    fi
-else
-    cp /etc/makepkg.conf makepkg.conf
-fi
+# If line starts with BUILDENV and this option is "sign" add a "!".
+awk '{
+    if (/^ *BUILDENV *= *\( */) {
+        split($0, a, "(");
+        for (i in a) {
+            if (i != 1) printf "("
+            if (i == 2) {
+                split(a[i], b, ")");
+                for (j in b) if (j == 1) {
+                    split(b[j], c, " ")
+                    for(k in c) {
+                        if (k != 1) printf " "
+                        if(c[k] == "sign") printf "!"
+                        printf c[k]
+                    }
+                } else printf ")" b[j]
+            } else printf a[i]
+        }
+        printf "\n"
+    } else print
+}' /etc/makepkg.conf > makepkg.conf
 
 for PKG_TO_BUILD in $PACKAGES; do
     if [[ ! -d "$PKG_TO_BUILD" ]]; then

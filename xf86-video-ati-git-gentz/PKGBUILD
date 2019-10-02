@@ -5,20 +5,20 @@
 # Contributor: Flamelab <panosfilip at gmail dot com>
 # Contributor: Dan Ziemba <zman0900@gmail.com>
 
-pkgname=xf86-video-ati-git-gentz
 _realpkgname=xf86-video-ati
+pkgname=xf86-video-ati-git-gentz
 pkgver=19.0.1.r9.g2faaecc6
-pkgrel=1
+pkgrel=2
 pkgdesc="X.org ati video driver. Git version"
 arch=('i686' 'x86_64')
 url="http://xorg.freedesktop.org/"
-provides=("${_realpkgname}" "${_realpkgname}-git")
+license=('custom')
+groups=('gentz_custom')
 depends=('libdrm' 'systemd' 'mesa')
 makedepends=('xorg-server-devel')
+provides=('xf86-video-ati' 'xf86-video-ati-git')
 conflicts=('xf86-video-ati')
-license=('custom')
 source=('git://anongit.freedesktop.org/xorg/driver/xf86-video-ati')
-groups=('gentz_custom')
 sha512sums=('SKIP')
 
 pkgver() {
@@ -29,7 +29,7 @@ pkgver() {
     )
 }
 
-exports() {
+_exports() {
     # Since pacman 5.0.2-2, hardened flags are now enabled in makepkg.conf
     # With them, module fail to load with undefined symbol.
     #
@@ -47,7 +47,7 @@ exports() {
 build() {
     cd "${srcdir}/xf86-video-ati"
 
-    exports
+    _exports
     ./autogen.sh --prefix=/usr --enable-glamor
     make
 }
@@ -55,8 +55,7 @@ build() {
 package() {
     cd "${srcdir}/xf86-video-ati"
 
-    exports
+    _exports
     make DESTDIR="${pkgdir}" install
-    install -m755 -d "${pkgdir}/usr/share/licenses/${pkgname}"
-    install -m644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/"
+    install -Dm644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
 }

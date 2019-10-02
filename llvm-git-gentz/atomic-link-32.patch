@@ -1,17 +1,19 @@
-diff --git a/CMakeLists.txt b/CMakeLists.txt
+diff --git a/clang-tools-extra/clangd/CMakeLists.txt b/clang-tools-extra/clangd/CMakeLists.txt
 index f110d0c..9d289ff 100644
---- a/CMakeLists.txt
-+++ b/CMakeLists.txt
-@@ -29,10 +29,11 @@ if(CLANG_BUILT_STANDALONE)
+--- a/clang-tools-extra/clangd/CMakeLists.txt
++++ b/clang-tools-extra/clangd/CMakeLists.txt
+@@ -29,10 +29,13 @@ if(CLANG_BUILT_STANDALONE)
  endif()
  
  set(CLANGD_ATOMIC_LIB "")
 -if(NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB)
-+if(NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB OR CMAKE_SIZEOF_VOID_P EQUAL 4)
++if(
++  (NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB  AND CMAKE_SIZEOF_VOID_P EQUAL 8) 
++  OR (NOT HAVE_CXX_ATOMICS_WITHOUT_LIB AND CMAKE_SIZEOF_VOID_P EQUAL 4)
++)
    list(APPEND CLANGD_ATOMIC_LIB "atomic")
  endif()
  
-+
  add_clang_library(clangDaemon
    AST.cpp
    Cancellation.cpp
