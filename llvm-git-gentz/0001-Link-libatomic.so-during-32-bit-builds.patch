@@ -1,0 +1,330 @@
+From c1435655b0988119d8a6702de99056bf031edb28 Mon Sep 17 00:00:00 2001
+From: Hal Gentz <zegentzy@protonmail.com>
+Date: Wed, 2 Oct 2019 18:29:40 -0600
+Subject: [PATCH] Link libatomic.so during 32-bit builds.
+
+The 32-bit version of LLVM failed on my computer with linker errors
+saying that the `__atomic_{load,store}` symbols were undefined. See
+https://gentz.rocks/files/1570147715/llvm_link_fail for full error log.
+
+The 32-bit version of libatomic.so exposes no `__atomic_*_8`, unlike the
+64-bit version of the library. Instead, 32-bit programs that want to use
+non power of two atomics or atomics that are greater than 32-bits need the
+`__atomic_*` functions.
+
+Previously, the 32-bit LLVM builds would successfully compile the file
+defined in `check_working_cxx_atomics64` and think they don't need to
+link in libatomic.so.
+
+The reason for this is unknown to me. `std::atomic<uint64_t>` compiles
+yet `std::atomic<double>` does not. Anyways, I've modified the tests to
+test for both.
+
+We also remove some code dupe between the 32-bit and 64-bit versions.
+
+We also also unify the 64-bit version in `CheckAtomic.cmake` with the code in
+`CheckLibcxxAtomic.cmake`. It appears that when `CheckLibcxxAtomic.cmake` was
+made, `CheckAtomic.cmake` did not have a 64-bit version, but that is no longer
+the case, so I see no reason not to merge them.
+
+Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
+---
+ libcxx/cmake/Modules/CheckLibcxxAtomic.cmake |  56 ---------
+ libcxx/cmake/config-ix.cmake                 |   8 +-
+ libcxx/src/CMakeLists.txt                    |   2 +-
+ libcxx/test/CMakeLists.txt                   |   4 +-
+ libcxx/test/lit.site.cfg.in                  |   4 +-
+ lldb/source/Utility/CMakeLists.txt           |   2 +-
+ llvm/cmake/modules/CheckAtomic.cmake         | 113 +++++++++----------
+ llvm/lib/Support/CMakeLists.txt              |   2 +-
+ 8 files changed, 69 insertions(+), 122 deletions(-)
+ delete mode 100644 libcxx/cmake/Modules/CheckLibcxxAtomic.cmake
+
+diff --git a/libcxx/cmake/Modules/CheckLibcxxAtomic.cmake b/libcxx/cmake/Modules/CheckLibcxxAtomic.cmake
+deleted file mode 100644
+index 7fe5a627829..00000000000
+--- a/libcxx/cmake/Modules/CheckLibcxxAtomic.cmake
++++ /dev/null
+@@ -1,56 +0,0 @@
+-INCLUDE(CheckCXXSourceCompiles)
+-
+-# Sometimes linking against libatomic is required for atomic ops, if
+-# the platform doesn't support lock-free atomics.
+-#
+-# We could modify LLVM's CheckAtomic module and have it check for 64-bit
+-# atomics instead. However, we would like to avoid careless uses of 64-bit
+-# atomics inside LLVM over time on 32-bit platforms.
+-
+-function(check_cxx_atomics varname)
+-  set(OLD_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
+-  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -nodefaultlibs -std=c++11 -nostdinc++ -isystem ${LIBCXX_SOURCE_DIR}/include")
+-  if (${LIBCXX_GCC_TOOLCHAIN})
+-    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} --gcc-toolchain=${LIBCXX_GCC_TOOLCHAIN}")
+-  endif()
+-  if (CMAKE_C_FLAGS MATCHES -fsanitize OR CMAKE_CXX_FLAGS MATCHES -fsanitize)
+-    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -fno-sanitize=all")
+-  endif()
+-  if (CMAKE_C_FLAGS MATCHES -fsanitize-coverage OR CMAKE_CXX_FLAGS MATCHES -fsanitize-coverage)
+-    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -fno-sanitize-coverage=edge,trace-cmp,indirect-calls,8bit-counters")
+-  endif()
+-  check_cxx_source_compiles("
+-#include <cstdint>
+-#include <atomic>
+-std::atomic<uintptr_t> x;
+-std::atomic<uintmax_t> y;
+-int main(int, char**) {
+-  return x + y;
+-}
+-" ${varname})
+-  set(CMAKE_REQUIRED_FLAGS ${OLD_CMAKE_REQUIRED_FLAGS})
+-endfunction(check_cxx_atomics)
+-
+-# Perform the check for 64bit atomics without libatomic. It may have been
+-# added to the required libraries during in the configuration of LLVM, which
+-# would cause the check for CXX atomics without libatomic to incorrectly pass.
+-if (CMAKE_REQUIRED_LIBRARIES)
+-  set(OLD_CMAKE_REQUIRED_LIBRARIES ${CMAKE_REQUIRED_LIBRARIES})
+-  list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES "atomic")
+-  check_cxx_atomics(LIBCXX_HAVE_CXX_ATOMICS_WITHOUT_LIB)
+-  set(CMAKE_REQUIRED_LIBRARIES ${OLD_CMAKE_REQUIRED_LIBRARIES})
+-endif()
+-
+-check_library_exists(atomic __atomic_fetch_add_8 "" LIBCXX_HAS_ATOMIC_LIB)
+-# If not, check if the library exists, and atomics work with it.
+-if(NOT LIBCXX_HAVE_CXX_ATOMICS_WITHOUT_LIB)
+-  if(LIBCXX_HAS_ATOMIC_LIB)
+-    list(APPEND CMAKE_REQUIRED_LIBRARIES "atomic")
+-    check_cxx_atomics(LIBCXX_HAVE_CXX_ATOMICS_WITH_LIB)
+-    if (NOT LIBCXX_HAVE_CXX_ATOMICS_WITH_LIB)
+-      message(WARNING "Host compiler must support std::atomic!")
+-    endif()
+-  else()
+-    message(WARNING "Host compiler appears to require libatomic, but cannot find it.")
+-  endif()
+-endif()
+diff --git a/libcxx/cmake/config-ix.cmake b/libcxx/cmake/config-ix.cmake
+index a7a684c9d5f..f0a980baf21 100644
+--- a/libcxx/cmake/config-ix.cmake
++++ b/libcxx/cmake/config-ix.cmake
+@@ -73,7 +73,13 @@ int main() { return 0; }
+ endif()
+ 
+ if(NOT WIN32 OR MINGW)
+-  include(CheckLibcxxAtomic)
++  set(OLD_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
++  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -nodefaultlibs -nostdinc++ -isystem ${LIBCXX_SOURCE_DIR}/include")
++  if (${LIBCXX_GCC_TOOLCHAIN})
++    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} --gcc-toolchain=${LIBCXX_GCC_TOOLCHAIN}")
++  endif()
++  include(CheckAtomic)
++  set(CMAKE_REQUIRED_FLAGS ${OLD_CMAKE_REQUIRED_FLAGS})
+ endif()
+ 
+ # Check libraries
+diff --git a/libcxx/src/CMakeLists.txt b/libcxx/src/CMakeLists.txt
+index 93d48f1b7dc..40a36aea2d1 100644
+--- a/libcxx/src/CMakeLists.txt
++++ b/libcxx/src/CMakeLists.txt
+@@ -171,7 +171,7 @@ function(cxx_link_system_libraries target)
+     target_link_libraries(${target} PUBLIC gcc_s)
+   endif()
+ 
+-  if (LIBCXX_HAVE_CXX_ATOMICS_WITH_LIB)
++  if (NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB)
+     target_link_libraries(${target} PUBLIC atomic)
+   endif()
+ 
+diff --git a/libcxx/test/CMakeLists.txt b/libcxx/test/CMakeLists.txt
+index e6ef6284eca..c3e94dc0600 100644
+--- a/libcxx/test/CMakeLists.txt
++++ b/libcxx/test/CMakeLists.txt
+@@ -36,8 +36,8 @@ pythonize_bool(LIBCXX_GENERATE_COVERAGE)
+ pythonize_bool(LIBCXXABI_ENABLE_SHARED)
+ pythonize_bool(LIBCXXABI_USE_LLVM_UNWINDER)
+ pythonize_bool(LIBCXX_USE_COMPILER_RT)
+-pythonize_bool(LIBCXX_HAS_ATOMIC_LIB)
+-pythonize_bool(LIBCXX_HAVE_CXX_ATOMICS_WITH_LIB)
++pythonize_bool(HAVE_CXX_ATOMICS64)
++pythonize_bool(HAVE_CXX_ATOMICS64_WITH_LIB)
+ pythonize_bool(LIBCXX_BUILD_EXTERNAL_THREAD_LIBRARY)
+ pythonize_bool(LIBCXX_DEBUG_BUILD)
+ pythonize_bool(LIBCXX_ENABLE_PARALLEL_ALGORITHMS)
+diff --git a/libcxx/test/lit.site.cfg.in b/libcxx/test/lit.site.cfg.in
+index a4354525b01..dc0ee982e22 100644
+--- a/libcxx/test/lit.site.cfg.in
++++ b/libcxx/test/lit.site.cfg.in
+@@ -28,8 +28,8 @@ config.test_compiler_flags      = "@LIBCXX_TEST_COMPILER_FLAGS@"
+ config.executor                 = "@LIBCXX_EXECUTOR@"
+ config.llvm_unwinder            = @LIBCXXABI_USE_LLVM_UNWINDER@
+ config.builtins_library         = "@LIBCXX_BUILTINS_LIBRARY@"
+-config.has_libatomic            = @LIBCXX_HAS_ATOMIC_LIB@
+-config.use_libatomic            = @LIBCXX_HAVE_CXX_ATOMICS_WITH_LIB@
++config.has_libatomic            = @HAVE_CXX_ATOMICS64@
++config.use_libatomic            = @HAVE_CXX_ATOMICS64_WITH_LIB@
+ config.debug_build              = @LIBCXX_DEBUG_BUILD@
+ config.libcxxabi_shared         = @LIBCXXABI_ENABLE_SHARED@
+ config.cxx_ext_threads          = @LIBCXX_BUILD_EXTERNAL_THREAD_LIBRARY@
+diff --git a/lldb/source/Utility/CMakeLists.txt b/lldb/source/Utility/CMakeLists.txt
+index df486e2c0a4..9aed6f4d280 100644
+--- a/lldb/source/Utility/CMakeLists.txt
++++ b/lldb/source/Utility/CMakeLists.txt
+@@ -6,7 +6,7 @@ if (CMAKE_SYSTEM_NAME MATCHES "Windows")
+   list(APPEND LLDB_SYSTEM_LIBS ws2_32 rpcrt4)
+ endif ()
+ 
+-if (NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB )
++if(NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB)
+     list(APPEND LLDB_SYSTEM_LIBS atomic)
+ endif()
+ 
+diff --git a/llvm/cmake/modules/CheckAtomic.cmake b/llvm/cmake/modules/CheckAtomic.cmake
+index 29f3bdd57f0..e553d56f1ba 100644
+--- a/llvm/cmake/modules/CheckAtomic.cmake
++++ b/llvm/cmake/modules/CheckAtomic.cmake
+@@ -6,75 +6,72 @@ INCLUDE(CheckLibraryExists)
+ # Sometimes linking against libatomic is required for atomic ops, if
+ # the platform doesn't support lock-free atomics.
+ 
+-function(check_working_cxx_atomics varname)
++function(check_working_cxx_atomics suffix varname)
+   set(OLD_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
+   set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -std=c++11")
+-  CHECK_CXX_SOURCE_COMPILES("
+-#include <atomic>
+-std::atomic<int> x;
+-int main() {
+-  return x;
+-}
+-" ${varname})
+-  set(CMAKE_REQUIRED_FLAGS ${OLD_CMAKE_REQUIRED_FLAGS})
+-endfunction(check_working_cxx_atomics)
++  if (CMAKE_C_FLAGS MATCHES -fsanitize OR CMAKE_CXX_FLAGS MATCHES -fsanitize)
++    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -fno-sanitize=all")
++  endif()
++  if (CMAKE_C_FLAGS MATCHES -fsanitize-coverage OR CMAKE_CXX_FLAGS MATCHES -fsanitize-coverage)
++    set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -fno-sanitize-coverage=edge,trace-cmp,indirect-calls,8bit-counters")
++  endif()
+ 
+-function(check_working_cxx_atomics64 varname)
+-  set(OLD_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
+-  set(CMAKE_REQUIRED_FLAGS "-std=c++11 ${CMAKE_REQUIRED_FLAGS}")
+-  CHECK_CXX_SOURCE_COMPILES("
+-#include <atomic>
+-#include <cstdint>
+-std::atomic<uint64_t> x (0);
+-int main() {
+-  uint64_t i = x.load(std::memory_order_relaxed);
+-  return 0;
+-}
+-" ${varname})
++  if (suffix STREQUAL "32")
++    CHECK_CXX_SOURCE_COMPILES("
++      #include <atomic>
++      #include <cstdint>
++      std::atomic<uint32_t> x(0);
++      std::atomic<float> y(0);
++      int main() {
++        uint32_t i = x.load(std::memory_order_relaxed);
++        float j = y.load(std::memory_order_relaxed);
++        return 0;
++      }
++      " ${varname})
++  elseif (suffix STREQUAL "64")
++    CHECK_CXX_SOURCE_COMPILES("
++      #include <atomic>
++      #include <cstdint>
++      std::atomic<uint64_t> x(0);
++      std::atomic<double> y(0);
++      int main() {
++        uint64_t i = x.load(std::memory_order_relaxed);
++        double j = y.load(std::memory_order_relaxed);
++        return 0;
++      }
++      " ${varname})
++  else()
++    message(FATAL_ERROR "check_working_cxx_atomics: Unkown suffix ${suffix}.")
++  endif()
+   set(CMAKE_REQUIRED_FLAGS ${OLD_CMAKE_REQUIRED_FLAGS})
+-endfunction(check_working_cxx_atomics64)
++endfunction(check_working_cxx_atomics)
+ 
++function(pop_libatomics_vars suffix)
++  # This isn't necessary on MSVC, so avoid command-line switch annoyance
++  # by only running on GCC-like hosts.
++  if (LLVM_COMPILER_IS_GCC_COMPATIBLE)
++    # First check if atomics work without the library.
++    set(OLD_CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS})
++    list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES "atomic")
++    check_working_cxx_atomics(${suffix} HAVE_CXX_ATOMICS${suffix}_WITHOUT_LIB)
+ 
+-# This isn't necessary on MSVC, so avoid command-line switch annoyance
+-# by only running on GCC-like hosts.
+-if (LLVM_COMPILER_IS_GCC_COMPATIBLE)
+-  # First check if atomics work without the library.
+-  check_working_cxx_atomics(HAVE_CXX_ATOMICS_WITHOUT_LIB)
+-  # If not, check if the library exists, and atomics work with it.
+-  if(NOT HAVE_CXX_ATOMICS_WITHOUT_LIB)
+-    check_library_exists(atomic __atomic_fetch_add_4 "" HAVE_LIBATOMIC)
+-    if( HAVE_LIBATOMIC )
++    # If not, check if atomics work with it.
++    if(NOT HAVE_CXX_ATOMICS${suffix}_WITHOUT_LIB)
+       list(APPEND CMAKE_REQUIRED_LIBRARIES "atomic")
+-      check_working_cxx_atomics(HAVE_CXX_ATOMICS_WITH_LIB)
+-      if (NOT HAVE_CXX_ATOMICS_WITH_LIB)
+-	message(FATAL_ERROR "Host compiler must support std::atomic!")
++      check_working_cxx_atomics(${suffix} HAVE_CXX_ATOMICS${suffix}_WITH_LIB)
++      if (NOT HAVE_CXX_ATOMICS${suffix}_WITH_LIB)
++        message(FATAL_ERROR "Host compiler must support ${suffix}-bit std::atomic!")
+       endif()
+-    else()
+-      message(FATAL_ERROR "Host compiler appears to require libatomic, but cannot find it.")
+-    endif()
+-  endif()
+-endif()
+-
+-# Check for 64 bit atomic operations.
+-if(MSVC)
+-  set(HAVE_CXX_ATOMICS64_WITHOUT_LIB True)
+-else()
+-  check_working_cxx_atomics64(HAVE_CXX_ATOMICS64_WITHOUT_LIB)
+-endif()
+-
+-# If not, check if the library exists, and atomics work with it.
+-if(NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB)
+-  check_library_exists(atomic __atomic_load_8 "" HAVE_CXX_LIBATOMICS64)
+-  if(HAVE_CXX_LIBATOMICS64)
+-    list(APPEND CMAKE_REQUIRED_LIBRARIES "atomic")
+-    check_working_cxx_atomics64(HAVE_CXX_ATOMICS64_WITH_LIB)
+-    if (NOT HAVE_CXX_ATOMICS64_WITH_LIB)
+-      message(FATAL_ERROR "Host compiler must support 64-bit std::atomic!")
++    elseif()
++      set(CMAKE_REQUIRED_FLAGS ${OLD_CMAKE_REQUIRED_FLAGS})
+     endif()
+   else()
+-    message(FATAL_ERROR "Host compiler appears to require libatomic for 64-bit operations, but cannot find it.")
++    set(HAVE_CXX_ATOMICS${suffix}_WITHOUT_LIB True)
+   endif()
+-endif()
++endfunction(pop_libatomics_vars)
++
++pop_libatomics_vars("32")
++pop_libatomics_vars("64")
+ 
+ ## TODO: This define is only used for the legacy atomic operations in
+ ## llvm's Atomic.h, which should be replaced.  Other code simply
+diff --git a/llvm/lib/Support/CMakeLists.txt b/llvm/lib/Support/CMakeLists.txt
+index 29d99ff9cf7..2fdd991d369 100644
+--- a/llvm/lib/Support/CMakeLists.txt
++++ b/llvm/lib/Support/CMakeLists.txt
+@@ -26,7 +26,7 @@ elseif( CMAKE_HOST_UNIX )
+       set(system_libs ${system_libs} ${TERMINFO_LIBS})
+     endif()
+   endif()
+-  if( LLVM_ENABLE_THREADS AND HAVE_LIBATOMIC )
++  if( LLVM_ENABLE_THREADS AND HAVE_CXX_LIBATOMICS32 )
+     set(system_libs ${system_libs} atomic)
+   endif()
+   set(system_libs ${system_libs} ${LLVM_PTHREAD_LIB})
+-- 
+2.23.0
+

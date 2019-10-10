@@ -1,4 +1,4 @@
-From 4be93e32bfd35528f5eeef8d89a120b8e003e91d Mon Sep 17 00:00:00 2001
+From 46ce86b4aaa0aa59a56e1a3a632bdf8e17babc38 Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
 Date: Sun, 29 Sep 2019 20:13:50 -0600
 Subject: [PATCH 2/4] egl: Fixes transparency with EGL and X11.
@@ -38,10 +38,10 @@ index f19ec5168a5..718b7dde87c 100644
  /* __DRI_ATTRIB_RENDER_TYPE */
  #define __DRI_ATTRIB_RGBA_BIT			0x01	
 diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
-index f968cd7af27..45aca5af00f 100644
+index 23d0e469427..63864346594 100644
 --- a/src/egl/drivers/dri2/egl_dri2.c
 +++ b/src/egl/drivers/dri2/egl_dri2.c
-@@ -186,6 +186,7 @@ static const EGLint dri2_to_egl_attribute_map[__DRI_ATTRIB_MAX] = {
+@@ -187,6 +187,7 @@ static const EGLint dri2_to_egl_attribute_map[__DRI_ATTRIB_MAX] = {
     [__DRI_ATTRIB_MAX_SWAP_INTERVAL]     = EGL_MAX_SWAP_INTERVAL,
     [__DRI_ATTRIB_MIN_SWAP_INTERVAL]     = EGL_MIN_SWAP_INTERVAL,
     [__DRI_ATTRIB_YINVERTED]             = EGL_Y_INVERTED_NOK,
@@ -49,7 +49,7 @@ index f968cd7af27..45aca5af00f 100644
  };
  
  const __DRIconfig *
-@@ -201,6 +202,9 @@ dri2_get_dri_config(struct dri2_egl_config *conf, EGLint surface_type,
+@@ -202,6 +203,9 @@ dri2_get_dri_config(struct dri2_egl_config *conf, EGLint surface_type,
  static EGLBoolean
  dri2_match_config(const _EGLConfig *conf, const _EGLConfig *criteria)
  {
@@ -60,10 +60,10 @@ index f968cd7af27..45aca5af00f 100644
        return EGL_FALSE;
  
 diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform_x11.c
-index 0fa0442f4af..9cef0e0b35a 100644
+index 5a1e2f31890..414d5f74c5d 100644
 --- a/src/egl/drivers/dri2/platform_x11.c
 +++ b/src/egl/drivers/dri2/platform_x11.c
-@@ -868,28 +868,25 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
+@@ -816,28 +816,25 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
                 if (dri2_conf->base.ConfigID == config_count + 1)
                    config_count++;
  
@@ -194,7 +194,7 @@ index 0fdca2d9d84..2d57aef18f2 100644
      /* The struct field doesn't matter here, these are handled by the
       * switch in driGetConfigAttribIndex.  We need them in the array
 diff --git a/src/mesa/main/mtypes.h b/src/mesa/main/mtypes.h
-index b7eef64bfd9..7bd9e1ae3b3 100644
+index dcf0d6a5aab..9bd72ced0a1 100644
 --- a/src/mesa/main/mtypes.h
 +++ b/src/mesa/main/mtypes.h
 @@ -211,6 +211,9 @@ struct gl_config

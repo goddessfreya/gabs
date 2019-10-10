@@ -6,7 +6,7 @@
 
 pkgname=valgrind-git-gentz
 pkgver=3.15.0+92+gfe7ec1eca
-pkgrel=1
+pkgrel=7
 pkgdesc='Tool to help find memory-management problems in programs'
 arch=('x86_64')
 url='http://valgrind.org/'
@@ -43,10 +43,12 @@ prepare() {
 }
 
 build() {
-    # valgrind does not like stack protector flags
+    # valgrind does not like stack protector flags, and others
     CPPFLAGS=${CPPFLAGS/-D_FORTIFY_SOURCE=2/}
-    CFLAGS=${CFLAGS/-fstack-protector-strong -fno-plt/}
-    CXXFLAGS=${CXXFLAGS/-fstack-protector-strong -fno-plt/}
+    CFLAGS=${CFLAGS/-fstack-protector-strong/}
+    CXXFLAGS=${CXXFLAGS/-fstack-protector-strong/}
+    CFLAGS=${CFLAGS/-fno-plt/}
+    CXXFLAGS=${CXXFLAGS/-fno-plt/}
 
     cd valgrind
     ./configure \

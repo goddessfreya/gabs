@@ -20,6 +20,11 @@ while [[ $# -gt 0 ]]; do
 			shift # past argument
 			shift # past value
 		;;
+		-mc)
+            MAKECHROOTPKG_PARAM+=("$2")
+			shift # past argument
+			shift # past value
+		;;
 		-w)
             if [[ "$WIPE_SRC" != "false" && "$WIPE_SRC" != "true" ]]; then
                 echo -w conflicts with -nw or -rs
@@ -99,6 +104,7 @@ while [[ $# -gt 0 ]]; do
             echo "====== HELP ======"
             echo "PARA | DESC"
             echo "-m   : Makepkg param"
+            echo "-mc  : Makechrootpkg param"
             echo "-w   : Wipe existing source"
             echo "-nw  : Dont wipe existing source, infact reuse it"
             echo "-c   : The chroot directory"
@@ -239,7 +245,7 @@ fi
 
 # Add this package to the list of our git packages then install it
 sudo mkdir -p "${CHROOT_DIR}/root/pkgs/"
-sudo mv *.pkg* "${CHROOT_DIR}/root/pkgs/"
+sudo mv *.pkg.(tar|tar.gz|tar.xz|tar.bz2) "${CHROOT_DIR}/root/pkgs/"
 sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
     /bin/bash -c "yes | pacman -U \
         $(sudo ls ${CHROOT_DIR}/root/pkgs/ \

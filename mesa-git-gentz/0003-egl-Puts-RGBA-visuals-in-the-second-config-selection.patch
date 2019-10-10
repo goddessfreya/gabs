@@ -1,4 +1,4 @@
-From e9342d8cf6e6c0c5ff2704c0ab07841a99f05f3c Mon Sep 17 00:00:00 2001
+From 11d2eda37411e77669859a5a43d55582b7a91aae Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
 Date: Sun, 15 Sep 2019 15:29:50 -0600
 Subject: [PATCH 3/4] egl: Puts RGBA visuals in the second config selection
@@ -20,10 +20,10 @@ Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
  1 file changed, 9 insertions(+), 1 deletion(-)
 
 diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform_x11.c
-index 9cef0e0b35a..8e43c659a8a 100644
+index 414d5f74c5d..71e996bb632 100644
 --- a/src/egl/drivers/dri2/platform_x11.c
 +++ b/src/egl/drivers/dri2/platform_x11.c
-@@ -883,9 +883,17 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
+@@ -831,9 +831,17 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
              dri2_conf = dri2_add_config(disp, config, config_count + 1,
                                          surface_type, config_attrs,
                                          rgba_shifts, rgba_sizes);

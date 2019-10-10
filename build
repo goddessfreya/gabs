@@ -138,22 +138,29 @@ fi
 if [[ "${#PACKAGES[@]}" == "0" ]]; then
     echo "Falling back to built in package list."
     PACKAGES=( 
+        "xorgproto-git-gentz"
+
         "lib32-tk-gentz"
         "lib32-mpdecimal-gentz"
         "python2-gentz"
         "python-gentz"
+
+        "libx11-git-gentz"
+
         "lib32-libedit-gentz"
         "llvm-git-gentz"
+
         "openmpi-git-gentz"
         "valgrind-git-gentz"
+
         "lib32-libomxil-bellagio-gentz"
-        "libx11-git-gentz"
         "libdrm-git-gentz"
         "mesa-git-gentz"
-        "xorgproto-git-gentz"
+
         "xorg-server-git-gentz"
         "xf86-video-amdgpu-git-gentz"
         "xf86-video-ati-git-gentz"
+
         "wine-staging-git-gentz"
         "winetricks-git"
     ) 
@@ -227,7 +234,7 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
         base-devel ccache gcc-multilib zsh
 
     sudo /usr/bin/arch-nspawn "$CHROOT_DIR/root" \
-        /bin/bash -c 'yes | pacman -Syu'
+        /bin/bash -c 'yes | pacman -Syyu'
 
     sudo mkdir -p "${CHROOT_DIR}/root/alt_pkgs.${CHROOT_NAME}/"
     sudo cp "alt_pkgs.${CHROOT_NAME}/"*.pkg* "${CHROOT_DIR}/root/pkgs/"
@@ -247,6 +254,9 @@ else
     sudo chmod 644 \
         "${CHROOT_DIR}/${USER}/etc/makepkg.conf" \
         "${CHROOT_DIR}/root/etc/makepkg.conf"
+
+    sudo /usr/bin/arch-nspawn "$CHROOT_DIR/root" \
+        /bin/bash -c 'yes | pacman -Syyu'
 fi
 
 [[ "$RESUME_BACKUP_DIR" != "" ]] && mkdir -p "$RESUME_BACKUP_DIR"

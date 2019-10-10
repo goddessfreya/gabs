@@ -4,7 +4,7 @@
 
 pkgname=xorgproto-git-gentz
 pkgver=2019.1.1.r2627.ge0d4e02
-pkgrel=2
+pkgrel=10
 pkgdesc="combined X.Org X11 Protocol headers"
 arch=('any')
 url="https://xorg.freedesktop.org/"
@@ -12,7 +12,7 @@ license=('custom')
 groups=('gentz_custom')
 makedepends=(
     'xorg-util-macros' 'meson' 'xmlto' 'libxslt' 'linuxdoc-tools' 'docbook-sgml' 
-    'fop'
+    'fop' 'git'
 )
 provides=(
     'bigreqsproto' 'compositeproto' 'damageproto' 'dmxproto' 'dri2proto' 
@@ -38,8 +38,12 @@ replaces=(
     'xf86dgaproto' 'xf86driproto' 'xf86miscproto' 'xf86vidmodeproto' 
     'xineramaproto' 'xproto'
 )
-source=("git://anongit.freedesktop.org/xorg/proto/xorgproto")
-sha512sums=('SKIP')
+source=(
+    "git://anongit.freedesktop.org/xorg/proto/xorgproto"
+    "0001-Move-remaining-xlib-entwined-header-to-LEGACY.patch"
+)
+sha512sums=('SKIP'
+            '7114fe1a8d2e290d793e32f838ab2a8ea4f6e69ea322b40cd3916491191a35afd61c0ca7d884bab36b59b84efca8f316837d3800273f862ec9f418ca6e853aa0')
 validpgpkeys=('995ED5C8A6138EB0961F18474C09DD83CAAA50B2') #  "Adam Jackson <ajax@nwnk.net>"
 validpgpkeys+=('DD38563A8A8224537D1F90E45B8A2D50A0ECD0D3') # "Adam Jackson <ajax@benzedrine.nwnk.net>"
 validpgpkeys+=('C383B778255613DFDB409D91DB221A6900000011') #  "Keith Packard <keithp@keithp.com>"
@@ -55,11 +59,14 @@ pkgver() {
 
 prepare() {
     mkdir -p "$srcdir/build"
+    pushd "$srcdir/xorgproto"
+    patch -p1 -i "../0001-Move-remaining-xlib-entwined-header-to-LEGACY.patch"
+    popd
 }
 
 build() {
     arch-meson "$srcdir/xorgproto" "$srcdir/build" \
-        -Dlegacy=true
+        -D legacy=false
 
     ninja -C "$srcdir/build"
 }

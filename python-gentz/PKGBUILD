@@ -8,7 +8,7 @@
 pkgbase=python-gentz
 pkgname=('python-gentz' 'lib32-python-gentz')
 pkgver=3.7.4
-pkgrel=9
+pkgrel=12
 pkgdesc="Next generation of the python high-level scripting language"
 arch=('x86_64')
 url="http://www.python.org/"
@@ -105,15 +105,26 @@ prepare() {
 _exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
     export CFLAGS="$CFLAGS -m32"
-    export CXXFLAGS="$CXXFLAGS -m32"
+    #export CXXFLAGS="$CXXFLAGS -m32"
     export LDFLAGS="$LDFLAGS -m32"
+    _export_O3
 }
 
 _exports_64() {
     export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
     export CFLAGS="${CFLAGS/-m32}"
-    export CXXFLAGS="${CXXFLAGS/-m32}"
+    #export CXXFLAGS="${CXXFLAGS/-m32}"
     export LDFLAGS="${LDFLAGS/-m32}"
+    _export_O3
+}
+
+_export_O3() {
+    # PGO should be done with -O3
+    export CFLAGS="${CFLAGS/-O0}"
+    export CFLAGS="${CFLAGS/-Og}"
+    export CFLAGS="${CFLAGS/-O1}"
+    export CFLAGS="${CFLAGS/-O2}"
+    export CFLAGS="${CFLAGS/-O3} -O3"
 }
 
 _obtain_server() {
@@ -128,9 +139,6 @@ _obtain_server() {
 _configure_python() {
     _exports_$1
     pushd "${srcdir}/${pkgbase}$1"
-
-    # PGO should be done with -O3
-    export CFLAGS="${CFLAGS/-O2/-O3}"
 
     local _python_configure_options=(
         --prefix=/usr 
@@ -157,9 +165,6 @@ _configure_python() {
 _build_python() {
     exports_$1
     pushd "${srcdir}/${pkgbase}$1"
-
-    # PGO should be done with -O3
-    export CFLAGS="${CFLAGS/-O2/-O3}"
 
     _obtain_server
 

@@ -5,7 +5,7 @@
 pkgbase=libx11-git-gentz
 pkgname=('libx11-git-gentz' 'lib32-libx11-git-gentz')
 pkgver=1.6.8.r17.g1f1ca086
-pkgrel=2
+pkgrel=9
 pkgdesc="X11 client-side library"
 arch=(x86_64)
 url="https://xorg.freedesktop.org/"
@@ -48,16 +48,16 @@ _configure_libx11() {
 
 _exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
-    export CFLAGS="$CFLAGS -m32 -g"
-    export CXXFLAGS="$CXXFLAGS -m32 -g"
+    export CFLAGS="$CFLAGS -m32"
+    export CXXFLAGS="$CXXFLAGS -m32"
     export CPPFLAGS="$CXXFLAGS"
     export LDFLAGS="$LDFLAGS -m32"
 }
 
 _exports_64() {
     export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
-    export CFLAGS="${CFLAGS/-m32} -g"
-    export CXXFLAGS="${CXXFLAGS/-m32} -g"
+    export CFLAGS="${CFLAGS/-m32}"
+    export CXXFLAGS="${CXXFLAGS/-m32}"
     export CPPFLAGS="$CXXFLAGS"
     export LDFLAGS="${LDFLAGS/-m32}"
 }
@@ -79,7 +79,7 @@ check() {
     _make_x11 "32" check
 }
 
-package_common() {
+_package_common() {
     pushd "${srcdir}/${pkgbase}$1"
     _exports_$1
 

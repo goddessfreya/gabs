@@ -4,7 +4,7 @@
 
 pkgname=lib32-tk-gentz
 pkgver=8.6.9
-pkgrel=32
+pkgrel=37
 pkgdesc="A windowing toolkit for use with tcl (32-bit)"
 arch=('x86_64')
 url="http://tcl.sourceforge.net/"

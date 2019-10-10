@@ -9,8 +9,8 @@ pkgname=(
     'xorg-server-xnest-git-gentz' 'xorg-server-xwayland-git-gentz' 
     'xorg-server-common-git-gentz' 'xorg-server-devel-git-gentz'
 )
-pkgver=1.20.0.r435.g0d8cc7bb1
-pkgrel=3
+pkgver=1.20.0.r444.ge693c9657
+pkgrel=1
 arch=('x86_64')
 url="http://xorg.freedesktop.org"
 license=('custom')

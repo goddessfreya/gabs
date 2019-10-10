@@ -32,10 +32,10 @@ of a compile-time option (https://bugs.llvm.org/show_bug.cgi?id=13410)
  12 files changed, 41 insertions(+), 28 deletions(-)
 
 diff --git a/clang/lib/Driver/ToolChains/Linux.cpp b/clang/lib/Driver/ToolChains/Linux.cpp
-index 65ab9b2daf..5b757b8028 100644
+index 087783875ff..9a54fd1f83a 100644
 --- a/clang/lib/Driver/ToolChains/Linux.cpp
 +++ b/clang/lib/Driver/ToolChains/Linux.cpp
-@@ -968,8 +968,18 @@ void Linux::AddIAMCUIncludeArgs(const ArgList &DriverArgs,
+@@ -975,8 +975,18 @@ void Linux::AddIAMCUIncludeArgs(const ArgList &DriverArgs,
  }
  
  bool Linux::isPIEDefault() const {
@@ -55,21 +55,21 @@ index 65ab9b2daf..5b757b8028 100644
 +  return 2;
  }
  
- bool Linux::IsMathErrnoDefault() const {
+ bool Linux::isNoExecStackDefault() const {
 diff --git a/clang/lib/Driver/ToolChains/Linux.h b/clang/lib/Driver/ToolChains/Linux.h
-index 4a662cb4b4..4f369c6090 100644
+index 4c61994691c..c60a50cb273 100644
 --- a/clang/lib/Driver/ToolChains/Linux.h
 +++ b/clang/lib/Driver/ToolChains/Linux.h
 @@ -40,6 +40,7 @@ public:
-   CXXStdlibType GetDefaultCXXStdlibType() const override;
    bool isPIEDefault() const override;
+   bool isNoExecStackDefault() const override;
    bool IsMathErrnoDefault() const override;
 +  unsigned GetDefaultStackProtectorLevel(bool KernelOrKext) const override;
    SanitizerMask getSupportedSanitizers() const override;
    void addProfileRTLibs(const llvm::opt::ArgList &Args,
                          llvm::opt::ArgStringList &CmdArgs) const override;
 diff --git a/clang/test/Driver/cross-linux.c b/clang/test/Driver/cross-linux.c
-index a5ea832e77..1949c05a60 100644
+index a5ea832e77e..1949c05a60f 100644
 --- a/clang/test/Driver/cross-linux.c
 +++ b/clang/test/Driver/cross-linux.c
 @@ -42,8 +42,8 @@
@@ -117,7 +117,7 @@ index a5ea832e77..1949c05a60 100644
  // CHECK-MULTI64-X86-64: "-L[[gcc_install]]/../../../../x86_64-unknown-linux/lib"
  // CHECK-MULTI64-X86-64: "-L[[sysroot]]/lib"
 diff --git a/clang/test/Driver/env.c b/clang/test/Driver/env.c
-index 0371bc91c4..ea89f52512 100644
+index 0371bc91c4a..ea89f525121 100644
 --- a/clang/test/Driver/env.c
 +++ b/clang/test/Driver/env.c
 @@ -20,7 +20,7 @@
@@ -130,10 +130,10 @@ index 0371bc91c4..ea89f52512 100644
  // CHECK-LD-32: "-L[[SYSROOT]]/usr/lib/gcc/i386-unknown-linux/4.6.0/../../../../i386-unknown-linux/lib"
  // CHECK-LD-32: "-L[[SYSROOT]]/usr/lib/gcc/i386-unknown-linux/4.6.0/../../.."
 diff --git a/clang/test/Driver/fsanitize.c b/clang/test/Driver/fsanitize.c
-index db88872399..76af9bd8fe 100644
+index f02f94d8c5a..358917588c7 100644
 --- a/clang/test/Driver/fsanitize.c
 +++ b/clang/test/Driver/fsanitize.c
-@@ -331,15 +331,15 @@
+@@ -328,15 +328,15 @@
  // RUN: %clang -target x86_64-linux-gnu -fsanitize=vptr -fno-sanitize=vptr -fsanitize=undefined,address %s -### 2>&1
  // OK
  
@@ -153,7 +153,7 @@ index db88872399..76af9bd8fe 100644
  
  // CHECK-NO-PIE-NOT: "-pie"
  // CHECK-NO-PIE: "-mrelocation-model" "static"
-@@ -687,12 +687,12 @@
+@@ -661,12 +661,12 @@
  // RUN: %clang -fno-sanitize=safe-stack -### %s 2>&1 | FileCheck %s -check-prefix=NOSP
  // NOSP-NOT: "-fsanitize=safe-stack"
  
@@ -170,10 +170,10 @@ index db88872399..76af9bd8fe 100644
  // NO-SP-NOT: stack-protector
  // NO-SP: "-fsanitize=safe-stack"
 diff --git a/clang/test/Driver/gcc-toolchain.cpp b/clang/test/Driver/gcc-toolchain.cpp
-index ca96757a2b..ae1c25e989 100644
+index 6c872f4255c..f5006d1dd9a 100644
 --- a/clang/test/Driver/gcc-toolchain.cpp
 +++ b/clang/test/Driver/gcc-toolchain.cpp
-@@ -24,6 +24,6 @@
+@@ -26,6 +26,6 @@
  // the same precise formatting of the path as the '-internal-system' flags
  // above, so we just blanket wildcard match the 'crtbegin.o'.
  // CHECK: "{{[^"]*}}ld{{(.exe)?}}"
@@ -182,7 +182,7 @@ index ca96757a2b..ae1c25e989 100644
  // CHECK: "-L[[TOOLCHAIN]]/usr/lib/i386-linux-gnu/gcc/i686-linux-gnu/4.5"
  // CHECK: "-L[[TOOLCHAIN]]/usr/lib/i386-linux-gnu/gcc/i686-linux-gnu/4.5/../../../.."
 diff --git a/clang/test/Driver/hexagon-toolchain-elf.c b/clang/test/Driver/hexagon-toolchain-elf.c
-index a7eeca0fdb..32f648372e 100644
+index a7eeca0fdb1..32f648372e9 100644
 --- a/clang/test/Driver/hexagon-toolchain-elf.c
 +++ b/clang/test/Driver/hexagon-toolchain-elf.c
 @@ -457,7 +457,7 @@
@@ -195,7 +195,7 @@ index a7eeca0fdb..32f648372e 100644
  // CHECK042-NEXT: llvm-mc
  // CHECK042:      "-gpsize=8"
 diff --git a/clang/test/Driver/linux-as.c b/clang/test/Driver/linux-as.c
-index a9335ebf71..a72041865b 100644
+index 77ac05f3094..cb474f32898 100644
 --- a/clang/test/Driver/linux-as.c
 +++ b/clang/test/Driver/linux-as.c
 @@ -164,7 +164,7 @@
@@ -217,7 +217,7 @@ index a9335ebf71..a72041865b 100644
  // CHECK-SPARCV9PIC: as
  // CHECK-SPARCV9PIC: -64
 diff --git a/clang/test/Driver/linux-ld.c b/clang/test/Driver/linux-ld.c
-index 3ab81be490..fd6b67dd9a 100644
+index 7aba660d51f..422396c34ea 100644
 --- a/clang/test/Driver/linux-ld.c
 +++ b/clang/test/Driver/linux-ld.c
 @@ -1,3 +1,5 @@
@@ -227,7 +227,7 @@ index 3ab81be490..fd6b67dd9a 100644
  // sysroot to make these tests independent of the host system.
  //
 diff --git a/clang/test/Driver/ppc-abi.c b/clang/test/Driver/ppc-abi.c
-index a82a01de27..35de94a4ad 100644
+index fdcf45da290..cbd1106b7de 100644
 --- a/clang/test/Driver/ppc-abi.c
 +++ b/clang/test/Driver/ppc-abi.c
 @@ -26,11 +26,11 @@
@@ -245,7 +245,7 @@ index a82a01de27..35de94a4ad 100644
  // CHECK-ELFv2-BE: "-mrelocation-model" "pic" "-pic-level" "2"
  // CHECK-ELFv2-BE: "-target-abi" "elfv2"
 diff --git a/clang/test/Driver/riscv32-toolchain.c b/clang/test/Driver/riscv32-toolchain.c
-index 9e8af3a8ff..171392d172 100644
+index 198069edfad..e6f139d5402 100644
 --- a/clang/test/Driver/riscv32-toolchain.c
 +++ b/clang/test/Driver/riscv32-toolchain.c
 @@ -78,7 +78,7 @@
@@ -267,7 +267,7 @@ index 9e8af3a8ff..171392d172 100644
  // C-RV32-LINUX-MULTI-ILP32D: "-L{{.*}}/Inputs/multilib_riscv_linux_sdk/sysroot/lib32/ilp32d"
  // C-RV32-LINUX-MULTI-ILP32D: "-L{{.*}}/Inputs/multilib_riscv_linux_sdk/sysroot/usr/lib32/ilp32d"
 diff --git a/clang/test/Driver/stack-protector.c b/clang/test/Driver/stack-protector.c
-index a3e40b50ee..dfffe0d6cf 100644
+index a3e40b50eed..dfffe0d6cf8 100644
 --- a/clang/test/Driver/stack-protector.c
 +++ b/clang/test/Driver/stack-protector.c
 @@ -3,11 +3,11 @@
@@ -284,6 +284,6 @@ index a3e40b50ee..dfffe0d6cf 100644
  // SSP-BUF: "-stack-protector-buffer-size" "16" 
  
  // RUN: %clang -target i386-pc-openbsd -### %s 2>&1 | FileCheck %s -check-prefix=OPENBSD
--- 
-2.21.0
+--
+2.23.0
 

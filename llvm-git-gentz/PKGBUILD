@@ -16,8 +16,8 @@
 
 pkgbase=llvm-git-gentz
 pkgname=('llvm-git-gentz' 'lib32-llvm-git-gentz')
-pkgver=10.0.0_r328295.075bc48a7f4
-pkgrel=5
+pkgver=10.0.0_r328733.6d96cc04dcc
+pkgrel=1
 pkgdesc="Collection of compiler and toolchain technologies. Inc/ clang and many other tools"
 arch=('x86_64')
 url="https://llvm.org/"
@@ -64,13 +64,13 @@ options=('!debug' '!strip')
 source=(
     "llvm-project64::git+https://github.com/llvm/llvm-project.git"
     'llvm-config.h'
-    'enable-SSP-and-PIE-by-default.patch'
-    'atomic-link-32.patch'
+    '0001-Enable-SSP-and-PIE-by-default.patch'
+    '0001-Link-libatomic.so-during-32-bit-builds.patch'
 )
 sha512sums=('SKIP'
             '75e743dea28b280943b3cc7f8bbb871b57d110a7f2b9da2e6845c1c36bf170dd883fca54e463f5f49e0c3effe07fbd0db0f8cf5a12a2469d3f792af21a73fcdd'
-            '99e3ce7172457dc914d395c64efb03562b5741b1eb21f3f80769d450aaf7415c1bd667390072e1fa7f9a5e2fff13a65df60ea06eca3975dc823deecfb5e93b7b'
-            'aff5c2b5944cc103ceeedcfa42b353d9a4477b1f8a544b29b839e1d24f0953208a824f61065a30ff7970be7bff0fcf35faf0cc125fef1ad337080b27f0e134af')
+            '8b3945add9fc3abd341a5e5e896f6a3e6514ac18172ebfbd312c689ee402893d89937238fc08b8d03923e9a5a568170a2a8208c995f9fd326827fc326766eea3'
+            '4fce7979ed7837ed8c396226ee295ab95ddf711c4dcee3158f0201c9f438793675718cb9634e6a5ae6bb897286a65e0bc9a3ccfbf6fa42311a9ccddd5d4ba608')
 
 # The docs say we should build a stage 1 compiler, and use that to build the
 # instrumentation compiler, and stage 2 compiler, however, if we do that, we'll
@@ -100,8 +100,8 @@ _system_utils=0
 # LLVM without this option takes me 2+ days per high perf build. (I'm serious!)
 _low_perf_fallback=1
 
-_final_build_type=Release
-#_final_build_type=RelWithDebInfo
+#_final_build_type=Release
+_final_build_type=RelWithDebInfo
 
 _python2_optimize() {
     python2 -m compileall "$@"
@@ -134,23 +134,22 @@ pkgver() {
 }
 
 prepare() {
+    cd "${srcdir}"
+    # So git am works.
+    # Yeah, we could use git apply, but I want to be able to run diff and only
+    # get the changes for my patches.
+    git config --global user.email "zegentzy@protonmail.com"
+    git config --global user.name "Hal Gentz"
+
     mkdir _build{64,32}{_stg1,_instr,_to_instr{1,2},_final}
     mkdir dont_delete
-    cp llvm-project{64,32} -R
 
     pushd llvm-project64
-    patch -Np1 -i "${srcdir}/enable-SSP-and-PIE-by-default.patch"
-    #patch -Rp0 -i "${srcdir}/D68178.diff"
+    git am "../0001-Enable-SSP-and-PIE-by-default.patch"
+    git am "../0001-Link-libatomic.so-during-32-bit-builds.patch"
     popd
 
-    sed -i '/^[[:blank:]]*find_library(FFI_LIBRARY_PATH/i\
-        list(INSERT CMAKE_LIBRARY_PATH 0 /usr/lib32)' \
-        llvm-project32/llvm/cmake/config-ix.cmake
-
-    pushd llvm-project32
-    patch -Np1 -i "${srcdir}/enable-SSP-and-PIE-by-default.patch"
-    patch -Np1 -i "${srcdir}/atomic-link-32.patch"
-    popd
+    cp llvm-project{64,32} -R
 }
 
 _build_cmake_sub() {

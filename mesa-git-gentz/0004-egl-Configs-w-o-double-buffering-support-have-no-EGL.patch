@@ -1,6 +1,6 @@
-From 2b71a5017cf2a6c2d39d5a7fe766ed5ada64ec13 Mon Sep 17 00:00:00 2001
+From a342ee36bbff41f97d4a081b8f132d3cb98db0f2 Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
-Date: Mon, 16 Sep 2019 17:00:50 -0600
+Date: Mon, 7 Oct 2019 19:41:11 -0600
 Subject: [PATCH 4/4] egl: Configs w/o double buffering support have no
  `EGL_WINDOW_BIT`.
 
@@ -30,10 +30,10 @@ Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
  10 files changed, 78 insertions(+), 7 deletions(-)
 
 diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
-index 45aca5af00f..b3f8271dc70 100644
+index 63864346594..3d17c8f11cd 100644
 --- a/src/egl/drivers/dri2/egl_dri2.c
 +++ b/src/egl/drivers/dri2/egl_dri2.c
-@@ -424,10 +424,6 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+@@ -425,10 +425,6 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
           base.BindToTextureRGBA = bind_to_texture_rgba;
     }
  
@@ -44,7 +44,7 @@ index 45aca5af00f..b3f8271dc70 100644
     /* No support for pbuffer + MSAA for now.
      *
      * XXX TODO: pbuffer + MSAA does not work and causes crashes.
-@@ -437,9 +433,6 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+@@ -438,9 +434,6 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
        surface_type &= ~EGL_PBUFFER_BIT;
     }
  
@@ -54,7 +54,7 @@ index 45aca5af00f..b3f8271dc70 100644
     base.RenderableType = disp->ClientAPIs;
     base.Conformant = disp->ClientAPIs;
  
-@@ -489,6 +482,56 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+@@ -490,6 +483,56 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
     return conf;
  }
  
@@ -152,10 +152,10 @@ index 9bd7a93270d..b36033ba504 100644
        if (!format_count[i]) {
           _eglLog(_EGL_DEBUG, "No DRI config supports native format %s",
 diff --git a/src/egl/drivers/dri2/platform_drm.c b/src/egl/drivers/dri2/platform_drm.c
-index 7b13129ee3a..45b778b441f 100644
+index d0ab172d659..551b9392125 100644
 --- a/src/egl/drivers/dri2/platform_drm.c
 +++ b/src/egl/drivers/dri2/platform_drm.c
-@@ -656,6 +656,8 @@ drm_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
+@@ -658,6 +658,8 @@ drm_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
        }
     }
  
@@ -165,7 +165,7 @@ index 7b13129ee3a..45b778b441f 100644
        if (!format_count[i]) {
           struct gbm_format_name_desc desc;
 diff --git a/src/egl/drivers/dri2/platform_surfaceless.c b/src/egl/drivers/dri2/platform_surfaceless.c
-index 20305c8685f..9f91a8cd1be 100644
+index 1a2d3be0aad..8361b9ade47 100644
 --- a/src/egl/drivers/dri2/platform_surfaceless.c
 +++ b/src/egl/drivers/dri2/platform_surfaceless.c
 @@ -212,6 +212,8 @@ surfaceless_add_configs_for_visuals(_EGLDriver *drv, _EGLDisplay *disp)
@@ -191,11 +191,11 @@ index 71bcb04a77b..3de9695f45e 100644
        if (!format_count[i]) {
           _eglLog(_EGL_DEBUG, "No DRI config supports native format %s",
 diff --git a/src/egl/drivers/dri2/platform_x11.c b/src/egl/drivers/dri2/platform_x11.c
-index 8e43c659a8a..3aa9e58d9ac 100644
+index 71e996bb632..10f2d485f99 100644
 --- a/src/egl/drivers/dri2/platform_x11.c
 +++ b/src/egl/drivers/dri2/platform_x11.c
-@@ -937,6 +937,8 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
-       }
+@@ -848,6 +848,8 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
+       xcb_depth_next(&d);
     }
  
 +   dri2_finalize_config_surface_types(disp);
