@@ -291,12 +291,9 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
 
     sudo mkdir -p "${CHROOT_DIR}/root/alt_pkgs.${CHROOT_NAME}/"
     sudo cp "alt_pkgs.${CHROOT_NAME}/"*.pkg* "${CHROOT_DIR}/root/pkgs/"
-    local ALT_DEPS="$(sudo ls ${CHROOT_DIR}/root/alt_pkgs${CHROOT_NAME}/ \
-        | sed "s/^/\/alt_pkgs.${CHROOT_NAME}\//" \
-        | tr '\n' ' ')"
     if [[ "$ALT_DEPS" != "" ]]; then
         sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
-            /bin/bash -c "yes | pacman -U $ALT_DEPS"
+            /bin/bash -c "yes | pacman -U /pkgs/*"
     fi
 else
     clone_file {custom,/etc}/makepkg.conf root:root 644

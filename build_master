@@ -261,11 +261,7 @@ fi
 sudo mkdir -p "${CHROOT_DIR}/root/pkgs/"
 sudo mv *.pkg.(tar|tar.gz|tar.xz|tar.bz2) "${CHROOT_DIR}/root/pkgs/"
 sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
-    /bin/bash -c "yes | pacman -U \
-        $(sudo ls ${CHROOT_DIR}/root/pkgs/ \
-            | sed "s/^/\/pkgs\//" \
-            | tr '\n' ' ') \
-            || exit \$?" || exit $?
+    /bin/bash -c "yes | pacman -U /pkgs/* || exit \$?" || exit $?
 
 if [[ -f "$DEPS_PREFIX"/packages ]]; then
     pushd "../pkgs.${CHROOT_NAME}"
