@@ -4,7 +4,7 @@
 # Contributor: Stéphane Gaudreault <stephane@archlinux.org>
 
 pkgname=openmpi-git-gentz
-pkgver=4.1.0.a1.r30101.rea7e1ea859
+pkgver=4.1.0.a1.r30127.re1e6d8b85e
 pkgrel=2
 pkgdesc='High performance message passing library (MPI)'
 arch=('x86_64')
@@ -45,7 +45,7 @@ prepare() {
         --without-slurm \
         --with-hwloc=/usr \
         --with-libltdl=/usr \
-        FC=/usr/bin/gfortran \
+        FC="$(which gfortran)" \
         LDFLAGS="${LDFLAGS} -Wl,-z,noexecstack"
 }
 

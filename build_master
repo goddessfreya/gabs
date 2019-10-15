@@ -10,6 +10,7 @@ local RESET_REL=
 local DONT_BUMP_REL=false
 local NO_BUILD=false
 local CHROOT_NAME=
+local DISTC_SUPPORT=false
 
 source "$(pwd)/../build_utils"
 
@@ -97,8 +98,12 @@ while [[ $# -gt 0 ]]; do
 
             CHROOT_NAME="$2"
 			shift # past argument
-			shift # past argument
+			shift # past value
 		;;
+        -dist)
+            DISTC_SUPPORT=true
+			shift # past argument
+        ;;
 
         --help)
             echo "====== HELP ======"
@@ -114,6 +119,7 @@ while [[ $# -gt 0 ]]; do
             echo "-bk  : Backup directory."
             echo "-nb  : No build."
             echo "-cn  : Chroot name."
+            echo "-dist: Distcc support."
             exit
         ;;
 		*) # unknown option
@@ -226,9 +232,17 @@ if [[ "$RESUME_DIR" != "" ]]; then
         "$RESUME_DIR/" "${CHROOT_DIR}/$USER/build"
 fi
 
+# We got to make a copy of makechrootpkg... patch it to use pump....
+local MAKECHROOTPKG_EXEC="/usr/bin/makechrootpkg"
+if [[ "$DISTC_SUPPORT" == "true" ]]; then
+    MAKECHROOTPKG_EXEC="../custom/makechrootpkg"
+    cat /usr/bin/makechrootpkg | sed "s/makepkg /pump makepkg /g" > "$MAKECHROOTPKG_EXEC"
+    chmod +x "$MAKECHROOTPKG_EXEC"
+fi
+
 # Then actually build it
 if [[ "$NO_BUILD" != "true" ]]; then
-    sudo /usr/bin/makechrootpkg "${MAKECHROOTPKG_PARAM[@]}" \
+    sudo "$MAKECHROOTPKG_EXEC" "${MAKECHROOTPKG_PARAM[@]}" \
         -- CCACHE_DIR=/ccache "${MAKEPKG_PARAM[@]}" || exit $?
 fi
 

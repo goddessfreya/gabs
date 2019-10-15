@@ -7,8 +7,8 @@
 # Contributor: Giovanni Scafora <giovanni@archlinux.org>
 
 pkgname=wine-staging-git-gentz
-pkgver=4.17.r7.g042a633c+wine.4.17.r126.g15bf3eee2c
-pkgrel=1
+pkgver=4.17.r12.gc96aa290+wine.4.17.r215.g71e96bd3b7
+pkgrel=2
 pkgdesc="A compatibility layer for running Windows programs - Staging branch"
 arch=(x86_64)
 url="http://www.wine-staging.com"

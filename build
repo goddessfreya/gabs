@@ -11,6 +11,7 @@ while true; do
 done &
 
 local SHOULD_RESUME=false
+local SHOULD_RESUME_AFTER=false
 local RESUME_PKG=
 local PACKAGES=()
 local EXCLUDED_PACKAGES=()
@@ -43,6 +44,10 @@ while [[ $# -gt 0 ]]; do
 			shift # past argument
 			shift # past value
 		;;
+        -ra)
+            SHOULD_RESUME_AFTER=true
+			shift # past argument
+        ;;
 		-p)
             PACKAGES+=("$2")
 			shift # past argument
@@ -103,6 +108,7 @@ while [[ $# -gt 0 ]]; do
             echo "PARA | DESC"
             echo "-rp  : Resumes on this package"
             echo "-r   : Resumes on last built package"
+            echo "-ra  : Resumes after the set package"
             echo "-p   : Adds this to the package list"
             echo "-e   : Adds this to the excluded package list"
             echo "-fp  : Add this as one of the params that the first package built recieves"
@@ -160,11 +166,15 @@ if [[ "${#PACKAGES[@]}" == "0" ]]; then
         "xorg-server-git-gentz"
         "xf86-video-amdgpu-git-gentz"
         "xf86-video-ati-git-gentz"
+        "xf86-video-fbdev-git-gentz"
+        "xf86-video-vesa-git-gentz"
 
         "wine-staging-git-gentz"
         "winetricks-git"
     ) 
 fi
+
+mkdir -p custom
 
 # If line starts with BUILDENV and this option is "sign" add a "!".
 awk '{
@@ -186,7 +196,32 @@ awk '{
         }
         printf "\n"
     } else print
-}' /etc/makepkg.conf > makepkg.conf
+}' /etc/makepkg.conf > custom/makepkg.conf
+
+if_buildenv_uses() {
+    if [[ "$(awk "{
+        if (/^ *BUILDENV *= *\\( */) {
+            split(\$0, a, \"(\");
+            for (i in a) if (i == 2) {
+                split(a[i], b, \")\");
+                for (j in b) if (j == 1) {
+                    split(b[j], c, \" \")
+                    for(k in c) if(c[k] == tolower(\"$1\") || c[k] == tolower(\"!$1\")) 
+                        printf c[k]
+                } 
+            } 
+        } 
+    }" custom/makepkg.conf)" == "$(echo "$1" | awk '{ printf tolower($0) }')" ]]; then
+        eval USE_$1=true
+    else
+        eval USE_$1=false
+    fi
+}
+
+local USE_DISTCC
+local USE_CCACHE
+if_buildenv_uses DISTCC
+if_buildenv_uses CCACHE
 
 for PKG_TO_BUILD in $PACKAGES; do
     if [[ ! -d "$PKG_TO_BUILD" ]]; then
@@ -201,6 +236,16 @@ for PKG_TO_BUILD in $PACKAGES; do
 done
 
 local CHROOT_DIR="$(pwd)/chroots/${CHROOT_NAME}"
+
+clone_file() {
+    for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+        [[ ! -d "${CHROOT_DIR2}" ]] && continue
+        sudo cp "$1" "${CHROOT_DIR2}$2"
+
+        sudo chown $3 "${CHROOT_DIR2}$2"
+        sudo chmod $4 "${CHROOT_DIR2}$2"
+    done
+}
 
 if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
     cp "alternatives.${CHROOT_NAME}" "provides.${CHROOT_NAME}"
@@ -226,12 +271,20 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
     sudo rm -rf "$CHROOT_DIR"
     mkdir -p "$CHROOT_DIR"
 
+    local INSTALL_PACKAGES=(base-devel gcc-multilib zsh)
+
+    [[ "$USE_CCACHE" == "true" ]] \
+        && INSTALL_PACKAGES+=(ccache)
+
+    [[ "$USE_DISTCC" == "true" ]] \
+        && INSTALL_PACKAGES+=(distcc python procps-ng)
+
     sudo /usr/bin/mkarchroot \
         -C /etc/pacman.conf \
-        -M "$(pwd)/makepkg.conf" \
+        -M "$(pwd)/custom/makepkg.conf" \
         -c /var/cache/pacman/pkg \
         "$CHROOT_DIR/root" \
-        base-devel ccache gcc-multilib zsh
+        "${INSTALL_PACKAGES[@]}"
 
     sudo /usr/bin/arch-nspawn "$CHROOT_DIR/root" \
         /bin/bash -c 'yes | pacman -Syyu'
@@ -246,17 +299,28 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
             /bin/bash -c "yes | pacman -U $ALT_DEPS"
     fi
 else
-    sudo cp makepkg.conf "${CHROOT_DIR}/root/etc/makepkg.conf"
-    sudo cp makepkg.conf "${CHROOT_DIR}/${USER}/etc/makepkg.conf"
-    sudo chown root:root \
-        "${CHROOT_DIR}/${USER}/etc/makepkg.conf" \
-        "${CHROOT_DIR}/root/etc/makepkg.conf"
-    sudo chmod 644 \
-        "${CHROOT_DIR}/${USER}/etc/makepkg.conf" \
-        "${CHROOT_DIR}/root/etc/makepkg.conf"
+    clone_file {custom,/etc}/makepkg.conf root:root 644
 
-    sudo /usr/bin/arch-nspawn "$CHROOT_DIR/root" \
-        /bin/bash -c 'yes | pacman -Syyu'
+    for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+        [[ ! -d "${CHROOT_DIR2}" ]] && continue
+        sudo /usr/bin/arch-nspawn "${CHROOT_DIR2}" \
+            /bin/bash -c 'yes | pacman -Syyu'
+    done
+fi
+
+if [[ "$USE_DISTCC" == "true" ]]; then
+    clone_file /etc/distcc/hosts{,} root:root 644
+    clone_file /etc/conf.d/distccd{,} root:root 644
+    FIRST_PARAMS+=(-dist)
+    EVERY_PARAMS+=(-dist)
+    
+    for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+        [[ ! -d "${CHROOT_DIR2}" ]] && continue
+        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/bin/clang++"
+        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/bin/clang"
+        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/clang++"
+        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/clang"
+    done
 fi
 
 [[ "$RESUME_BACKUP_DIR" != "" ]] && mkdir -p "$RESUME_BACKUP_DIR"
@@ -269,6 +333,9 @@ for PKG_TO_BUILD in $PACKAGES; do
             continue
         fi
         SHOULD_RESUME=false
+        if [[ "$SHOULD_RESUME_AFTER" == "true" ]]; then
+            continue
+        fi
     fi
 
     if array_contains_element $PKG_TO_BUILD ${EXCLUDED_PACKAGES[@]} ; then 

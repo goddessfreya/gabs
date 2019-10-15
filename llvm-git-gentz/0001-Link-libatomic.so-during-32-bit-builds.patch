@@ -1,4 +1,4 @@
-From c1435655b0988119d8a6702de99056bf031edb28 Mon Sep 17 00:00:00 2001
+From af45425f22a72636ccc37d0245a2c8f262267afa Mon Sep 17 00:00:00 2001
 From: Hal Gentz <zegentzy@protonmail.com>
 Date: Wed, 2 Oct 2019 18:29:40 -0600
 Subject: [PATCH] Link libatomic.so during 32-bit builds.
@@ -29,9 +29,9 @@ the case, so I see no reason not to merge them.
 
 Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
 ---
+ libcxx/CMakeLists.txt                        |   2 +-
  libcxx/cmake/Modules/CheckLibcxxAtomic.cmake |  56 ---------
  libcxx/cmake/config-ix.cmake                 |   8 +-
- libcxx/src/CMakeLists.txt                    |   2 +-
  libcxx/test/CMakeLists.txt                   |   4 +-
  libcxx/test/lit.site.cfg.in                  |   4 +-
  lldb/source/Utility/CMakeLists.txt           |   2 +-
@@ -40,6 +40,19 @@ Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
  8 files changed, 69 insertions(+), 122 deletions(-)
  delete mode 100644 libcxx/cmake/Modules/CheckLibcxxAtomic.cmake
 
+diff --git a/libcxx/CMakeLists.txt b/libcxx/CMakeLists.txt
+index 21d0c925fab..bc81806ced3 100644
+--- a/libcxx/CMakeLists.txt
++++ b/libcxx/CMakeLists.txt
+@@ -760,7 +760,7 @@ function(cxx_link_system_libraries target)
+     target_link_libraries(${target} PRIVATE gcc_s)
+   endif()
+ 
+-  if (LIBCXX_HAVE_CXX_ATOMICS_WITH_LIB)
++  if (NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB)
+     target_link_libraries(${target} PRIVATE atomic)
+   endif()
+ 
 diff --git a/libcxx/cmake/Modules/CheckLibcxxAtomic.cmake b/libcxx/cmake/Modules/CheckLibcxxAtomic.cmake
 deleted file mode 100644
 index 7fe5a627829..00000000000
@@ -121,21 +134,8 @@ index a7a684c9d5f..f0a980baf21 100644
  endif()
  
  # Check libraries
-diff --git a/libcxx/src/CMakeLists.txt b/libcxx/src/CMakeLists.txt
-index 93d48f1b7dc..40a36aea2d1 100644
---- a/libcxx/src/CMakeLists.txt
-+++ b/libcxx/src/CMakeLists.txt
-@@ -171,7 +171,7 @@ function(cxx_link_system_libraries target)
-     target_link_libraries(${target} PUBLIC gcc_s)
-   endif()
- 
--  if (LIBCXX_HAVE_CXX_ATOMICS_WITH_LIB)
-+  if (NOT HAVE_CXX_ATOMICS64_WITHOUT_LIB)
-     target_link_libraries(${target} PUBLIC atomic)
-   endif()
- 
 diff --git a/libcxx/test/CMakeLists.txt b/libcxx/test/CMakeLists.txt
-index e6ef6284eca..c3e94dc0600 100644
+index 81474511b58..7ed9a9db6f0 100644
 --- a/libcxx/test/CMakeLists.txt
 +++ b/libcxx/test/CMakeLists.txt
 @@ -36,8 +36,8 @@ pythonize_bool(LIBCXX_GENERATE_COVERAGE)
@@ -313,7 +313,7 @@ index 29f3bdd57f0..e553d56f1ba 100644
  ## TODO: This define is only used for the legacy atomic operations in
  ## llvm's Atomic.h, which should be replaced.  Other code simply
 diff --git a/llvm/lib/Support/CMakeLists.txt b/llvm/lib/Support/CMakeLists.txt
-index 29d99ff9cf7..2fdd991d369 100644
+index cc80175185b..de767ac33a7 100644
 --- a/llvm/lib/Support/CMakeLists.txt
 +++ b/llvm/lib/Support/CMakeLists.txt
 @@ -26,7 +26,7 @@ elseif( CMAKE_HOST_UNIX )

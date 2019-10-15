@@ -2,28 +2,56 @@
 # Contributor: AndyRTR <andyrtr@archlinux.org>
 # Contributor: Jan de Groot <jgc@archlinux.org>
 
-pkgbase=xorg-server-git-gentz
-pkgname=(
-    'xorg-server-git-gentz' 'xorg-server-xephyr-git-gentz' 
-    'xorg-server-xdmx-git-gentz' 'xorg-server-xvfb-git-gentz' 
-    'xorg-server-xnest-git-gentz' 'xorg-server-xwayland-git-gentz' 
-    'xorg-server-common-git-gentz' 'xorg-server-devel-git-gentz'
-)
-pkgver=1.20.0.r444.ge693c9657
-pkgrel=1
+pkgname=xorg-server-git-gentz
+pkgver=1.20.0.r474.g535f14656
+pkgrel=4
+pkgdesc="Xorg server, common and dev files, and other applications and utils"
 arch=('x86_64')
 url="http://xorg.freedesktop.org"
 license=('custom')
 groups=('xorg' 'gentz_custom')
 makedepends=(
-    'xorgproto' 'pixman' 'libx11' 'mesa' 'mesa-libgl' 'xtrans' 'libxkbfile' 
-    'libxfont2' 'libpciaccess' 'libxv' 'libxmu' 'libxrender' 'libxi' 'libxaw' 
-    'libdmx' 'libxtst' 'libxres' 'xorg-xkbcomp' 'xorg-util-macros' 
-    'xorg-font-util' 'libepoxy' 'xcb-util' 'xcb-util-image' 
-    'xcb-util-renderutil' 'xcb-util-wm' 'xcb-util-keysyms' 'libxshmfence' 
+    'xorgproto' 'pixman' 'libx11' 'mesa' 'mesa-libgl' 'xtrans' 'libxkbfile'
+    'libxfont2' 'libpciaccess' 'libxv' 'libxmu' 'libxrender' 'libxi' 'libxaw'
+    'libdmx' 'libxtst' 'libxres' 'xorg-xkbcomp' 'xorg-util-macros'
+    'xorg-font-util' 'libepoxy' 'xcb-util' 'xcb-util-image'
+    'xcb-util-renderutil' 'xcb-util-wm' 'xcb-util-keysyms' 'libxshmfence'
     'libunwind' 'systemd' 'wayland-protocols' 'egl-wayland' 'meson' 'git'
     'libepoxy' 'lib32-libepoxy'
-) 
+)
+# FS#52949
+depends=(
+    'dbus' 'xf86-input-libinput' 'xkeyboard-config' 'xorg-xkbcomp' 'xorg-setxkbmap'
+    'xorg-util-macros' 'xorg-server-common' 'xorg-xauth' 'xcb-util-image'
+    'xcb-util-renderutil' 'xcb-util-wm' 'xorgproto' 'mesa' 'libpciaccess'
+    'xcb-util-keysyms' 'systemd-libs' 'pixman' 'nettle' 'libepoxy' 'libxfont2'
+    'libunwind' 'libgl' 'libpciaccess' 'libdrm' 'libxshmfence' 'libxv' 'libtirpc'
+    'libxext' 'libxi' 'libxaw' 'libxrender' 'libdmx' 'libxfixes' 'libbsd'
+)
+# see xorg-server-*/hw/xfree86/common/xf86Module.h for ABI versions -
+# we provide major numbers that drivers can depend on
+# and /usr/lib/pkgconfig/xorg-server.pc in xorg-server-devel pkg
+provides=(
+    'xorg-server-common' 'xorg-server-common-git' 'xorg-server-git'
+    'X-ABI-VIDEODRV_VERSION=25.0' 'X-ABI-XINPUT_VERSION=24.1'
+    'X-ABI-EXTENSION_VERSION=10.0' 'x-server' 'xorg-server' 'xorg-server-xephyr'
+    'xorg-server-xephyr-git' 'xorg-server-xvfb' 'xorg-server-xvfb-git'
+    'xorg-server-xnest' 'xorg-server-xnest-git' 'xorg-server-xdmx'
+    'xorg-server-xdmx-git' 'xorg-server-xwayland' 'xorg-server-xwayland-git'
+    'xorg-server-devel' 'xorg-server-devel-git'
+)
+conflicts=(
+    'xorg-server-common' 'xorg-server' 'xorg-server-xephyr' 'xorg-server-xvfb'
+    'nvidia-utils<=331.20' 'glamor-egl' 'xf86-video-modesetting'
+    'xorg-server-xnest' 'xorg-server-xdmx' 'xorg-server-xwayland'
+    'xorg-server-devel'
+)
+replaces=(
+    'glamor-egl' 'xf86-video-modesetting' 'xorg-server-common-git-gentz'
+    'xorg-server-xephyr-git-gentz' 'xorg-server-xvfb-git-gentz'
+    'xorg-server-xnest-git-gentz' 'xorg-server-xdmx-git-gentz'
+    'xorg-server-xwayland-git-gentz' 'xorg-server-devel-git-gentz'
+)
 source=(
     git://anongit.freedesktop.org/xorg/xserver
     xvfb-run # with updates from FC master
@@ -38,8 +66,9 @@ validpgpkeys=(
 sha512sums=('SKIP'
             '55bbf520333f6e818b0125b37179a7039b69a0d3d2242b80a08da003d94cbf6c1fb912d880abcce318a85d7947e3eff8fbc4cdf57d7118572e8ebc56c4569af6'
             'de5e2cb3c6825e6cf1f07ca0d52423e17f34d70ec7935e9dd24be5fb9883bf1e03b50ff584931bd3b41095c510ab2aa44d2573fd5feaebdcb59363b65607ff22')
+install=xorg-server.install
 
-#_meson_flags=("-D b_ndebug=true")
+_meson_flags=(-D b_ndebug=false)
 
 pkgver() {
     cd "${srcdir}/xserver"
@@ -51,15 +80,21 @@ _exports() {
     # Since pacman 5.0.2-2, hardened flags are now enabled in makepkg.conf
     # With them, module fail to load with undefined symbol.
     #
-    # See https://bugs.archlinux.org/task/55102 
+    # See https://bugs.archlinux.org/task/55102
     # and https://bugs.archlinux.org/task/54845
     export CFLAGS=${CFLAGS/-fno-plt}
     export CXXFLAGS=${CXXFLAGS/-fno-plt}
     export LDFLAGS=${LDFLAGS/,-z,now}
 
-    export CFLAGS="$CFLAGS -fplt -fno-lto -g"
-    export CXXFLAGS="$CXXFLAGS -fplt -fno-lto -g"
+    export CFLAGS="$CFLAGS -fplt -fno-lto -g3"
+    export CXXFLAGS="$CXXFLAGS -fplt -fno-lto -g3"
     export LDFLAGS="$LDFLAGS,-fno-lto"
+
+    # For dbg symbols, afaik.
+    #export CFLAGS="$CFLAGS -O0"
+    #export CXXFLAGS="$CXXFLAGS -O0"
+    #export CFLAGS=${CFLAGS/-O3}
+    #export CXXFLAGS=${CXXFLAGS/-O3}
 }
 
 prepare() {
@@ -100,115 +135,18 @@ build() {
 
     _exports
     ninja $NINJAFLAGS -C "${srcdir}/build"
-
-    # fake installation to be seperated into packages
-    DESTDIR="${srcdir}/fakeinstall" ninja $NINJAFLAGS \
-        -C "${srcdir}/build" install
 }
 
-# thier install script broke, so I wrote my own.
-# forgive me.
-_install() {
-    local src dir
-    for src; do
-        src="${src:1}"
-        dir="${pkgdir}${src%/*}"
-        install -m755 -d "${dir}"
-        mv -v "${srcdir}/fakeinstall${src}" "${dir}/"
-    done
-}
+package() {
+    DESTDIR="${pkgdir}" ninja $NINJAFLAGS -C "${srcdir}/build" install
 
-package_xorg-server-common-git-gentz() {
-    pkgdesc="Xorg server common files"
-    depends=(xkeyboard-config xorg-xkbcomp xorg-setxkbmap)
-    provides=('xorg-server-common' 'xorg-server-common-git')
-    conflicts=('xorg-server-common')
-
-    pushd "${srcdir}/fakeinstall"
-    _install "./usr/lib/xorg/protocol.txt"
-    _install "./usr/share/man/man1/Xserver.1"
-    popd
+    ln -s /usr/bin/Xorg "${pkgdir}/usr/bin/X"
 
     install -m644 -Dt "${pkgdir}/var/lib/xkb/" \
         "${srcdir}/xserver/xkb/README.compiled"
-    # license
-    install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" \
-        "${srcdir}/xserver/COPYING"
-}
-
-package_xorg-server-git-gentz() {
-    pkgdesc="Xorg X server"
-    depends=(
-        libepoxy libxfont2 pixman xorg-server-common libunwind dbus libgl 
-        xf86-input-libinput nettle libpciaccess libdrm libxshmfence
-    ) # FS#52949
-
-    # see xorg-server-*/hw/xfree86/common/xf86Module.h for ABI versions -
-    # we provide major numbers that drivers can depend on
-    # and /usr/lib/pkgconfig/xorg-server.pc in xorg-server-devel pkg
-    provides=(
-        'X-ABI-VIDEODRV_VERSION=25.0' 'X-ABI-XINPUT_VERSION=24.1' 
-        'X-ABI-EXTENSION_VERSION=10.0' 'x-server' 'xorg-server'
-        'xorg-server-git'
-    )
-    conflicts=(
-        'nvidia-utils<=331.20' 'glamor-egl' 'xf86-video-modesetting' 
-        'xorg-server'
-    )
-    replaces=('glamor-egl' 'xf86-video-modesetting')
-    install=xorg-server.install
-
-    pushd "${srcdir}/fakeinstall"
-    _install "./usr/bin/"{Xorg,cvt,gtf}
-    ln -s /usr/bin/Xorg "${pkgdir}/usr/bin/X"
-    _install "./usr/lib/Xorg"{,.wrap}
-    _install "./usr/lib/xorg/modules/"*
-    _install "./usr/share/X11/xorg.conf.d/10-quirks.conf"
-    _install "./usr/share/man/man1/"{Xorg,Xorg.wrap,cvt,gtf}.1
-    _install "./usr/share/man/man4/"{exa,fbdevhw,modesetting}.4
-    _install "./usr/share/man/man5/"{Xwrapper.config,xorg.conf,xorg.conf.d}.5
-    popd
 
     # distro specific files must be installed in /usr/share/X11/xorg.conf.d
     install -m755 -d "${pkgdir}/etc/X11/xorg.conf.d"
-
-    # license
-    install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" \
-        "${srcdir}/xserver/COPYING"
-}
-
-package_xorg-server-xephyr-git-gentz() {
-    pkgdesc="A nested X server that runs as an X application"
-    depends=(
-        libxfont2 libgl libepoxy libunwind systemd-libs libxv pixman
-        xorg-server-common xcb-util-image xcb-util-renderutil xcb-util-wm 
-        xcb-util-keysyms nettle libtirpc
-    )
-    provides=('xorg-server-xephyr' 'xorg-server-xephyr-git')
-    conflicts=('xorg-server-xephyr')
-
-    pushd "${srcdir}/fakeinstall"
-    _install "./usr/bin/Xephyr"
-    _install "./usr/share/man/man1/Xephyr.1"
-    popd
-
-    # license
-    install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" \
-        "${srcdir}/xserver/COPYING"
-}
-
-package_xorg-server-xvfb-git-gentz() {
-    pkgdesc="Virtual framebuffer X server"
-    depends=(
-        libxfont2 libunwind pixman xorg-server-common xorg-xauth libgl nettle
-    )
-    provides=('xorg-server-xvfb' 'xorg-server-xvfb-git')
-    conflicts=('xorg-server-xvfb')
-
-    pushd "${srcdir}/fakeinstall"
-    _install "./usr/bin/Xvfb"
-    _install "./usr/share/man/man1/Xvfb.1"
-    popd
 
     install -m755 "${srcdir}/xvfb-run" "${pkgdir}/usr/bin/"
     install -m644 "${srcdir}/xvfb-run.1" "${pkgdir}/usr/share/man/man1/" # outda
@@ -216,77 +154,4 @@ package_xorg-server-xvfb-git-gentz() {
     # license
     install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" \
         "${srcdir}/xserver/COPYING"
-}
-
-package_xorg-server-xnest-git-gentz() {
-    pkgdesc="A nested X server that runs as an X application"
-    depends=(libxfont2 libxext pixman xorg-server-common nettle libtirpc)
-    provides=('xorg-server-xnest' 'xorg-server-xnest-git')
-    conflicts=('xorg-server-xnest')
-
-    pushd "${srcdir}/fakeinstall"
-    _install "./usr/bin/Xnest"
-    _install "./usr/share/man/man1/Xnest.1"
-    popd
-
-    # license
-    install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" \
-        "${srcdir}/xserver/COPYING"
-}
-
-package_xorg-server-xdmx-git-gentz() {
-    pkgdesc="Distributed Multihead X Server and utilities"
-    depends=(
-        libxfont2 libxi libxaw libxrender libdmx libxfixes pixman 
-        xorg-server-common nettle
-    )
-    provides=('xorg-server-xdmx' 'xorg-server-xdmx-git')
-    conflicts=('xorg-server-xdmx')
-
-    pushd "${srcdir}/fakeinstall"
-    _install "./usr/bin/"{Xdmx,dmx*,vdltodmx,xdmxconfig}
-    _install "./usr/share/man/man1/"{Xdmx,dmxtodmx,vdltodmx,xdmxconfig}.1
-    popd
-
-    # license
-    install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" \
-        "${srcdir}/xserver/COPYING"
-}
-
-package_xorg-server-xwayland-git-gentz() {
-    pkgdesc="run X clients under wayland"
-    depends=(
-        libxfont2 libepoxy libunwind systemd-libs libgl pixman 
-        xorg-server-common nettle libtirpc
-    )
-    provides=('xorg-server-xwayland' 'xorg-server-xwayland-git')
-    conflicts=('xorg-server-xwayland')
-
-    pushd "${srcdir}/fakeinstall"
-    _install "./usr/bin/Xwayland"
-    popd
-
-    # license
-    install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" \
-        "${srcdir}/xserver/COPYING"
-}
-
-package_xorg-server-devel-git-gentz() {
-    pkgdesc="Development files for the X.Org X server"
-    depends=('xorgproto' 'mesa' 'libpciaccess' 'xorg-util-macros')
-    provides=('xorg-server-devel' 'xorg-server-devel-git')
-    conflicts=('xorg-server-devel')
-
-    pushd "${srcdir}/fakeinstall"
-    _install "./usr/include/xorg/"*
-    _install "./usr/lib/pkgconfig/xorg-server.pc"
-    _install "./usr/share/aclocal/xorg-server.m4"
-    popd
-
-    # license
-    install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" \
-        "${srcdir}/xserver/COPYING"
-
-    # make sure there are no files left to install
-    find "${srcdir}/fakeinstall" -depth -print0 | xargs -0 rmdir
 }

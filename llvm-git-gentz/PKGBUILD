@@ -16,7 +16,7 @@
 
 pkgbase=llvm-git-gentz
 pkgname=('llvm-git-gentz' 'lib32-llvm-git-gentz')
-pkgver=10.0.0_r328733.6d96cc04dcc
+pkgver=10.0.0_r329506.867d985ba5b
 pkgrel=1
 pkgdesc="Collection of compiler and toolchain technologies. Inc/ clang and many other tools"
 arch=('x86_64')
@@ -56,6 +56,7 @@ makedepends=(
     'ccache'
     'clang'
     'llvm'
+    'lib32-llvm'
 )
 
 # 36gb of debug symbols is not going to strip in my lifetime
@@ -69,8 +70,8 @@ source=(
 )
 sha512sums=('SKIP'
             '75e743dea28b280943b3cc7f8bbb871b57d110a7f2b9da2e6845c1c36bf170dd883fca54e463f5f49e0c3effe07fbd0db0f8cf5a12a2469d3f792af21a73fcdd'
-            '8b3945add9fc3abd341a5e5e896f6a3e6514ac18172ebfbd312c689ee402893d89937238fc08b8d03923e9a5a568170a2a8208c995f9fd326827fc326766eea3'
-            '4fce7979ed7837ed8c396226ee295ab95ddf711c4dcee3158f0201c9f438793675718cb9634e6a5ae6bb897286a65e0bc9a3ccfbf6fa42311a9ccddd5d4ba608')
+            'd1e0e0f236d9395573da6519db66635a9e55dc4f90a7b54d5d1f08023837738dabec303a5189598db2f460d1f365a3d03747dff8a98047b68af35d9bda32506d'
+            'c9d4a94327cbbb4f64dc04141fe273ac2f811458fca642357d0f9eb4890cb796c7bf9eea78bed8c765e82cd4e09f9ce92e35d80e2ab221be782feea7d9233f27')
 
 # The docs say we should build a stage 1 compiler, and use that to build the
 # instrumentation compiler, and stage 2 compiler, however, if we do that, we'll
@@ -100,8 +101,8 @@ _system_utils=0
 # LLVM without this option takes me 2+ days per high perf build. (I'm serious!)
 _low_perf_fallback=1
 
-#_final_build_type=Release
-_final_build_type=RelWithDebInfo
+_final_build_type=Release
+#_final_build_type=RelWithDebInfo
 
 _python2_optimize() {
     python2 -m compileall "$@"
@@ -170,7 +171,7 @@ _build_cmake_sub() {
         -D CMAKE_CXX_FLAGS="${CXXFLAGS}"
         -D LLVM_TARGETS_TO_BUILD="AMDGPU;X86"
         -D LLVM_BINUTILS_INCDIR=/usr/include
-        -D LLVM_EXTERNAL_LIT="/usr/bin/lit"
+        -D LLVM_EXTERNAL_LIT="$(which lit)"
 
         # Do we really need docs?
         -D LLVM_BUILD_DOCS=OFF
@@ -236,22 +237,22 @@ _build_cmake() {
     fi
 
     local _stage_1_opts=(
-        -D CMAKE_CXX_COMPILER="/usr/bin/clang++"
-        -D CMAKE_C_COMPILER="/usr/bin/clang"
-        -D LLVM_USE_LINKER="/usr/bin/ld.lld"
-        -D CMAKE_RANLIB="/usr/bin/llvm-ranlib"
-        -D CMAKE_AR="/usr/bin/llvm-ar"
+        -D CMAKE_CXX_COMPILER="$(which clang++)"
+        -D CMAKE_C_COMPILER="$(which clang)"
+        -D LLVM_USE_LINKER="$(which ld.lld)"
+        -D CMAKE_RANLIB="$(which llvm-ranlib)"
+        -D CMAKE_AR="$(which llvm-ar)"
     )
 
     local _stage_1_tablegen=()
     if [[ "${_system_utils}" -eq "1" ]]; then
         _stage_1_tablegen=(
-            -D LLVM_TABLEGEN="/usr/bin/llvm-tblgen"
-            -D CLANG_TABLEGEN="/usr/bin/clang-tblgen"
+            -D LLVM_TABLEGEN="$(which llvm-tblgen)"
+            -D CLANG_TABLEGEN="$(which clang-tblgen)"
         )
     fi
 
-    local _llvm_profdata="/usr/bin/llvm-profdata"
+    local _llvm_profdata="$(which llvm-profdata)"
     if [[ "${_bootstrap}" -eq "1" ]]; then
         if [[ ! -f "${srcdir}/.build$1_stg1.built" ]]; then
             cd "${srcdir}/_build$1_stg1"
@@ -378,13 +379,13 @@ build() {
         -D LLVM_DEFAULT_TARGET_TRIPLE="i686-pc-linux-gnu" \
         -D LLVM_LIBDIR_SUFFIX=32 \
         -D LLVM_TARGET_ARCH:STRING=i686 \
-        -D LLVM_CONFIG="/usr/bin/llvm-config32" \
+        -D LLVM_CONFIG="$(which llvm-config32)" \
         -D COMPILER_RT_BUILD_LIBFUZZER=OFF \
         -D LLVM_ENABLE_BINDINGS=OFF \
-        -D PYTHON_EXECUTABLE=/usr/bin/python-32
+        -D PYTHON_EXECUTABLE="$(which python-32)"
 
     _build_cmake 64 \
-        -D PYTHON_EXECUTABLE=/usr/bin/python
+        -D PYTHON_EXECUTABLE="$(which python)"
 }
 
 check() {
