@@ -8,26 +8,26 @@
 pkgbase=python-gentz
 pkgname=('python-gentz' 'lib32-python-gentz')
 pkgver=3.7.4
-pkgrel=14
-pkgdesc="Next generation of the python high-level scripting language"
+pkgrel=17
+pkgdesc='Next generation of the python high-level scripting language'
 arch=('x86_64')
-url="http://www.python.org/"
+url='http://www.python.org/'
 license=('custom')
 groups=('gentz_custom')
 makedepends=(
-    'tk' 'sqlite' 'valgrind' 'bluez-libs' 'mpdecimal' 'llvm' 'gdb' 
-    'xorg-server-xvfb' 'lib32-gcc-libs' 'lib32-tk' 'lib32-sqlite' 
+    'tk' 'sqlite' 'valgrind' 'bluez-libs' 'mpdecimal' 'llvm' 'gdb'
+    'xorg-server-xvfb' 'lib32-gcc-libs' 'lib32-tk' 'lib32-sqlite'
     'lib32-libnsl' 'lib32-libtirpc' 'lib32-mpdecimal' 'expat'
     'lib32-expat' 'libffi' 'lib32-libffi'
 )
 source=(
     "https://www.python.org/ftp/python/${pkgver%rc*}/Python-${pkgver}.tar.xz"{,.asc}
-    dont-make-libpython-readonly.patch
-    0001-compileall-Fix-ddir-when-recursing.patch
-    pyconfig.h
-    Use-right-mpdecimal.patch
-    lib32-distutils-sysconfig.patch
-    python-config-32.patch
+    'dont-make-libpython-readonly.patch'
+    '0001-compileall-Fix-ddir-when-recursing.patch'
+    'pyconfig.h'
+    'Use-right-mpdecimal.patch'
+    'lib32-distutils-sysconfig.patch'
+    'python-config-32.patch'
 )
 sha512sums=('71f64668c259f3ed07bd4aa239dbba6cc1b6b0a84d50bbff160664845d7986f757e4d65fca327e62a2d12ba593742ca83a22f7cb6093aff8715ec916c2ba9416'
             'SKIP'
@@ -39,7 +39,7 @@ sha512sums=('71f64668c259f3ed07bd4aa239dbba6cc1b6b0a84d50bbff160664845d7986f757e
             'f6119c9fb535e28d19c7500d8ce4859f9fa71738520357f4f7b418af25574380861381e911622b8cb85a21297083a3a96252d01595ba5803374b3f3f09d0e647')
 
 # Ned Deily (Python release signing key) <nad@python.org>
-validpgpkeys=('0D96DF4D4110E5C43FBFB17F2D347EA6AA65421D') 
+validpgpkeys=('0D96DF4D4110E5C43FBFB17F2D347EA6AA65421D')
 
 _pybasever=${pkgver%.*}
 
@@ -61,7 +61,7 @@ prepare() {
     # Speed up LTO
     sed -i -e "s|-flto |-flto=4 |g" configure configure.ac
 
-    # Ensure that we are using the system copy of various libraries 
+    # Ensure that we are using the system copy of various libraries
     # (expat, libffi, and libmpdec), rather than copies shipped in the tarball
     rm -r Modules/expat
     rm -r Modules/_ctypes/{darwin,libffi}*
@@ -84,7 +84,7 @@ prepare() {
     sed -i "s|prefix)/lib|prefix)/lib32|g" "Makefile.pre.in"
 
     patch -Np1 -i "../lib32-distutils-sysconfig.patch"
-  
+
     # Give the configuration script an extention
     patch -Np1 -i "../python-config-32.patch"
 
@@ -128,7 +128,7 @@ _export_O3() {
 }
 
 _obtain_server() {
-    # Obtain next free server number for xvfb-run; this even works in a chroot 
+    # Obtain next free server number for xvfb-run; this even works in a chroot
     # environment.
     export servernum=99
     while ! xvfb-run -a -n "$servernum" /bin/true 2>/dev/null; do
@@ -141,7 +141,7 @@ _configure_python() {
     pushd "${srcdir}/${pkgbase}$1"
 
     local _python_configure_options=(
-        --prefix=/usr 
+        --prefix=/usr
         --enable-shared
         --with-threads
         --with-computed-gotos
@@ -172,10 +172,10 @@ _build_python() {
         -s "-screen 0 1280x720x24 -ac +extension GLX" \
         -a -n "$servernum" make EXTRA_CFLAGS="$CFLAGS"
     popd
-} 
+}
 
 _build() {
-    _build_python "32" 
+    _build_python "32"
     _build_python "64"
 }
 
@@ -237,9 +237,9 @@ package_lib32-python-gentz() {
     pkgdesc+=" (32-bit)"
     depends=(
         'python'
-        'lib32-expat' 
-        'lib32-bzip2' 
-        'gdbm' 
+        'lib32-expat'
+        'lib32-bzip2'
+        'gdbm'
         'lib32-openssl'
         'lib32-libffi'
         'lib32-zlib'

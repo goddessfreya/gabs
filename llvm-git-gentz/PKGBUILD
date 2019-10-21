@@ -16,11 +16,11 @@
 
 pkgbase=llvm-git-gentz
 pkgname=('llvm-git-gentz' 'lib32-llvm-git-gentz')
-pkgver=10.0.0_r329506.867d985ba5b
+pkgver=10.0.0_r329727.038a0a433af
 pkgrel=1
-pkgdesc="Collection of compiler and toolchain technologies. Inc/ clang and many other tools"
+pkgdesc='Collection of compiler and toolchain technologies. Inc/ clang and many other tools'
 arch=('x86_64')
-url="https://llvm.org/"
+url='https://llvm.org/'
 license=('custom:University of Illinois/NCSA Open Source License')
 groups=('gentz_custom')
 makedepends=(
@@ -32,7 +32,7 @@ makedepends=(
     'ncurses'
     'libxml2'
     'python-sphinx'
-    "ocaml"
+    'ocaml'
     'ocaml-ctypes'
     'ocaml-findlib'
     'python-sphinx'
@@ -63,7 +63,7 @@ makedepends=(
 options=('!debug' '!strip')
 
 source=(
-    "llvm-project64::git+https://github.com/llvm/llvm-project.git"
+    'llvm-project64::git+https://github.com/llvm/llvm-project.git'
     'llvm-config.h'
     '0001-Enable-SSP-and-PIE-by-default.patch'
     '0001-Link-libatomic.so-during-32-bit-builds.patch'
@@ -210,7 +210,7 @@ _build_cmake_sub() {
 
 _build_cmake_test() {
     # Tests hang 99% of the time, so just return
-    return 
+    return
 
     for i in "$@"; do
         msg2 "Testing $i"
@@ -453,7 +453,7 @@ package_llvm-git-gentz() {
         'ncurses'
         'libxml2'
         'gcc'
-        "ocaml"
+        'ocaml'
         'ocaml-ctypes'
         'python'
         'lib32-python'

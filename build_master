@@ -1,7 +1,7 @@
 #!/bin/zsh -x
 
-local MAKEPKG_PARAM=()
-local MAKECHROOTPKG_PARAM=("-c")
+local MAKEPKG_PARAM=("-s")
+local MAKECHROOTPKG_PARAM=()
 local CHROOT_DIR=
 local RESUME_DIR=
 local BACKUP_DIR=
@@ -11,8 +11,15 @@ local DONT_BUMP_REL=false
 local NO_BUILD=false
 local CHROOT_NAME=
 local DISTC_SUPPORT=false
+local ONLY_REPACKAGE=false
 
 source "$(pwd)/../build_utils"
+
+proc_nw() {
+    [[ "$WIPE_SRC" == "very_false" ]] && return
+    WIPE_SRC=very_false
+    MAKEPKG_PARAM+=("--noextract" "--noprepare" "--skipinteg")
+}
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -27,35 +34,54 @@ while [[ $# -gt 0 ]]; do
 			shift # past value
 		;;
 		-w)
-            if [[ "$WIPE_SRC" != "false" && "$WIPE_SRC" != "true" ]]; then
-                echo -w conflicts with -nw or -rs
+            if [[ "$WIPE_SRC" != "false" ]]; then
+                echo -w conflicts other parameter.
                 exit 1
             fi
             WIPE_SRC=true
+            MAKEPKG_PARAM+=("-C")
 			shift # past argument
 		;;
 		-nw)
-            if [[ "$WIPE_SRC" != "false" && "$WIPE_SRC" != "very_false" ]]; then
-                echo -nw conflicts with -w 
+            if [[ "$WIPE_SRC" != "false" ]]; then
+                echo -nw conflicts other parameter.
                 exit 1
             fi
-            WIPE_SRC=very_false
-            MAKEPKG_PARAM+=("--noextract" "--noprepare" "--skipinteg" "--nodeps")
-            TO_REMOVE=("-c")
-            remove_from_array MAKECHROOTPKG_PARAM TO_REMOVE
-            MAKECHROOTPKG_PARAM=("${RFA_RETURN[@]}")
+            proc_nw
 			shift # past argument
 		;;
+		-wn)
+            if [[ "$WIPE_SRC" != "false" ]]; then
+                echo -wn conflicts other parameter.
+                exit 1
+            fi
+            WIPE_SRC=nothing
+			shift # past argument
+        ;;
+        -r)
+            if [[ "$ONLY_REPACKAGE" != "false" || "$WIPE_SRC" != "false" && "$RESUME_DIR" == "" ]]; then
+                echo -r conflicts other parameter.
+                exit 1
+            fi
+            ONLY_REPACKAGE=true
+            MAKEPKG_PARAM+=("--repackage")
+            proc_nw
+			shift # past argument
+        ;;
         -rs)
             if [[ "$RESUME_DIR" != "" ]]; then
                 echo Resume dir already passed.
                 exit 1
             fi
+            if [[ "$WIPE_SRC" != "false" && "$ONLY_REPACKAGE" != "true" ]]; then
+                echo -rs conflicts other parameter.
+                exit 1
+            fi
 
             RESUME_DIR="$2"
+            proc_nw
 			shift # past argument
 			shift # past value
-            set -- "$@" -nw
         ;;
         -bk)
             if [[ "$BACKUP_DIR" != "" ]]; then
@@ -106,20 +132,7 @@ while [[ $# -gt 0 ]]; do
         ;;
 
         --help)
-            echo "====== HELP ======"
-            echo "PARA | DESC"
-            echo "-m   : Makepkg param"
-            echo "-mc  : Makechrootpkg param"
-            echo "-w   : Wipe existing source"
-            echo "-nw  : Dont wipe existing source, infact reuse it"
-            echo "-c   : The chroot directory"
-            echo "-dbr : Don't bump the package release"
-            echo "-rr  : Only reset the package release before exiting"
-            echo "-rs  : Resume directory. (Implies -nw)"
-            echo "-bk  : Backup directory."
-            echo "-nb  : No build."
-            echo "-cn  : Chroot name."
-            echo "-dist: Distcc support."
+            echo "Please refer to the README."
             exit
         ;;
 		*) # unknown option
@@ -157,77 +170,19 @@ fi
 
 [[ -d "$HOME/.ccache" ]] && MAKECHROOTPKG_PARAM+=("-d" "$HOME/.ccache:/ccache")
 
-[[ "$WIPE_SRC" == "true" ]] && MAKEPKG_PARAM+=("-C")
+[[ "$WIPE_SRC" == "false" ]] && MAKEPKG_PARAM+=("-c")
+
 local DEPS_PREFIX="$(pwd)/../deps.${CHROOT_NAME}/$(basename $(pwd))"
-
-if [[ "$WIPE_SRC" == "true" || ! -f "$DEPS_PREFIX/provides" ]]; then
-    # Install deps because for some reason pacman fails to do this when called from
-    # makechrootpkg
-    mkdir -p "$DEPS_PREFIX"
-
-    sort -u "../provides.${CHROOT_NAME}" > "../provides.${CHROOT_NAME}.new"
-    mv "../provides.${CHROOT_NAME}"{.new,}
-
-    makepkg --printsrcinfo > "$DEPS_PREFIX/printsrcinfo"
-
-    # first we find all the packages we depend on
-    cat "$DEPS_PREFIX/printsrcinfo" \
-        | grep -P "^\tdepends = " \
-        | cut -d"=" -f2 \
-        | grep -Eo '^ [a-zA-Z0-9@,._+-]*' > "$DEPS_PREFIX/deps"
-
-    # This pkg's provides to our provide list
-    cat "$DEPS_PREFIX/printsrcinfo" \
-        | grep -P "^\tprovides = " \
-        | cut -d"=" -f2 \
-        | grep -Eo '^ [a-zA-Z0-9@,._+-]*' > "$DEPS_PREFIX/provides"
-
-    # Append this pkg to our provide list
-    cat "$DEPS_PREFIX/printsrcinfo" \
-        | grep -P "^pkgname = " \
-        | cut -d"=" -f2 \
-        | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/provides"
-
-    sort -u "$DEPS_PREFIX/provides" > "$DEPS_PREFIX/provides.sorted"
-    sort -u "$DEPS_PREFIX/deps" > "$DEPS_PREFIX/deps.sorted"
-
-    # But we only need ones we don't provide 
-    comm -23 "$DEPS_PREFIX/deps.sorted" "$DEPS_PREFIX/provides.sorted" \
-        > "$DEPS_PREFIX/deps.provideless"
-
-    cp "$DEPS_PREFIX/deps."{provideless,withbuildtime}
-
-    # Make deps don't care about future deps, however, so we insert them here
-    cat "$DEPS_PREFIX/printsrcinfo" \
-        | grep -P "^\tmakedepends = " \
-        | cut -d"=" -f2 \
-        | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/deps.withbuildtime"
-
-    # Nor do check depends
-    cat "$DEPS_PREFIX/printsrcinfo" \
-        | grep -P "^\tcheckdepends = " \
-        | cut -d"=" -f2 \
-        | grep -Eo '^ [a-zA-Z0-9@,._+-]*' >> "$DEPS_PREFIX/deps.withbuildtime"
-
-    sort -u "$DEPS_PREFIX/deps.withbuildtime" > "$DEPS_PREFIX/deps.withbuildtimesorted"
-
-    # And we strip out provides.
-    comm -23 "$DEPS_PREFIX/deps.withbuildtimesorted" "../provides.${CHROOT_NAME}" \
-        > "$DEPS_PREFIX/deps.final"
-    local DEPS="$(cat $DEPS_PREFIX/deps.final | sed "s/^ /\"/" | sed "s/$/\"/")"
-
-    if [[ "$DEPS" != "" ]]; then
-        sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" /bin/bash \
-            -c "DEPS=($DEPS); pacman -S --needed \"\${DEPS[@]}\" --noconfirm || exit \$?" \
-            || exit $?
-    fi
-fi
+mkdir -p "$DEPS_PREFIX"
 
 # Remove old packages
 sudo rm *.pkg*
 sudo rm  -rf "${CHROOT_DIR}/root/pkgs/"
 
 if [[ "$RESUME_DIR" != "" ]]; then
+    sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
+        "${CHROOT_DIR}/root/" "${CHROOT_DIR}/$USER"
+    mkdir -p "${CHROOT_DIR}/$USER/build"
     sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
         "$RESUME_DIR/" "${CHROOT_DIR}/$USER/build"
 fi
@@ -252,29 +207,30 @@ fi
 
 [[ "$NO_BUILD" == "true" ]] && exit
 
-if [[ "$(ls *.pkg* | wc -l)" == "0" ]]; then
-    echo WARN: No packages generated.
+if [[ "$(ls *.pkg.(tar|tar.gz|tar.xz|tar.bz2) | wc -l)" == "0" ]]; then
+    echo No packages generated.
     exit 1
 fi
 
-# Add this package to the list of our git packages then install it
-sudo mkdir -p "${CHROOT_DIR}/root/pkgs/"
-sudo mv *.pkg.(tar|tar.gz|tar.xz|tar.bz2) "${CHROOT_DIR}/root/pkgs/"
-sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
-    /bin/bash -c "yes | pacman -U /pkgs/* || exit \$?" || exit $?
+# Install the pkg everywhere.
+for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+    [[ ! -d "${CHROOT_DIR2}" ]] && continue
+    sudo mkdir -p "${CHROOT_DIR2}/pkgs/"
+    sudo cp *.pkg.(tar|tar.gz|tar.xz|tar.bz2) "${CHROOT_DIR2}/pkgs/"
+    sudo /usr/bin/arch-nspawn "${CHROOT_DIR2}" \
+        /bin/bash -xc "yes | pacman -U /pkgs/* || exit \$?" || exit $?
+    sudo rm "${CHROOT_DIR2}/pkgs/"*
+done
 
-if [[ -f "$DEPS_PREFIX"/packages ]]; then
+# Move the old packages out
+if [[ -f "$DEPS_PREFIX"/packages && "$(cat "$DEPS_PREFIX"/packages | wc -l)" != "0" ]]; then
     pushd "../pkgs.${CHROOT_NAME}"
-    mv $(cat "$DEPS_PREFIX"/packages | tr "\n" " ") "../pkgs.old.${CHROOT_NAME}"
+    cat "$DEPS_PREFIX"/packages | xargs -I% sudo mv % "../pkgs.old.${CHROOT_NAME}"
     popd
 fi
 
-pushd "${CHROOT_DIR}/root/pkgs/"
-ls * > "$DEPS_PREFIX"/packages
-popd
+# Update the package list.
+ls *.pkg.(tar|tar.gz|tar.xz|tar.bz2) > "$DEPS_PREFIX"/packages
 
 # Add it with the rest of the packages
-sudo mv "${CHROOT_DIR}/root/pkgs/"* "../pkgs.${CHROOT_NAME}"
-
-# Append our provides list to the provides list
-cat "$DEPS_PREFIX/provides" >> "../provides.${CHROOT_NAME}"
+cat "$DEPS_PREFIX"/packages | xargs -I% sudo mv % "../pkgs.${CHROOT_NAME}"

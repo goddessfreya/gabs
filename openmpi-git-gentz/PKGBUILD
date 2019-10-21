@@ -4,7 +4,7 @@
 # Contributor: Stéphane Gaudreault <stephane@archlinux.org>
 
 pkgname=openmpi-git-gentz
-pkgver=4.1.0.a1.r30127.re1e6d8b85e
+pkgver=4.1.0.a1.r30130.rb6c4d5c118
 pkgrel=2
 pkgdesc='High performance message passing library (MPI)'
 arch=('x86_64')
@@ -17,7 +17,7 @@ optdepends=('gcc-fortran: fortran support')
 provides=('openmpi' 'openmpi-git')
 conflicts=('openmpi' 'openmpi-git')
 options=('staticlibs')
-source=("git+https://github.com/open-mpi/ompi.git")
+source=('git+https://github.com/open-mpi/ompi.git')
 sha512sums=('SKIP')
 
 pkgver() {

@@ -5,10 +5,10 @@
 _pkgname=xf86-video-vesa
 pkgname=xf86-video-vesa-git-gentz
 pkgver=2.4.0.7
-pkgrel=2
-pkgdesc="X.org vesa video driver (git version)"
+pkgrel=5
+pkgdesc='X.org vesa video driver (git version)'
 arch=('x86_64')
-url="https://xorg.freedesktop.org/"
+url='https://xorg.freedesktop.org/'
 license=('custom')
 groups=('xorg-drivers' 'gentz_custom')
 depends=(''systemd-libs'' 'mesa')
@@ -32,7 +32,7 @@ _exports() {
     # Since pacman 5.0.2-2, hardened flags are now enabled in makepkg.conf
     # With them, module fail to load with undefined symbol.
     #
-    # See https://bugs.archlinux.org/task/55102 
+    # See https://bugs.archlinux.org/task/55102
     # and https://bugs.archlinux.org/task/54845
     export CFLAGS=${CFLAGS/-fno-plt}
     export CXXFLAGS=${CXXFLAGS/-fno-plt}

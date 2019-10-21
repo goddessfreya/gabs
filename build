@@ -18,9 +18,10 @@ local EXCLUDED_PACKAGES=()
 local FIRST_PARAMS=()
 local EVERY_PARAMS=()
 local ONE_ONLY=false
-local DO_BACKUP_DIR=
-local RESUME_BACKUP_DIR=
+local BACKUP_DIR=
+local RESUME_DIR=
 local CHROOT_NAME=
+local LOOP_DEVICE_SIZE=50G
 
 source "$(pwd)/build_utils"
 
@@ -73,22 +74,22 @@ while [[ $# -gt 0 ]]; do
 			shift # past argument
 		;;
 		-rs)
-            if [[ "$RESUME_BACKUP_DIR" != "" ]]; then
+            if [[ "$RESUME_DIR" != "" ]]; then
                 echo Resume backup dir already passed.
                 exit 1
             fi
 
-            RESUME_BACKUP_DIR="$2"
+            RESUME_DIR="$2"
 			shift # past argument
 			shift # past argument
 		;;
 		-bk)
-            if [[ "$DO_BACKUP_DIR" != "" ]]; then
+            if [[ "$BACKUP_DIR" != "" ]]; then
                 echo Do backup dir already passed.
                 exit 1
             fi
 
-            DO_BACKUP_DIR="$2"
+            BACKUP_DIR="$2"
 			shift # past argument
 			shift # past argument
 		;;
@@ -102,21 +103,14 @@ while [[ $# -gt 0 ]]; do
 			shift # past argument
 			shift # past argument
 		;;
+        -lds)
+            LOOP_DEVICE_SIZE="$2"
+			shift # past argument
+			shift # past argument
+        ;;
 
         --help)
-            echo "====== HELP ======"
-            echo "PARA | DESC"
-            echo "-rp  : Resumes on this package"
-            echo "-r   : Resumes on last built package"
-            echo "-ra  : Resumes after the set package"
-            echo "-p   : Adds this to the package list"
-            echo "-e   : Adds this to the excluded package list"
-            echo "-fp  : Add this as one of the params that the first package built recieves"
-            echo "-ep  : Add this as one of the params that every package recieves, excluding the first if -fp is set"
-            echo "-o   : Only build one package"
-            echo "-bk  : Do backups."
-            echo "-rs  : Resume backups."
-            echo "-cn  : Chroot name."
+            echo "Please refer to the README."
             exit
         ;;
 		*) # unknown option
@@ -235,7 +229,19 @@ for PKG_TO_BUILD in $PACKAGES; do
     fi
 done
 
-local CHROOT_DIR="$(pwd)/chroots/${CHROOT_NAME}"
+local CHROOT_DIR="$(pwd)/chroots/${CHROOT_NAME}/chroot"
+local CHROOT_MOUNT="$(pwd)/chroots/${CHROOT_NAME}"
+local CHROOT_FILE="$(pwd)/chroots/${CHROOT_NAME}.img"
+
+# Unmount old loopdevices that where kept due to bad cleanup
+lsblk -o NAME,MOUNTPOINT -J -n \
+    | grep "${CHROOT_MOUNT}" \
+    | xargs -I% bash -xc '
+        LOOPDEVICE_NAME="$(echo "%" | cut -d":" -f2 | cut -d"," -f1)"
+        MOUNT_DIR="$(echo "%" | cut -d":" -f3 | cut -d"}" -f1)"
+        sudo umount "$MOUNT_DIR"
+        sudo losetup -d "/dev/$LOOPDEVICE_NAME"
+    '
 
 clone_file() {
     for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
@@ -247,9 +253,11 @@ clone_file() {
     done
 }
 
-if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
-    cp "alternatives.${CHROOT_NAME}" "provides.${CHROOT_NAME}"
-    touch "provides.${CHROOT_NAME}"
+local REMAKE_CHROOT=false
+[[ "$SHOULD_RESUME" == "false" || ! -f "${CHROOT_FILE}" ]] \
+    && REMAKE_CHROOT=true
+
+if [[ "$REMAKE_CHROOT" == "true" ]]; then
     sudo rm -rf "deps.${CHROOT_NAME}"
     mkdir -p "deps.${CHROOT_NAME}"
     mkdir -p "alt_pkgs.${CHROOT_NAME}"
@@ -268,8 +276,35 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
     mkdir -p "pkgs.${CHROOT_NAME}"
     mv "pkgs.${CHROOT_NAME}/"* "pkgs.old.${CHROOT_NAME}"
 
-    sudo rm -rf "$CHROOT_DIR"
-    mkdir -p "$CHROOT_DIR"
+    rm "${CHROOT_FILE}"
+    fallocate -l $LOOP_DEVICE_SIZE "${CHROOT_FILE}" || exit $?
+fi
+
+# We use a loop device cause sometimes the partitions have nosuid on them,
+# which breaks the /bin/sudo in the chroot when used from outside the chroot,
+# which breaks makepkg for some reason.
+local LOOP_DEVICE="$(sudo losetup -f)"
+sudo losetup "$LOOP_DEVICE" "${CHROOT_FILE}" || exit $?
+
+cleanup_loopdevice() {
+    until sudo losetup -d "$LOOP_DEVICE"; do sleep 2; done
+}
+trap cleanup_loopdevice EXIT
+
+if [[ "$REMAKE_CHROOT" == "true" ]]; then
+    sudo mkfs.ext4 "$LOOP_DEVICE" || exit $?
+fi
+
+sudo mkdir -p "${CHROOT_MOUNT}"
+sudo mount "$LOOP_DEVICE" "${CHROOT_MOUNT}" || exit $?
+cleanup_loopdevice2() {
+    until sudo umount "${CHROOT_MOUNT}"; do sleep 2; done
+    until sudo losetup -d "$LOOP_DEVICE"; do sleep 2; done
+}
+trap cleanup_loopdevice2 EXIT
+
+if [[ "$REMAKE_CHROOT" == "true" ]]; then
+    sudo mkdir -p "$CHROOT_DIR"
 
     local INSTALL_PACKAGES=(base-devel gcc-multilib zsh)
 
@@ -287,13 +322,13 @@ if [[ "$SHOULD_RESUME" == "false" || ! -d "${CHROOT_DIR}" ]]; then
         "${INSTALL_PACKAGES[@]}"
 
     sudo /usr/bin/arch-nspawn "$CHROOT_DIR/root" \
-        /bin/bash -c 'yes | pacman -Syyu'
+        /bin/bash -xc 'yes | pacman -Syyu'
 
     sudo mkdir -p "${CHROOT_DIR}/root/alt_pkgs.${CHROOT_NAME}/"
     sudo cp "alt_pkgs.${CHROOT_NAME}/"*.pkg* "${CHROOT_DIR}/root/pkgs/"
     if [[ "$ALT_DEPS" != "" ]]; then
         sudo /usr/bin/arch-nspawn "${CHROOT_DIR}/root" \
-            /bin/bash -c "yes | pacman -U /pkgs/*"
+            /bin/bash -xc "yes | pacman -U /pkgs/*"
     fi
 else
     clone_file {custom,/etc}/makepkg.conf root:root 644
@@ -301,7 +336,7 @@ else
     for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
         [[ ! -d "${CHROOT_DIR2}" ]] && continue
         sudo /usr/bin/arch-nspawn "${CHROOT_DIR2}" \
-            /bin/bash -c 'yes | pacman -Syyu'
+            /bin/bash -xc 'yes | pacman -Syyu'
     done
 fi
 
@@ -320,8 +355,8 @@ if [[ "$USE_DISTCC" == "true" ]]; then
     done
 fi
 
-[[ "$RESUME_BACKUP_DIR" != "" ]] && mkdir -p "$RESUME_BACKUP_DIR"
-[[ "$DO_BACKUP_DIR" != "" ]] && mkdir -p "$DO_BACKUP_DIR"
+[[ "$RESUME_DIR" != "" ]] && mkdir -p "$RESUME_DIR"
+[[ "$BACKUP_DIR" != "" ]] && mkdir -p "$BACKUP_DIR"
 
 for PKG_TO_BUILD in $PACKAGES; do
     if [[ "$SHOULD_RESUME" != "false" ]]; then
@@ -354,8 +389,8 @@ for PKG_TO_BUILD in $PACKAGES; do
     array_contains_element "-rs" ${PARAMS[@]} \
         && echo "Did not insert -rs as already present" \
         || {
-            [[ "$RESUME_BACKUP_DIR" != "" ]] \
-                && PARAMS+=("-rs" "$RESUME_BACKUP_DIR/$PKG_TO_BUILD")
+            [[ "$RESUME_DIR" != "" ]] \
+                && PARAMS+=("-rs" "$RESUME_DIR/$PKG_TO_BUILD")
         }
 
     if array_contains_element "-rs" ${PARAMS[@]} ; then 
@@ -368,8 +403,8 @@ for PKG_TO_BUILD in $PACKAGES; do
     array_contains_element "-bk" ${PARAMS[@]} \
         && echo "Did not insert -bk as already present" \
         || {
-            [[ "$DO_BACKUP_DIR" != "" ]] \
-                && PARAMS+=("-bk" "$DO_BACKUP_DIR/$PKG_TO_BUILD")
+            [[ "$BACKUP_DIR" != "" ]] \
+                && PARAMS+=("-bk" "$BACKUP_DIR/$PKG_TO_BUILD")
         }
 
     cd "$PKG_TO_BUILD"

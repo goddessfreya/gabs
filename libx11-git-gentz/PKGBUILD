@@ -5,18 +5,20 @@
 pkgbase=libx11-git-gentz
 pkgname=('libx11-git-gentz' 'lib32-libx11-git-gentz')
 pkgver=1.6.9.r1.gb8766a43
-pkgrel=2
-pkgdesc="X11 client-side library"
-arch=(x86_64)
-url="https://xorg.freedesktop.org/"
+pkgrel=13
+pkgdesc='X11 client-side library'
+arch=('x86_64')
+url='https://xorg.freedesktop.org/'
 license=('custom')
 groups=('gentz_custom')
-makedepends=('gcc-multilib' 'xorg-util-macros' 'xextproto' 'xtrans' 'inputproto')
-source=("git+https://gitlab.freedesktop.org/xorg/lib/libx11.git")
+makedepends=('git' 'gcc-multilib' 'xorg-util-macros' 'xextproto' 'xtrans' 'inputproto')
+source=('git+https://gitlab.freedesktop.org/xorg/lib/libx11.git')
 sha512sums=('SKIP')
-validpgpkeys=('4A193C06D35E7C670FA4EF0BA2FB9E081F2D130E')
-validpgpkeys+=('C41C985FDCF1E5364576638B687393EE37D128F8') # Matthieu Herrb <matthieu.herrb@laas.fr>
-validpgpkeys+=('3BB639E56F861FA2E86505690FDD682D974CA72A') # Matt Turner <mattst88@gmail.com>
+validpgpkeys=(
+    '4A193C06D35E7C670FA4EF0BA2FB9E081F2D130E'
+    'C41C985FDCF1E5364576638B687393EE37D128F8' # Matthieu Herrb <matthieu.herrb@laas.fr>
+    '3BB639E56F861FA2E86505690FDD682D974CA72A' # Matt Turner <mattst88@gmail.com>
+)
 
 pkgver() {
     cd "${srcdir}/${pkgbase}64"

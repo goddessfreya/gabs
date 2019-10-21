@@ -3,18 +3,18 @@
 
 pkgname=lib32-libomxil-bellagio-gentz
 pkgver=0.9.3
-pkgrel=15
-pkgdesc="An opensource implementation of the OpenMAX Integration Layer API (32-bit)"
+pkgrel=17
+pkgdesc='An opensource implementation of the OpenMAX Integration Layer API (32-bit)'
 arch=('x86_64')
-url="http://omxil.sourceforge.net"
+url='http://omxil.sourceforge.net'
 license=('LGPL')
 groups=('gentz_custom')
-depends=("lib32-glibc" "libomxil-bellagio")
-makedepends=("lib32-gcc-libs")
-provides=("lib32-libomxil-bellagio")
+depends=('lib32-glibc' 'libomxil-bellagio')
+makedepends=('lib32-gcc-libs')
+provides=('lib32-libomxil-bellagio')
 source=(
     "${pkgname}::http://downloads.sourceforge.net/project/omxil/omxil/Bellagio%200.9.3/libomxil-bellagio-${pkgver}.tar.gz"
-    fedora-fixes.patch
+    'fedora-fixes.patch'
 )
 sha512sums=('72b4c8c639f8cf767ba6323fdfc42b90ad4b62f0ece3ba786ae38afc7c5d64cb0ba464b7993a588c1c7fa2daafe2ac773c9c4367a154c32632e87ba0d6341d16'
             '6a763c164ed21ad9a8c0da01e02e823ed40f2539b68ef96d8052739dd433daa472c7d05f86bb06b95269a819403aa2e27670d37475ecf108f808bf9fa3ede413')
