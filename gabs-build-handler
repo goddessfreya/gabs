@@ -1,0 +1,218 @@
+#!/bin/zsh -x
+
+# Find and load script config
+local SCRIPTS_DIR="${0:A:h}"
+[[ ! -d "${SCRIPTS_DIR}" ]] && exit 1
+
+local BUILTIN_PACKAGES_DIR=
+
+source "${SCRIPTS_DIR}/gabs-build-common" || exit $?
+source "${SCRIPTS_DIR}/gabs-build-config" || exit $?
+
+[[ ! -d "${BUILTIN_PACKAGES_DIR}" ]] && exit 1
+
+local MAKEPKG_PARAM=("-s")
+local MAKECHROOTPKG_PARAM=()
+local CHROOT_DIR=
+local RESUME_DIR=
+local BACKUP_DIR=
+local WIPE_SRC=false
+local RESET_REL=
+local DONT_BUMP_REL=false
+local NO_BUILD=false
+local CHROOT_NAME=
+local DISTC_SUPPORT=false
+local ONLY_REPACKAGE=false
+local EPHEMERAL_DIR=
+local PKGNAME=
+
+proc_nw() {
+    [[ "${WIPE_SRC}" == "very_false" ]] && return
+    WIPE_SRC=very_false
+    MAKEPKG_PARAM+=("--noextract" "--noprepare" "--skipinteg")
+}
+
+while [[ ${#} -gt 0 ]]; do
+	case "$1" in
+		-m) MAKEPKG_PARAM+=("$2"); shift;;
+		-mc)
+            MAKECHROOTPKG_PARAM+=("$2")
+			shift 
+		;;
+		-w)
+            if [[ "${WIPE_SRC}" != "false" ]]; then
+                echo -w conflicts other parameter.
+                exit 1
+            fi
+            WIPE_SRC=true
+            MAKEPKG_PARAM+=("-C")
+		;;
+		-nw)
+            if [[ "${WIPE_SRC}" != "false" ]]; then
+                echo -nw conflicts other parameter.
+                exit 1
+            fi
+            proc_nw
+		;;
+		-wn)
+            if [[ "${WIPE_SRC}" != "false" ]]; then
+                echo -wn conflicts other parameter.
+                exit 1
+            fi
+            WIPE_SRC=nothing
+        ;;
+        -r)
+            if [[ "${ONLY_REPACKAGE}" != "false" || "${WIPE_SRC}" != "false" && "${RESUME_DIR}" == "" ]]; then
+                echo -r conflicts other parameter.
+                exit 1
+            fi
+            ONLY_REPACKAGE=true
+            MAKEPKG_PARAM+=("--repackage")
+            proc_nw
+        ;;
+        -rs)
+            if [[ "${RESUME_DIR}" != "" ]]; then
+                echo Resume dir already passed.
+                exit 1
+            fi
+            if [[ "${WIPE_SRC}" != "false" && "${ONLY_REPACKAGE}" != "true" ]]; then
+                echo -rs conflicts other parameter.
+                exit 1
+            fi
+
+            RESUME_DIR="$2"
+            proc_nw
+			shift 
+        ;;
+        -bk)
+            if [[ "${BACKUP_DIR}" != "" ]]; then
+                echo Backup dir already passed.
+                exit 1
+            fi
+
+            BACKUP_DIR="$2"
+			shift 
+        ;;
+        -c)
+            if [[ "${CHROOT_DIR}" != "" ]]; then
+                echo Chroot dir already passed.
+                exit 1
+            fi
+            CHROOT_DIR="$2"
+            MAKECHROOTPKG_PARAM+=("-r" "$2")
+			shift 
+        ;;
+        -dbr) DONT_BUMP_REL=true;;
+        -nb) NO_BUILD=true;;
+        -rr) RESET_REL="$2"; shift;;
+		-cn)
+            if [[ "${CHROOT_NAME}" != "" ]]; then
+                echo Chroot name already passed.
+                exit 1
+            fi
+
+            CHROOT_NAME="$2"
+			shift 
+		;;
+        -dist) DISTC_SUPPORT=true;;
+        -ed) EPHEMERAL_DIR="$2"; shift;;
+        -pn) PKGNAME="$2"; shift;;
+
+        --help)
+            echo "Please refer to the README."
+            exit
+        ;;
+		*) # unknown option
+			printf "Unkown option \`$1\`\n"
+            exit 1
+		;;
+	esac
+    shift
+done
+
+error_blank_param EPHEMERAL_DIR
+error_blank_param CHROOT_DIR
+error_blank_param CHROOT_NAME
+error_blank_param PKGNAME
+
+if [[ "${WIPE_SRC}" != "very_false" && "${DONT_BUMP_REL}" == "false" || "${RESET_REL}" != "" ]]; then
+    local PKGREL="$(cat PKGBUILD | grep "^pkgrel=[0-9]*$" | cut -d"=" -f2)"
+
+    if [[ "$(echo "${PKGREL}" | wc -l)" != "1" ]]; then
+        echo Invalid number of pkgrel found, exiting
+        exit 1
+    fi
+
+    if [[ "${RESET_REL}" != "" ]]; then
+        sed -i "s/^pkgrel=${PKGREL}$/pkgrel=${RESET_REL}/g" PKGBUILD
+        exit
+    fi
+    
+    sed -i "s/^pkgrel=${PKGREL}$/pkgrel=$(( ${PKGREL} + 1 ))/g" PKGBUILD
+fi
+
+[[ -d "${HOME}/.ccache" ]] && MAKECHROOTPKG_PARAM+=("-d" "${HOME}/.ccache:/ccache")
+
+[[ "${WIPE_SRC}" == "false" ]] && MAKEPKG_PARAM+=("-c")
+
+local DEPS_PREFIX="${EPHEMERAL_DIR}/deps.${CHROOT_NAME}/${PKGNAME}"
+mkdir -p "${DEPS_PREFIX}"
+
+# Remove old packages
+sudo rm *.pkg*
+sudo rm  -rf "${CHROOT_DIR}/root/pkgs/"
+
+if [[ "${RESUME_DIR}" != "" ]]; then
+    sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
+        "${CHROOT_DIR}/root/" "${CHROOT_DIR}/${USER}" || exit $?
+    mkdir -p "${CHROOT_DIR}/${USER}/build"
+    sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
+        "${RESUME_DIR}/" "${CHROOT_DIR}/${USER}/build" || exit $?
+fi
+
+# We got to make a copy of makechrootpkg... patch it to use pump....
+local MAKECHROOTPKG_EXEC="/usr/bin/makechrootpkg"
+if [[ "${DISTC_SUPPORT}" == "true" ]]; then
+    MAKECHROOTPKG_EXEC="${EPHEMERAL_DIR}/custom/makechrootpkg"
+    cat /usr/bin/makechrootpkg | sed "s/makepkg /pump makepkg /g" > "${MAKECHROOTPKG_EXEC}"
+    chmod +x "${MAKECHROOTPKG_EXEC}"
+fi
+
+# Then actually build it
+if [[ "${NO_BUILD}" != "true" ]]; then
+    sudo "${MAKECHROOTPKG_EXEC}" "${MAKECHROOTPKG_PARAM[@]}" \
+        -- CCACHE_DIR=/ccache "${MAKEPKG_PARAM[@]}" || exit $?
+fi
+
+[[ "${BACKUP_DIR}" != "" ]] && \
+    sudo rsync -chavPASWX --stats --inplace --compress-level=0 \
+        "${CHROOT_DIR}/${USER}/build/" "${BACKUP_DIR}" || exit $?
+
+[[ "${NO_BUILD}" == "true" ]] && exit
+
+if [[ "$(ls *.pkg.(tar|tar.gz|tar.xz|tar.bz2) | wc -l)" == "0" ]]; then
+    echo No packages generated.
+    exit 1
+fi
+
+# Install the pkg everywhere.
+for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+    [[ ! -d "${CHROOT_DIR2}" ]] && continue
+    sudo mkdir -p "${CHROOT_DIR2}/pkgs/"
+    sudo cp *.pkg.(tar|tar.gz|tar.xz|tar.bz2) "${CHROOT_DIR2}/pkgs/"
+    nspawn "${CHROOT_DIR2}" /bin/bash -xc "yes | pacman -U /pkgs/* || exit \$?" || exit $?
+    sudo rm "${CHROOT_DIR2}/pkgs/"*
+done
+
+# Move the old packages out
+if [[ -f "${DEPS_PREFIX}/packages" && "$(cat "${DEPS_PREFIX}/packages" | wc -l)" != "0" ]]; then
+    pushd "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"
+    cat "${DEPS_PREFIX}/packages" | xargs -I% sudo mv % "${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}"
+    popd
+fi
+
+# Update the package list.
+ls *.pkg.(tar|tar.gz|tar.xz|tar.bz2) > "${DEPS_PREFIX}/packages"
+
+# Add it with the rest of the packages
+cat "${DEPS_PREFIX}/packages" | xargs -I% sudo mv % "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"

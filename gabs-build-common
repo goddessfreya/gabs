@@ -1,0 +1,121 @@
+#!/bin/zsh -x
+
+# https://stackoverflow.com/questions/16860877/remove-an-element-from-a-bash-array
+# Array names cannot start with RFA_
+remove_from_array() {
+    RFA_RETURN=()
+    local RFA_ARRAY=$1
+    local RFA_TO_REMOVE=$2
+    for mem in "${(P)${RFA_ARRAY}[@]}"; do
+        for remove in "${(P)${RFA_TO_REMOVE}[@]}"; do
+            local KEEP=true
+            if [[ "${mem}" == "${remove}" ]]; then
+                local KEEP=false
+                break
+            fi
+        done
+        if ${KEEP}; then
+            RFA_RETURN+=(${mem})
+        fi
+    done
+}
+
+array_contains_element () {
+    local e match="$1"
+    shift
+    for e; do [[ "${e}" == "${match}" ]] && return 0; done
+    return 1
+}
+
+nspawn() {
+    sudo /usr/bin/arch-nspawn "$@"
+}
+
+# Stop sudo from expiring
+sudo_loop() {
+    sudo -v || exit $?
+    while true; do
+        sudo -nv
+        sleep 1m
+        kill -0 $$ 2>/dev/null || exit
+    done &
+}
+
+change_fallback_param() {
+    echo "Falling back to using \"${1}\" of \"${@:2}\"."
+}
+
+error_blank_param() {
+    if [[ "${(P)1}" == "" ]]; then
+        echo "\"$1\" was never passed."
+        exit 1
+    fi
+}
+
+if_buildenv_uses() {
+    if [[ "$(awk "{
+        if (/^ *BUILDENV *= *\\( */) {
+            split(\$0, a, \"(\");
+            for (i in a) if (i == 2) {
+                split(a[i], b, \")\");
+                for (j in b) if (j == 1) {
+                    split(b[j], c, \" \")
+                    for(k in c) if(c[k] == tolower(\"$1\") || c[k] == tolower(\"!$1\"))
+                        printf c[k]
+                }
+            }
+        }
+    }" "${EPHEMERAL_DIR}/custom/makepkg.conf")" == "$(echo "$1" | awk '{ printf tolower($0) }')" ]]; then
+        eval USE_$1=true
+    else
+        eval USE_$1=false
+    fi
+}
+
+clone_file() {
+    for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+        [[ ! -d "${CHROOT_DIR2}" ]] && continue
+        sudo cp "$1" "${CHROOT_DIR2}$2"
+
+        sudo chown $3 "${CHROOT_DIR2}$2"
+        sudo chmod $4 "${CHROOT_DIR2}$2"
+    done
+}
+
+cleanup_loopdevice1() {
+    until sudo losetup -d "${LOOP_DEVICE}"; do sleep 2; done
+}
+
+cleanup_loopdevice2() {
+    trap cleanup_loopdevice3 EXIT
+}
+
+cleanup_loopdevice3() {
+    if [[ "${UNMOUNT_LOOP_DEVICE}" == "true" ]]; then
+        until sudo umount "${CHROOT_MOUNT}"; do sleep 2; done
+        until sudo losetup -d "${LOOP_DEVICE}"; do sleep 2; done
+    fi
+}
+
+# We use a loop device cause sometimes the partitions have nosuid on them,
+# which breaks the /bin/sudo in the chroot when used from outside the chroot,
+# which breaks makepkg for some reason.
+setup_loopdevice() {
+    if [[ "${REMAKE_CHROOT}" == "true" ]]; then
+        rm "${CHROOT_FILE}"
+        fallocate -l ${LOOP_DEVICE_SIZE} "${CHROOT_FILE}" || exit $?
+    fi
+
+    LOOP_DEVICE="$(sudo losetup -f)"
+    sudo losetup "${LOOP_DEVICE}" "${CHROOT_FILE}" || exit $?
+
+    trap cleanup_loopdevice1 EXIT
+
+    if [[ "${REMAKE_CHROOT}" == "true" ]]; then
+        sudo mkfs.ext4 "${LOOP_DEVICE}" || exit $?
+    fi
+
+    sudo mkdir -p "${CHROOT_MOUNT}"
+    sudo mount "${LOOP_DEVICE}" "${CHROOT_MOUNT}" || exit $?
+    trap cleanup_loopdevice2 EXIT
+}

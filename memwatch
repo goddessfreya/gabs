@@ -1,1 +1,0 @@
-watch -n 2 sudo ./memwatch_inner

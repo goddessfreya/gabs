@@ -1,0 +1,72 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributor: Ossi Saukko <osaukko at gmail dot com>
+# Contributor: Levente Polyak <anthraxx[at]archlinux[dot]org>
+# Contributor: Dan McGee <dan@archlinux.org>
+# Contributor: Allan McRae <allan@archlinux.org>
+
+pkgname=valgrind-git-gentz
+pkgver=3.15.0+94+g78054a6c0
+pkgrel=1
+pkgdesc='Tool to help find memory-management problems in programs'
+arch=('x86_64')
+url='http://valgrind.org/'
+license=('GPL')
+groups=('gentz_custom')
+depends=('glibc' 'perl')
+makedepends=('gdb' 'openmpi' 'lib32-glibc' 'lib32-gcc-libs' 'git' 'docbook-xml'
+             'docbook-xsl' 'docbook-sgml')
+optdepends=('openmpi: MPI support'
+            'lib32-glibc: 32-bit ABI support')
+checkdepends=('procps-ng')
+provides=('valgrind-multilib' 'valgrind' 'valgrind-git')
+conflicts=('valgrind-multilib' 'valgrind' 'valgrind-git')
+replaces=('valgrind-multilib')
+options=('!emptydirs' '!strip')
+source=('git+http://repo.or.cz/valgrind.git'
+        'valgrind-3.7.0-respect-flags.patch')
+md5sums=('SKIP'
+         '470d9881870aacc210b7a6efb64cc9a9')
+sha512sums=('SKIP'
+            'e0cec39381cefeca09ae4794cca309dfac7c8693e6315e137e64f5c33684598726d41cfbb4edf764fe985503b13ff596184ca5fc32b159d500ec092e4cf8838c')
+
+pkgver() {
+    cd valgrind
+    git describe --tags --always|sed -e 's|-|+|g' -e 's|VALGRIND_||g' -e 's|_|.|g'
+}
+
+prepare() {
+    cd valgrind
+    patch -Np1 < ../valgrind-3.7.0-respect-flags.patch
+    sed -i 's|sgml/docbook/xsl-stylesheets|xml/docbook/xsl-stylesheets-1.79.2|' docs/Makefile.am
+
+    autoreconf -ifv
+}
+
+build() {
+    # valgrind does not like stack protector flags, and others
+    CPPFLAGS=${CPPFLAGS/-D_FORTIFY_SOURCE=2/}
+    CFLAGS=${CFLAGS/-fstack-protector-strong/}
+    CXXFLAGS=${CXXFLAGS/-fstack-protector-strong/}
+    CFLAGS=${CFLAGS/-fno-plt/}
+    CXXFLAGS=${CXXFLAGS/-fno-plt/}
+
+    cd valgrind
+    ./configure \
+        --prefix=/usr \
+        --mandir=/usr/share/man \
+        --with-mpicc=mpicc
+    make
+    make -C docs man-pages
+}
+
+package() {
+    cd valgrind
+    make DESTDIR="${pkgdir}" install
+
+    install -d "$pkgdir/usr/share/man/man1"
+    install -m644 docs/*.1 -t "$pkgdir/usr/share/man/man1"
+
+    if check_option 'debug' n; then
+        find "${pkgdir}/usr/bin" -type f -executable -exec strip $STRIP_BINARIES {} + || true
+    fi
+}

@@ -3,25 +3,32 @@ clean chroot, plus a selection of PKGBUILDs.
 
 # Normal usage.
 
-Generally, all one needs to do is call `./build`. Of course, simply doing so 
+Generally, all one needs to do is call `./build`. Of course, simply doing so
 will leave you with an uncomfortable experience for a large majority of the
 time.  Let's go through all the common issues.
 
-# The compilation is pegging my HDD/CPU...  
+# The compilation is pegging my HDD/CPU...
 
 ...and is leaving me unable to watch my YouTube videos, or whatever else I was
 doing.
 
-Operating under the assumption that your computer is not swapping, an easy way 
+Operating under the assumption that your computer is not swapping, an easy way
 to alleviate the stress placed on your hardware is to prefix your command with
 `nice` and `ionice`. For example, I use `ionice -c 2 -n 7 nice -19 ./build ...`
 all the time, and that generally helps.
 
 # As quick primer... (MANDATORY READ FOR FOLLOWING SECTIONS)
 
-`./build` calls `./<package>/build` which calls (or is a symlink to)
-`./build_master` which calls `/usr/bin/makechrootpkg` (or sometimes
-`./custom/makechrootpkg`) which calls `/usr/bin/makepkg`.
+`./build` looks for the following:
+
+    1- `./<package>/build`, which it will call if present.
+    2- Otherwise, it will call `./build_master`.
+
+`./build_master` calls `/usr/bin/makechrootpkg`. If distcc is in use, we instead
+call `./custom/makechrootpkg`, a file that is generated based from
+`/usr/bin/makechrootpkg` on the spot.
+
+The two `makechrootpkg`s call `/usr/bin/makepkg`.
 
 `./build_master` has two similarly named options for adding parameters to
 `makechrootpkg`:
@@ -69,7 +76,7 @@ You can make `makechrootpkg` pass the parameter to `makepkg` by adding the
 parameter after the `--`.
 
 So, if you want `./build` to not ruin your shit, you can do the following:
-`./build -fp -m -fp --noextract -fp -m -fp --noprepare`. 
+`./build -fp -m -fp --noextract -fp -m -fp --noprepare`.
 
 You probably don't want to use `-ep` instead of `-fp`, as then the next package
 afterwards will reuse the prior package's build directory, which will just not
@@ -106,10 +113,6 @@ With that said, not wiping is as simple as `./build -fp -nw`.
 
 First, make a directory for that package.
 
-Remember to create a `build` script in that directory. Normally that is a
-symlink to `../build_master`, however, for some packages that is/was not the
-case.
-
 To get `./build` to use it, use this option:
 
     - `-p`: Adds this package to the package list. Having at least one `-p`
@@ -138,9 +141,9 @@ You are in luck, for we have it all! `./build_master` exposes the following:
       `-nw`.
 
 `./build` exposes these wrappers:
-    - `-rs <resume dir>`: Passes `-rs <resume dir>/$PKG_TO_BUILD` to
+    - `-rs <resume dir>`: Passes `-rs <resume dir>/<basename of package>` to
       `./build_master`.
-    - `-bk <backup dir>`: Passes `-bk <backup dir>/$PKG_TO_BUILD` to
+    - `-bk <backup dir>`: Passes `-bk <backup dir>/<basename of package>` to
       `./build_master`.
 
 # Why does it keep bumping the pkgrel?
@@ -150,19 +153,22 @@ you want the newer one, right? Well, we just bump it by one!
 
 Anyways, we provide two options for `./build_master` to modify the behavior:
 
-    - `-dbr`: Don't bump the package release version.  
+    - `-dbr`: Don't bump the package release version.
     - `-rr <val>`: Set the pkgrel to `<val>` then return.
 
 # Other misc options
-    
+
 `./build_master`:
-    
+
     - `-nb`: Don't build, but do everything else, whatever that might be.
     - `-dist`: Enable distcc w/ pump support. Automatically inferred by
       `./build` if enabled in `makepkg.conf`.
     - `-c <chroot dir>`: Set chroot dir, internal use by `./build` only.
+    - `-ed`
 
 `./build`:
 
     - `-lds <size>`: Loop device max size. Passed to `fallocate` directly via
-      `-l <size>`.  See `fallocate`'s man page.  
+      `-l <size>`.  See `fallocate`'s man page.
+    - `-kld`: Keep the loop device mounted please. Implied if build fails.
+    - `-ed`

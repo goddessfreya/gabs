@@ -1,0 +1,73 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributor: Bruno Pagani (a.k.a. ArchangeGabriel) <bruno.n.pagani@gmail.com>
+# Contributor: Cedric MATHIEU <me.xenom @ gmail.com>
+
+_pkgver=72.0a1
+_name=firefox
+_lang=en-US
+_channel=nightly
+_url="https://download-installer.cdn.mozilla.net/pub/${_name}/nightly/latest-mozilla-central"
+_src="${_name}-${_pkgver}.${_lang}.linux"
+_filename="$(date +%Y%m%d)-${_src}"
+
+pkgname="${_name}-${_channel}"
+pkgver=.20191109
+pkgrel=1
+pkgdesc="Standalone Web Browser from Mozilla — Nightly build (${_lang})"
+arch=('x86_64')
+url="https://www.mozilla.org/${_lang}/${_name}/${_channel}"
+license=('MPL' 'GPL' 'LGPL')
+groups=('gentz_custom')
+optdepends=('pulseaudio: audio support'
+            'ffmpeg: h.264 video'
+            'hunspell: spell checking'
+            'hyphen: hyphenation'
+            'libnotify: notification integration'
+            'networkmanager: location detection via available WiFi networks'
+            'speech-dispatcher: text-to-speech'
+            'startup-notification: support for FreeDesktop Startup Notification')
+depends=('dbus-glib' 'gtk3' 'libxt' 'nss' 'mime-types')
+
+source=(
+    "${pkgname}.desktop"
+    "${_filename}-x86_64.tar.bz2"::"${_url}/${_src}-x86_64.tar.bz2"
+    "${_filename}-x86_64.tar.bz2.asc"::"${_url}/${_src}-x86_64.tar.bz2.asc"
+    "${_filename}-x86_64.txt"::"${_url}/${_src}-x86_64.txt"
+)
+
+sha512sums=('42426e7b510bd88cbf7b246bf66d7768afa5d71389bf15f7a4231dc24f99fd73284dd9a0a8eb4342b42337c2c7dd843e570a93afa7d3b44c97ecbf5e38e433ac'
+            '26bc871246eab76b2f6949769e82c8ca1eb7018a575a2913ea1f7ea50534e51c78fb92b8cafe811d4593ff7aed719f746ef1ffeb139d5883054e1a60f6170e81'
+            'SKIP'
+            '91eb395a6dbb04af9786a57589695b5bc75774131c74c6215cb3ba069225be3d0c98a278a53056c8ddc713c667d663f96e02d4efad10913529c9c7d383cf8e2e')
+validpgpkeys=('14F26682D0916CDD81E37B6D61B7B526D98F0353') # Mozilla’s GnuPG release key
+
+pkgver() {
+    echo "${_version}.$(head -n1 ${_filename}-${CARCH}.txt | cut -c-8)"
+}
+
+package() {
+    local _opt_path="opt/${pkgname}"
+
+    # Install the package files
+    install -d "${pkgdir}/"{usr/bin,opt}
+    cp -r "${_name}" "${pkgdir}/${_opt_path}"
+    ln -s "/${_opt_path}/${_name}" "${pkgdir}/usr/bin/${pkgname}"
+
+    # Install .desktop files
+    install -Dm644 "${srcdir}/${pkgname}.desktop" \
+        -t "${pkgdir}/usr/share/applications"
+
+    # Install icons
+    _src_loc="${srcdir}/${_name}/browser"
+    _dest_loc="${pkgdir}/usr/share/icons/hicolor"
+    for i in 16 32 48 64 128
+    do
+        install -Dm644 "${_src_loc}/chrome/icons/default/default${i}.png" \
+            "${_dest_loc}/${i}x${i}/apps/${pkgname}.png"
+    done
+
+    # Use system-provided dictionaries
+    rm -rf "${pkgdir}/${_opt_path}/"{dictionaries,hyphenation}
+    ln -sf /usr/share/hunspell "${pkgdir}/${_opt_path}/dictionaries"
+    ln -sf /usr/share/hyphen "${pkgdir}/${_opt_path}/hyphenation"
+}

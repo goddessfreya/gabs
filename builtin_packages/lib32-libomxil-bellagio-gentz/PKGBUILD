@@ -1,0 +1,57 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributor: Alexandre Demers <alexandre.f.demers@gmail.com>
+
+pkgname=lib32-libomxil-bellagio-gentz
+pkgver=0.9.3
+pkgrel=18
+pkgdesc='An opensource implementation of the OpenMAX Integration Layer API (32-bit)'
+arch=('x86_64')
+url='http://omxil.sourceforge.net'
+license=('LGPL')
+groups=('gentz_custom')
+depends=('lib32-glibc' 'libomxil-bellagio')
+makedepends=('lib32-gcc-libs')
+provides=('lib32-libomxil-bellagio')
+source=(
+    "${pkgname}::http://downloads.sourceforge.net/project/omxil/omxil/Bellagio%200.9.3/libomxil-bellagio-${pkgver}.tar.gz"
+    'fedora-fixes.patch'
+)
+sha512sums=('72b4c8c639f8cf767ba6323fdfc42b90ad4b62f0ece3ba786ae38afc7c5d64cb0ba464b7993a588c1c7fa2daafe2ac773c9c4367a154c32632e87ba0d6341d16'
+            '6a763c164ed21ad9a8c0da01e02e823ed40f2539b68ef96d8052739dd433daa472c7d05f86bb06b95269a819403aa2e27670d37475ecf108f808bf9fa3ede413')
+
+prepare() {
+    cd "${srcdir}/libomxil-bellagio-$pkgver"
+
+    # Fixes from fedora repo
+    patch -Np1 -i ../fedora-fixes.patch
+    sed -e 's/-Werror//' -i configure.ac
+    autoreconf -fiv
+}
+
+_exports_32() {
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
+    export CFLAGS="$CFLAGS -m32"
+    export CXXFLAGS="$CXXFLAGS -m32"
+    export LDFLAGS="$LDFLAGS -m32"
+}
+
+build() {
+    _exports_32
+    cd "${srcdir}/libomxil-bellagio-$pkgver"
+
+    ./configure \
+        --prefix=/usr \
+        --disable-static \
+        --libdir=/usr/lib32 \
+        --docdir="/usr/share/doc/${pkgname}"
+
+    make
+}
+
+package() {
+    _exports_32
+    cd "${srcdir}/libomxil-bellagio-$pkgver"
+    make DESTDIR="${pkgdir}" install
+
+    rm -rf "${pkgdir}/usr/"{bin,include,share}
+}

@@ -1,0 +1,108 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributer: Andreas Radke <andyrtr@archlinux.org>
+# Contributer: Jan de Groot <jgc@archlinux.org>
+
+pkgbase=libx11-git-gentz
+pkgname=('libx11-git-gentz' 'lib32-libx11-git-gentz')
+pkgver=1.6.9.r1.gb8766a43
+pkgrel=18
+pkgdesc='X11 client-side library'
+arch=('x86_64')
+url='https://xorg.freedesktop.org/'
+license=('custom')
+groups=('gentz_custom')
+makedepends=('git' 'gcc-multilib' 'xorg-util-macros' 'xextproto' 'xtrans' 'inputproto')
+source=('git+https://gitlab.freedesktop.org/xorg/lib/libx11.git')
+sha512sums=('SKIP')
+validpgpkeys=(
+    '4A193C06D35E7C670FA4EF0BA2FB9E081F2D130E'
+    'C41C985FDCF1E5364576638B687393EE37D128F8' # Matthieu Herrb <matthieu.herrb@laas.fr>
+    '3BB639E56F861FA2E86505690FDD682D974CA72A' # Matt Turner <mattst88@gmail.com>
+)
+
+pkgver() {
+    cd "${srcdir}/${pkgbase}64"
+
+    git describe --long --tags | sed 's/^libX11-//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+    mv "${srcdir}/libx11" "${srcdir}/${pkgbase}64"
+    cp -r "${srcdir}/${pkgbase}"{64,32}
+
+    _configure_libx11 "64"
+    _configure_libx11 "32" \
+        --libdir=/usr/lib32 \
+        --disable-specs
+}
+
+_configure_libx11() {
+    pushd "${srcdir}/${pkgbase}$1"
+    _exports_$1
+    NOCONFIGURE=1 ./autogen.sh
+    ./configure \
+        --prefix=/usr \
+        --disable-static \
+        --disable-xf86bigfont \
+        "${@:2}"
+    popd
+}
+
+_exports_32() {
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
+    export CFLAGS="$CFLAGS -m32"
+    export CXXFLAGS="$CXXFLAGS -m32"
+    export CPPFLAGS="$CXXFLAGS"
+    export LDFLAGS="$LDFLAGS -m32"
+}
+
+_exports_64() {
+    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
+    export CFLAGS="${CFLAGS/-m32}"
+    export CXXFLAGS="${CXXFLAGS/-m32}"
+    export CPPFLAGS="$CXXFLAGS"
+    export LDFLAGS="${LDFLAGS/-m32}"
+}
+
+_make_x11() {
+    pushd "${srcdir}/${pkgbase}$1"
+    _exports_$1
+    make "${@:2}"
+    popd
+}
+
+build() {
+    _make_x11 "64"
+    _make_x11 "32"
+}
+
+check() {
+    _make_x11 "64" check
+    _make_x11 "32" check
+}
+
+_package_common() {
+    pushd "${srcdir}/${pkgbase}$1"
+    _exports_$1
+
+    make DESTDIR="${pkgdir}" install
+	install -Dm644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
+}
+
+package_libx11-git-gentz() {
+    depends=('libxcb' 'xproto' 'kbproto')
+    provides=("libx11=${pkgver}" 'libx11-git')
+    conflicts=('libx11' 'libx11-git')
+    _package_common "64"
+    popd
+}
+
+package_lib32-libx11-git-gentz() {
+    pkgdesc+=" (32-bit)"
+    depends=('libx11' 'lib32-libxcb')
+    provides=("lib32-libx11=${pkgver}" 'lib32-libx11-git')
+    conflicts=('lib32-libx11' 'lib32-libx11-git')
+    _package_common "32"
+    rm -rf "${pkgdir}/usr/"{include,share}
+    popd
+}

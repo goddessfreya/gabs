@@ -1,0 +1,66 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributor: Yurii Kolesnykov <root@yurikoles.com>
+# Contributor: Laurent Carlier <lordheavym@gmail.com>
+
+_pkgname=xf86-video-amdgpu
+pkgname=xf86-video-amdgpu-git-gentz
+pkgver=19.1.0.0
+pkgrel=7
+pkgdesc='X.org amdgpu video driver (git version)'
+arch=('x86_64')
+url='https://xorg.freedesktop.org/'
+license=('custom')
+groups=('xorg-drivers' 'gentz_custom')
+depends=(''systemd-libs'' 'mesa')
+makedepends=('xorg-server-devel' 'systemd' 'git' 'pixman')
+provides=('xf86-video-amdgpu' 'xf86-video-amdgpu-git')
+conflicts=('xf86-video-amdgpu' 'xorg-server<1.20.0')
+source=("${pkgname}::git+https://gitlab.freedesktop.org/xorg/driver/${_pkgname}.git")
+sha512sums=('SKIP')
+
+pkgver() {
+    local version count
+
+    cd "${srcdir}/${pkgname}"
+
+    version="$(git describe --abbrev=0 --tags)"
+    count="$(git rev-list --count ${version}..)"
+    printf '%s.%s' "${version#v}" "${count}" | sed 's/^xf86-video-amdgpu-//'
+}
+
+_exports() {
+    # Since pacman 5.0.2-2, hardened flags are now enabled in makepkg.conf
+    # With them, module fail to load with undefined symbol.
+    #
+    # See https://bugs.archlinux.org/task/55102
+    # and https://bugs.archlinux.org/task/54845
+    export CFLAGS=${CFLAGS/-fno-plt}
+    export CXXFLAGS=${CXXFLAGS/-fno-plt}
+    export LDFLAGS=${LDFLAGS/,-z,now}
+
+    export CFLAGS="$CFLAGS -fplt -fno-lto -g"
+    export CXXFLAGS="$CXXFLAGS -fplt -fno-lto -g"
+    export LDFLAGS="$LDFLAGS,-fno-lto"
+}
+
+build() {
+    cd "${srcdir}/${pkgname}"
+
+    _exports
+    ./autogen.sh --prefix=/usr --enable-glamor
+    make
+}
+
+check() {
+    cd "${srcdir}/${pkgname}"
+    _exports
+    make check
+}
+
+package() {
+    cd "${srcdir}/${pkgname}"
+
+    _exports
+    make "DESTDIR=${pkgdir}" install
+    install -Dm644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
+}

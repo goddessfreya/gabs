@@ -1,5 +1,0 @@
-#!/bin/zsh
-
-echo "START $(date +%s)" >> mem
-smem -t | tee -a mem
-echo PRIOR >> mem

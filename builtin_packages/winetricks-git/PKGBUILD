@@ -1,0 +1,31 @@
+# Maintainer: robertfoster
+# Contributor: Eschwartz <eschwartz93@gmail.com>
+
+pkgname=winetricks-git
+pkgver=20190912.r35.g326a6d1
+pkgrel=1
+pkgdesc='Script to install various redistributable runtime libraries in Wine.'
+arch=('x86_64')
+url='http://wiki.winehq.org/winetricks'
+license=('LGPL')
+arch=('any')
+depends=('wine' 'cabextract' 'unzip' 'xorg-xmessage')
+makedepends=('git')
+    optdepends=(
+    'zenity: For the GTK3 GUI.'
+	'kdialog: For the KDE GUI (less capable).'
+)
+conflicts=('winetricks' 'bin32-winetricks')
+provides=('winetricks')
+source=("$pkgname::git+https://github.com/Winetricks/winetricks.git")
+md5sums=('SKIP')
+
+pkgver() {
+	cd "$pkgname"
+	git describe --long --tags | sed -r 's/-([0-9]+)-/.r\1./'
+}
+
+package() {
+	cd "$pkgname"
+	make DESTDIR="$pkgdir" install
+}

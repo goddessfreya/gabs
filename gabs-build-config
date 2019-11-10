@@ -1,0 +1,4 @@
+#!/bin/zsh
+
+# This is kept in a separate file so it is easily modifable
+BUILTIN_PACKAGES_DIR="${SCRIPTS_DIR}/builtin_packages"

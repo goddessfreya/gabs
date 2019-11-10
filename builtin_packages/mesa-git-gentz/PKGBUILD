@@ -1,0 +1,222 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributor: Lone_Wolf <lonewolf at xs4all dot nl>
+# Contributor: Armin K. <krejzi at email dot com>
+# Contributor: Kristian Klausen <klausenbusk@hotmail.com>
+# Contributor: Egon Ashrafinia <e.ashrafinia@gmail.com>
+# Contributor: Tavian Barnes <tavianator@gmail.com>
+# Contributor: Jan de Groot <jgc@archlinux.org>
+# Contributor: Andreas Radke <andyrtr@archlinux.org>
+# Contributor: Thomas Dziedzic < gostrc at gmail >
+# Contributor: Antti "Tera" Oja <antti.bofh@gmail.com>
+# Contributor: Diego Jose <diegoxter1006@gmail.com>
+
+pkgbase=mesa-git-gentz
+pkgname=('mesa-git-gentz' 'lib32-mesa-git-gentz')
+pkgver=20.0.0_devel.117464.a3dc975ee79
+pkgrel=1
+pkgdesc='an open-source implementation of the OpenGL specification, git version'
+arch=('x86_64')
+url='https://www.mesa3d.org'
+license=('custom')
+groups=('gentz_custom')
+makedepends=(
+    'git' 'python-mako' 'xorgproto' 'libomxil-bellagio' 'ocl-icd'
+    'vulkan-icd-loader' 'wayland-protocols' 'meson' 'lib32-gcc-libs'
+    'lib32-llvm-git' 'lib32-libxml2' 'lib32-libx11' 'lib32-libvdpau'
+    'lib32-libva' 'lib32-elfutils' 'lib32-libxrandr' 'lib32-libgcrypt'
+    'lib32-wayland' 'lib32-libelf' 'llvm-git' 'libxml2' 'libx11' 'libvdpau'
+    'libva' 'elfutils' 'libxrandr' 'libgcrypt' 'wayland' 'libelf' 'clang-git'
+    'libclc' 'glslang' 'lib32-libomxil-bellagio' 'lib32-libunwind' 'libunwind'
+)
+optdepends=('opengl-man-pages: for the OpenGL API man pages')
+
+source=(
+    'git+https://github.com/freedesktop/mesa.git'
+    'LICENSE'
+    'llvm32.cross.in'
+    '0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch'
+    '0002-egl-Fixes-transparency-with-EGL-and-X11.patch'
+    '0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch'
+    '0004-egl-Configs-w-o-double-buffering-support-have-no-EGL.patch'
+)
+sha512sums=('SKIP'
+            '25da77914dded10c1f432ebcbf29941124138824ceecaf1367b3deedafaecabc082d463abcfa3d15abff59f177491472b505bcb5ba0c4a51bb6b93b4721a23c2'
+            'cea98a22ed8b3d592ea8a43e3bb7cba7755d79dea94bd555ec753fb59bb1ba10fc904d11ec869aa9349d18bf9b7d86db274471ef2f10bfbace50f7a15b6c9844'
+            'c73afdcaf6b7ab9c80b77568f0052ed71a1d8e91b5e618d6a48bdbdcffa5982c9bb52a166fa6d65567da23cc2fe8d927ec2a1b44fab9d785b525f1979096e79b'
+            '7d8d964b8311094d359d3069fed0bb7f90746f2a4967056363e97718591cc10a45eea60152aab0d27af925484d8426b2298fe09bc64cd7d43525170a8b9e88ec'
+            'c263d611c8b28bf4cd609f4b7691c7d77cb392cfcb23c82f5f1248c689385dbeca646f48d2a631c822b0f91c5aed00881580b37c3ed6f8f2c254e17d5902e571'
+            '1f4cc5fe910485461a4419584fffe8b5f9b6a106ab4839c9ac8d13067994b4a7aa28e163c0baaf2fd219ad83c2ad8d1dde0b865ffeb91b22bfee756556326a34')
+
+#_meson_flags=(-D b_ndebug=false)
+
+pkgver() {
+    cd "${srcdir}/mesa"
+    read -r _ver <VERSION
+    printf '%s.%s.%s' \
+        "${_ver/-/_}" \
+        "$(git rev-list --count HEAD)" \
+        "$(git rev-parse --short HEAD)"
+}
+
+_build_meson() {
+    if [[ -f ".build$1.built" ]]; then
+        return
+    fi
+
+    _exports_$1
+
+    meson setup "${srcdir}/mesa" "${srcdir}/_build$1" \
+        "${@:2}" \
+        "${_meson_flags[@]}" \
+        -D buildtype=plain \
+        --wrap-mode=nofallback \
+        -D prefix=/usr \
+        -D sysconfdir=/etc \
+        -D platforms=x11,wayland,drm,surfaceless \
+        -D dri-drivers=i915,i965 \
+        -D gallium-drivers=radeonsi,virgl,swrast,iris \
+        -D vulkan-drivers=amd,intel \
+        -D dri3=true \
+        -D egl=true \
+        -D gallium-extra-hud=true \
+        -D vulkan-overlay-layer=true \
+        -D gallium-nine=true \
+        -D gallium-va=true \
+        -D gallium-vdpau=true \
+        -D gallium-xvmc=false \
+        -D gbm=true \
+        -D gles1=true \
+        -D gles2=true \
+        -D glvnd=false \
+        -D glx=dri \
+        -D libunwind=true \
+        -D llvm=true \
+        -D lmsensors=true \
+        -D osmesa=gallium \
+        -D shared-glapi=true \
+        -D valgrind=true \
+        -D tools=[]
+
+    meson configure "${srcdir}/_build$1"
+
+    ninja $NINJAFLAGS -C "${srcdir}/_build$1"
+    touch ".build$1.built"
+}
+
+_exports_32() {
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
+    #export CFLAGS="$CFLAGS -m32"
+    #export CXXFLAGS="$CXXFLAGS -m32"
+    #export LDFLAGS="$LDFLAGS -m32"
+}
+
+_exports_64() {
+    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
+    #export CFLAGS="${CFLAGS/-m32}"
+    #export CXXFLAGS="${CXXFLAGS/-m32}"
+    #export LDFLAGS="${LDFLAGS/-m32}"
+}
+
+_find_bin() { 
+    sed "s/'$1'/'$(which "$1" | sed "s/\//\\\\\//g")'/g" 
+}
+
+prepare() {
+    # So git am works.
+    # Yeah, we could use git apply, but I want to be able to run diff and only
+    # get the changes for my patches.
+    git config --global user.email "zegentzy@protonmail.com"
+    git config --global user.name "Hal Gentz"
+
+    pushd "${srcdir}/mesa"
+    git am "../0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch"
+    git am "../0002-egl-Fixes-transparency-with-EGL-and-X11.patch"
+    git am "../0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch"
+    git am "../0004-egl-Configs-w-o-double-buffering-support-have-no-EGL.patch"
+    popd
+
+    cat "${srcdir}/llvm32.cross.in" \
+        | _find_bin gcc \
+        | _find_bin g++ \
+        | _find_bin gcc-ar \
+        | _find_bin strip \
+        | _find_bin pkg-config \
+        | _find_bin llvm-config32 > "${srcdir}/llvm32.cross"
+}
+
+build () {
+    _build_meson 64 \
+        -D gallium-opencl=icd \
+        -D gallium-omx=bellagio
+
+    _build_meson 32 \
+        --cross-file "${srcdir}/llvm32.cross" \
+        --libdir=/usr/lib32 \
+        -D gallium-opencl=disabled \
+        -D gallium-omx=disabled
+}
+
+_package_common() {
+    DESTDIR="${pkgdir}" ninja $NINJAFLAGS -C "${srcdir}/_build$1" install
+
+    # indirect rendering
+    ln -s /usr/lib$2/libGLX_mesa.so.0 \
+        "${pkgdir}/usr/lib$2/libGLX_indirect.so.0"
+
+	install -Dm644 "${srcdir}/LICENSE" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
+
+package_lib32-mesa-git-gentz() {
+    pkgdesc+=" (32-bit)"
+    depends=(
+        'libomxil-bellagio' 'libclc' 'lib32-libelf' 'lib32-libdrm'
+        'lib32-libxxf86vm' 'lib32-libxdamage' 'lib32-libxshmfence'
+        'lib32-llvm-libs-git' 'lib32-libunwind'
+        'lib32-wayland' 'lib32-lm_sensors' 'glslang'
+    )
+    provides=(
+        'lib32-mesa-git' 'lib32-libgl' 'lib32-libegl' 'lib32-libgles'
+        'lib32-libglvnd' 'lib32-libglvnd-git' 'lib32-mesa' 'lib32-opencl-mesa'
+        'lib32-vulkan-intel' 'lib32-vulkan-radeon' 'lib32-libva-mesa-driver'
+        'lib32-mesa-vdpau' 'lib32-vulkan-driver' 'lib32-opengl-driver'
+        'lib32-opencl-driver' 'lib32-ati-dri' 'lib32-intel-dri'
+        'lib32-nouveau-dri' 'lib32-mesa-dri' 'lib32-mesa-libgl'
+    )
+    conflicts=(
+        'lib32-mesa' 'lib32-opencl-mesa' 'lib32-vulkan-intel'
+        'lib32-vulkan-radeon' 'lib32-libva-mesa-driver' 'lib32-mesa-vdpau'
+        'lib32-ati-dri' 'lib32-intel-dri' 'lib32-nouveau-dri' 'lib32-mesa-dri'
+        'lib32-mesa-libgl' 'lib32-libglvnd-git' 'lib32-libglvnd' 'lib32-libglvnd-git-gentz'
+    )
+
+    _package_common "32" "32"
+
+    # remove files provided by mesa-git
+    rm -rf "${pkgdir}/etc"
+    rm -rf "${pkgdir}/usr/include"
+    rm -rf "${pkgdir}/usr/share/glvnd/"
+    rm -rf "${pkgdir}/usr/share/drirc.d/"
+    rm -rf "${pkgdir}/usr/share/vulkan/explicit_layer.d/"
+}
+
+package_mesa-git-gentz() {
+    depends=(
+        'lib32-libomxil-bellagio' 'libclc' 'libelf' 'libdrm' 'libxxf86vm'
+        'libxdamage' 'libxshmfence' 'llvm-libs-git' 'libunwind'
+        'wayland' 'lm_sensors' 'glslang'
+    )
+    provides=(
+        'mesa-git' 'libgl' 'libegl' 'libgles' 'libglvnd' 'libglvnd-git'
+        'mesa' 'opencl-mesa' 'vulkan-intel' 'vulkan-radeon' 'libva-mesa-driver'
+        'mesa-vdpau' 'vulkan-driver' 'opengl-driver' 'opencl-driver'
+        'ati-dri' 'intel-dri' 'nouveau-dri' 'svga-dri' 'mesa-dri' 'mesa-libgl'
+    )
+    conflicts=(
+        'mesa' 'opencl-mesa' 'vulkan-intel' 'vulkan-radeon' 'libva-mesa-driver'
+        'mesa-vdpau' 'ati-dri' 'intel-dri' 'nouveau-dri' 'svga-dri' 'mesa-dri'
+        'mesa-libgl' 'libglvnd' 'libglvnd-git' 'libglvnd-git-gentz'
+    )
+
+    _package_common "64" ""
+}

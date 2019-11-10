@@ -1,0 +1,353 @@
+#!/bin/zsh -x
+
+# Find and load script config
+local SCRIPTS_DIR="${0:A:h}"
+[[ ! -d "${SCRIPTS_DIR}" ]] && exit 1
+
+local BUILTIN_PACKAGES_DIR=
+
+source "${SCRIPTS_DIR}/gabs-build-common" || exit $?
+source "${SCRIPTS_DIR}/gabs-build-config" || exit $?
+
+[[ ! -d "${BUILTIN_PACKAGES_DIR}" ]] && exit 1
+
+sudo_loop
+
+local SHOULD_RESUME=false
+local SHOULD_RESUME_AFTER=false
+local RESUME_PKG=
+local PACKAGES=()
+local EXCLUDED_PACKAGES=()
+local FIRST_PARAMS=()
+local EVERY_PARAMS=()
+local ONE_ONLY=false
+local BACKUP_DIR=
+local RESUME_DIR=
+local CHROOT_NAME=
+local LOOP_DEVICE_SIZE=50G
+local UNMOUNT_LOOP_DEVICE=true
+local EPHEMERAL_DIR=
+
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+		-r)
+            if [[ "${SHOULD_RESUME}" != "false" ]]; then
+                echo -r conflicts with either other -r or -rp
+                exit 1
+            fi
+            SHOULD_RESUME=true
+		;;
+		-rp)
+            if [[ "${SHOULD_RESUME}" != "false" ]]; then
+                echo -rp conflicts with either other -rp or -r
+                exit 1
+            fi
+            SHOULD_RESUME=true
+            RESUME_PKG="$2"
+			shift
+		;;
+        -ra) SHOULD_RESUME_AFTER=true;;
+		-p) PACKAGES+=("$2"); shift;;
+		-e) EXCLUDED_PACKAGES+=("$2"); shift;;
+		-fp) FIRST_PARAMS+=("$2"); shift;;
+		-ep) EVERY_PARAMS+=("$2"); shift;;
+		-o) ONE_ONLY=true;;
+		-rs)
+            if [[ "${RESUME_DIR}" != "" ]]; then
+                echo Resume backup dir already passed.
+                exit 1
+            fi
+
+            RESUME_DIR="$2"
+			shift
+		;;
+		-bk)
+            if [[ "${BACKUP_DIR}" != "" ]]; then
+                echo Do backup dir already passed.
+                exit 1
+            fi
+
+            BACKUP_DIR="$2"
+			shift
+		;;
+		-cn)
+            if [[ "${CHROOT_NAME}" != "" ]]; then
+                echo Chroot name already passed.
+                exit 1
+            fi
+
+            CHROOT_NAME="$2"
+			shift
+		;;
+        -lds) LOOP_DEVICE_SIZE="$2"; shift;;
+        -kld) UNMOUNT_LOOP_DEVICE=false;;
+        -ed) EPHEMERAL_DIR="$2"; shift;;
+
+        --help)
+            echo "Please refer to the README."
+            exit
+        ;;
+		*) # unknown option
+			printf "Unkown option \`$1\`\n"
+            exit 1
+		;;
+	esac
+	shift
+done
+
+error_blank_param EPHEMERAL_DIR
+
+if [[ "${#EVERY_PARAMS[@]}" == "0" ]]; then
+    EVERY_PARAMS=("-w")
+    change_fallback_param "EVERY_PARAMS" "${EVERY_PARAMS[@]}"
+fi
+
+if [[ "${CHROOT_NAME}" == "" ]]; then
+    CHROOT_NAME="chroot"
+    change_fallback_param "CHROOT_NAME" "${CHROOT_NAME}"
+fi
+
+if [[ "${SHOULD_RESUME}" == "true" && "${RESUME_PKG}" == "" ]]; then
+    RESUME_PKG="$(cat "${EPHEMERAL_DIR}/last_pkg.${CHROOT_NAME}")"
+    change_fallback_param "RESUME_PKG" "${RESUME_PKG}"
+fi
+
+if [[ "${#PACKAGES[@]}" == "0" ]]; then
+    PACKAGES=(
+        "${BUILTIN_PACKAGES_DIR}/xorgproto-git-gentz"
+
+        "${BUILTIN_PACKAGES_DIR}/lib32-tk-gentz"
+        "${BUILTIN_PACKAGES_DIR}/lib32-mpdecimal-gentz"
+        "${BUILTIN_PACKAGES_DIR}/python2-gentz"
+        "${BUILTIN_PACKAGES_DIR}/python-gentz"
+
+        "${BUILTIN_PACKAGES_DIR}/libx11-git-gentz"
+
+        "${BUILTIN_PACKAGES_DIR}/lib32-libedit-gentz"
+        "${BUILTIN_PACKAGES_DIR}/llvm-git-gentz"
+
+        "${BUILTIN_PACKAGES_DIR}/openmpi-git-gentz"
+        "${BUILTIN_PACKAGES_DIR}/valgrind-git-gentz"
+
+        "${BUILTIN_PACKAGES_DIR}/lib32-libomxil-bellagio-gentz"
+        "${BUILTIN_PACKAGES_DIR}/libdrm-git-gentz"
+        "${BUILTIN_PACKAGES_DIR}/mesa-git-gentz"
+
+        "${BUILTIN_PACKAGES_DIR}/xorg-server-git-gentz"
+        "${BUILTIN_PACKAGES_DIR}/xf86-video-amdgpu-git-gentz"
+        "${BUILTIN_PACKAGES_DIR}/xf86-video-ati-git-gentz"
+        "${BUILTIN_PACKAGES_DIR}/xf86-video-fbdev-git-gentz"
+        "${BUILTIN_PACKAGES_DIR}/xf86-video-vesa-git-gentz"
+
+        "${BUILTIN_PACKAGES_DIR}/wine-staging-git-gentz"
+        "${BUILTIN_PACKAGES_DIR}/winetricks-git"
+    )
+
+    change_fallback_param "PACKAGES" "${PACKAGES[@]}"
+fi
+
+for PKG_DIR in ${PACKAGES}; do
+    if [[ ! -d "${PKG_DIR}" ]]; then
+        echo "Package \"${PKG_DIR}\" is missing"
+        exit 1
+    fi
+done
+
+mkdir -p "${EPHEMERAL_DIR}/custom"
+
+# If line starts with BUILDENV and this option is "sign" add a "!".
+awk '{
+    if (/^ *BUILDENV *= *\( */) {
+        split($0, a, "(");
+        for (i in a) {
+            if (i != 1) printf "("
+            if (i == 2) {
+                split(a[i], b, ")");
+                for (j in b) if (j == 1) {
+                    split(b[j], c, " ")
+                    for(k in c) {
+                        if (k != 1) printf " "
+                        if(c[k] == "sign") printf "!"
+                        printf c[k]
+                    }
+                } else printf ")" b[j]
+            } else printf a[i]
+        }
+        printf "\n"
+    } else print
+}' /etc/makepkg.conf > "${EPHEMERAL_DIR}/custom/makepkg.conf"
+
+local USE_DISTCC
+local USE_CCACHE
+if_buildenv_uses DISTCC
+if_buildenv_uses CCACHE
+
+local CHROOT_DIR="${EPHEMERAL_DIR}/chroots/${CHROOT_NAME}/chroot"
+local CHROOT_MOUNT="${EPHEMERAL_DIR}/chroots/${CHROOT_NAME}"
+local CHROOT_FILE="${EPHEMERAL_DIR}/chroots/${CHROOT_NAME}.img"
+local PKGBUILD_CLONE_DIR="${EPHEMERAL_DIR}/pkgbuilds.${CHROOT_NAME}"
+
+# Unmount old loopdevices that where kept due to bad cleanup
+lsblk -o NAME,MOUNTPOINT -J -n \
+    | grep "${CHROOT_MOUNT}" \
+    | xargs -I% bash -xc '
+        LOOPDEVICE_NAME="$(echo "%" | cut -d":" -f2 | cut -d"," -f1)"
+        MOUNT_DIR="$(echo "%" | cut -d":" -f3 | cut -d"}" -f1)"
+        sudo umount "${MOUNT_DIR}"
+        sudo losetup -d "/dev/${LOOPDEVICE_NAME}"
+    '
+
+local REMAKE_CHROOT=false
+[[ "${SHOULD_RESUME}" == "false" || ! -f "${CHROOT_FILE}" ]] \
+    && REMAKE_CHROOT=true
+
+if [[ "${REMAKE_CHROOT}" == "true" ]]; then
+    sudo rm -rf "${EPHEMERAL_DIR}/deps.${CHROOT_NAME}"
+    mkdir -p "${EPHEMERAL_DIR}/deps.${CHROOT_NAME}"
+
+    mkdir -p "${PKGBUILD_CLONE_DIR}"
+
+    mkdir -p "${EPHEMERAL_DIR}/alt_pkgs.${CHROOT_NAME}"
+    mkdir -p "${EPHEMERAL_DIR}/chroots"
+
+    rm "${EPHEMERAL_DIR}/last_pkg.${CHROOT_NAME}" || true
+
+    mkdir -p "${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}"
+    mkdir -p "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"
+
+    mv "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}/"* \
+        "${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}"
+fi
+
+local LOOP_DEVICE="$(sudo losetup -f)"
+setup_loopdevice || exit $?
+
+if [[ "${REMAKE_CHROOT}" == "true" ]]; then
+    sudo mkdir -p "${CHROOT_DIR}"
+
+    local INSTALL_PACKAGES=(base-devel gcc-multilib zsh neovim)
+
+    [[ "${USE_CCACHE}" == "true" ]] && INSTALL_PACKAGES+=(ccache)
+
+    [[ "${USE_DISTCC}" == "true" ]] && INSTALL_PACKAGES+=(distcc python procps-ng)
+
+    sudo /usr/bin/mkarchroot \
+        -C /etc/pacman.conf \
+        -M "${EPHEMERAL_DIR}/custom/makepkg.conf" \
+        -c /var/cache/pacman/pkg \
+        "${CHROOT_DIR}/root" \
+        "${INSTALL_PACKAGES[@]}" || exit $?
+
+    nspawn "${CHROOT_DIR}/root" /bin/bash -xc 'yes | pacman -Syyu' || exit $?
+
+    sudo mkdir -p "${CHROOT_DIR}/root/alt_pkgs.${CHROOT_NAME}/"
+    sudo cp "${EPHEMERAL_DIR}/alt_pkgs.${CHROOT_NAME}/"*.pkg* "${CHROOT_DIR}/root/pkgs/"
+    if [[ "$(ls "${CHROOT_DIR}/root/pkgs/")" != "" ]]; then
+        nspawn "${CHROOT_DIR}/root" /bin/bash -xc "yes | pacman -U /pkgs/*" || exit $?
+    fi
+else
+    clone_file {"${EPHEMERAL_DIR}/custom",/etc}/makepkg.conf root:root 644
+
+    for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+        [[ ! -d "${CHROOT_DIR2}" ]] && continue
+        nspawn "${CHROOT_DIR2}" /bin/bash -xc 'yes | pacman -Syyu' || exit $?
+    done
+fi
+
+if [[ "${USE_DISTCC}" == "true" ]]; then
+    clone_file /etc/distcc/hosts{,} root:root 644
+    clone_file /etc/conf.d/distccd{,} root:root 644
+    FIRST_PARAMS+=(-dist)
+    EVERY_PARAMS+=(-dist)
+
+    for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+        [[ ! -d "${CHROOT_DIR2}" ]] && continue
+        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/bin/clang++"
+        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/bin/clang"
+        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/clang++"
+        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/clang"
+    done
+fi
+
+[[ "${RESUME_DIR}" != "" ]] && mkdir -p "${RESUME_DIR}"
+[[ "${BACKUP_DIR}" != "" ]] && mkdir -p "${BACKUP_DIR}"
+
+for PKG_DIR in ${PACKAGES}; do
+    if [[ "${SHOULD_RESUME}" != "false" ]]; then
+        if [[ "${PKG_DIR}" != "${RESUME_PKG}" ]]; then
+            echo "Skipping ${PKG_DIR}"
+            continue
+        fi
+        SHOULD_RESUME=false
+        if [[ "${SHOULD_RESUME_AFTER}" == "true" ]]; then
+            continue
+        fi
+    fi
+
+    if array_contains_element ${PKG_DIR} ${EXCLUDED_PACKAGES[@]} ; then
+        echo "Excluding ${PKG_DIR}"
+        continue
+    fi
+
+    echo "Doing ${PKG_DIR}"
+
+    echo "${PKG_DIR}" > "${EPHEMERAL_DIR}/last_pkg.${CHROOT_NAME}"
+
+    local PARAMS=(${EVERY_PARAMS[@]})
+
+    if [[ "${#FIRST_PARAMS[@]}" != "0" ]]; then
+        PARAMS=("${FIRST_PARAMS[@]}")
+        FIRST_PARAMS=()
+    fi
+
+    array_contains_element "-rs" ${PARAMS[@]} \
+        && echo "Did not insert -rs as already present" \
+        || {
+            [[ "${RESUME_DIR}" != "" ]] \
+                && PARAMS+=("-rs" "${RESUME_DIR}/$(basename "${PKG_DIR}")")
+        }
+
+    if array_contains_element "-rs" ${PARAMS[@]} ; then
+        # Strip -w, as that conflicts
+        TO_REMOVE=("-w")
+        remove_from_array PARAMS TO_REMOVE
+        PARAMS=("${RFA_RETURN[@]}")
+    fi
+
+    array_contains_element "-bk" ${PARAMS[@]} \
+        && echo "Did not insert -bk as already present" \
+        || {
+            [[ "${BACKUP_DIR}" != "" ]] \
+                && PARAMS+=("-bk" "${BACKUP_DIR}/$(basename "${PKG_DIR}")")
+        }
+
+    local BUILD_SCRIPT="${PKG_DIR}/gabs-build"
+    if [[ ! -f "${BUILD_SCRIPT}" ]]; then
+        BUILD_SCRIPT="${SCRIPTS_DIR}/gabs-build-handler"
+    fi
+
+    local PKGNAME="$(basename "${PKG_DIR}.$(md5sum <(echo "${PKG_DIR}") | cut -d" " -f1)")"
+
+    mkdir -p "${PKGBUILD_CLONE_DIR}/${PKGNAME}"
+    sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
+        "${PKG_DIR}/" "${PKGBUILD_CLONE_DIR}/${PKGNAME}" || exit $?
+
+    pushd "${PKGBUILD_CLONE_DIR}/${PKGNAME}"
+    echo "Delegating \"${PKG_DIR}\" @ \"${PKGBUILD_CLONE_DIR}/${PKGNAME}\" to \"${BUILD_SCRIPT}\""
+    "${BUILD_SCRIPT}" "${PARAMS[@]}" \
+        -c "${CHROOT_DIR}" \
+        -cn "${CHROOT_NAME}" \
+        -pn "${PKGNAME}" \
+        -ed "${EPHEMERAL_DIR}" || {
+        local ERROR=$?
+        echo "Failed to build ${PKG_DIR}"
+        UNMOUNT_LOOP_DEVICE=false
+        exit ${ERROR}
+    }
+    echo "Done ${PKG_DIR}"
+    popd
+
+    if [[ "${ONE_ONLY}" == "true" ]]; then
+        exit
+    fi
+done

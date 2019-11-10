@@ -1,0 +1,157 @@
+# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Contributor: AndyRTR <andyrtr@archlinux.org>
+# Contributor: Jan de Groot <jgc@archlinux.org>
+
+pkgname=xorg-server-git-gentz
+pkgver=1.20.0.r485.ga1e3dfa50
+pkgrel=1
+pkgdesc='Xorg server, common and dev files, and other applications and utils'
+arch=('x86_64')
+url='http://xorg.freedesktop.org'
+license=('custom')
+groups=('xorg' 'gentz_custom')
+makedepends=(
+    'xorgproto' 'pixman' 'libx11' 'mesa' 'mesa-libgl' 'xtrans' 'libxkbfile'
+    'libxfont2' 'libpciaccess' 'libxv' 'libxmu' 'libxrender' 'libxi' 'libxaw'
+    'libdmx' 'libxtst' 'libxres' 'xorg-xkbcomp' 'xorg-util-macros'
+    'xorg-font-util' 'libepoxy' 'xcb-util' 'xcb-util-image'
+    'xcb-util-renderutil' 'xcb-util-wm' 'xcb-util-keysyms' 'libxshmfence'
+    'libunwind' 'systemd' 'wayland-protocols' 'egl-wayland' 'meson' 'git'
+    'libepoxy' 'lib32-libepoxy'
+)
+# FS#52949
+depends=(
+    'dbus' 'xf86-input-libinput' 'xkeyboard-config' 'xorg-xkbcomp' 'xorg-setxkbmap'
+    'xorg-util-macros' 'xorg-server-common' 'xorg-xauth' 'xcb-util-image'
+    'xcb-util-renderutil' 'xcb-util-wm' 'xorgproto' 'mesa' 'libpciaccess'
+    'xcb-util-keysyms' 'systemd-libs' 'pixman' 'nettle' 'libepoxy' 'libxfont2'
+    'libunwind' 'libgl' 'libpciaccess' 'libdrm' 'libxshmfence' 'libxv' 'libtirpc'
+    'libxext' 'libxi' 'libxaw' 'libxrender' 'libdmx' 'libxfixes' 'libbsd'
+)
+# see xorg-server-*/hw/xfree86/common/xf86Module.h for ABI versions -
+# we provide major numbers that drivers can depend on
+# and /usr/lib/pkgconfig/xorg-server.pc in xorg-server-devel pkg
+provides=(
+    'xorg-server-common' 'xorg-server-common-git' 'xorg-server-git'
+    'X-ABI-VIDEODRV_VERSION=25.0' 'X-ABI-XINPUT_VERSION=24.1'
+    'X-ABI-EXTENSION_VERSION=10.0' 'x-server' 'xorg-server' 'xorg-server-xephyr'
+    'xorg-server-xephyr-git' 'xorg-server-xvfb' 'xorg-server-xvfb-git'
+    'xorg-server-xnest' 'xorg-server-xnest-git' 'xorg-server-xdmx'
+    'xorg-server-xdmx-git' 'xorg-server-xwayland' 'xorg-server-xwayland-git'
+    'xorg-server-devel' 'xorg-server-devel-git'
+)
+conflicts=(
+    'xorg-server-common' 'xorg-server' 'xorg-server-xephyr' 'xorg-server-xvfb'
+    'nvidia-utils<=331.20' 'glamor-egl' 'xf86-video-modesetting'
+    'xorg-server-xnest' 'xorg-server-xdmx' 'xorg-server-xwayland'
+    'xorg-server-devel'
+)
+replaces=(
+    'glamor-egl' 'xf86-video-modesetting' 'xorg-server-common-git-gentz'
+    'xorg-server-xephyr-git-gentz' 'xorg-server-xvfb-git-gentz'
+    'xorg-server-xnest-git-gentz' 'xorg-server-xdmx-git-gentz'
+    'xorg-server-xwayland-git-gentz' 'xorg-server-devel-git-gentz'
+)
+source=(
+    'git://anongit.freedesktop.org/xorg/xserver'
+    'xvfb-run' # with updates from FC master
+    'xvfb-run.1'
+)
+validpgpkeys=(
+    '7B27A3F1A6E18CD9588B4AE8310180050905E40C'
+    'C383B778255613DFDB409D91DB221A6900000011'
+    'DD38563A8A8224537D1F90E45B8A2D50A0ECD0D3'
+    '995ED5C8A6138EB0961F18474C09DD83CAAA50B2'
+)
+sha512sums=('SKIP'
+            '55bbf520333f6e818b0125b37179a7039b69a0d3d2242b80a08da003d94cbf6c1fb912d880abcce318a85d7947e3eff8fbc4cdf57d7118572e8ebc56c4569af6'
+            'de5e2cb3c6825e6cf1f07ca0d52423e17f34d70ec7935e9dd24be5fb9883bf1e03b50ff584931bd3b41095c510ab2aa44d2573fd5feaebdcb59363b65607ff22')
+install=xorg-server.install
+
+_meson_flags=(-D b_ndebug=false)
+
+pkgver() {
+    cd "${srcdir}/xserver"
+
+    git describe --long | cut -d "-" -f3-5 | sed "s/-/.r/" | tr - .
+}
+
+_exports() {
+    # Since pacman 5.0.2-2, hardened flags are now enabled in makepkg.conf
+    # With them, module fail to load with undefined symbol.
+    #
+    # See https://bugs.archlinux.org/task/55102
+    # and https://bugs.archlinux.org/task/54845
+    export CFLAGS=${CFLAGS/-fno-plt}
+    export CXXFLAGS=${CXXFLAGS/-fno-plt}
+    export LDFLAGS=${LDFLAGS/,-z,now}
+
+    export CFLAGS="$CFLAGS -fplt -fno-lto -g3"
+    export CXXFLAGS="$CXXFLAGS -fplt -fno-lto -g3"
+    export LDFLAGS="$LDFLAGS,-fno-lto"
+
+    # For dbg symbols, afaik.
+    #export CFLAGS="$CFLAGS -O0"
+    #export CXXFLAGS="$CXXFLAGS -O0"
+    #export CFLAGS=${CFLAGS/-O3}
+    #export CXXFLAGS=${CXXFLAGS/-O3}
+}
+
+prepare() {
+    _exports
+
+    arch-meson "${srcdir}/xserver" "${srcdir}/build" \
+        "${_meson_flags[@]}" \
+        -D os_vendor="Arch Linux" \
+        -D ipv6=true \
+        -D dmx=true \
+        -D xvfb=true \
+        -D xnest=true \
+        -D xcsecurity=true \
+        -D xorg=true \
+        -D xephyr=true \
+        -D xwayland=true \
+        -D xwayland_eglstream=true \
+        -D glamor=true \
+        -D udev=true \
+        -D systemd_logind=true \
+        -D suid_wrapper=true \
+        -D xkb_dir=/usr/share/X11/xkb \
+        -D xkb_output_dir=/var/lib/xkb
+
+    # Print config
+    meson configure "${srcdir}/build"
+}
+
+build() {
+    msg2 "Please confirm"
+    for VAR in VIDEODRV XINPUT EXTENSION; do
+        echo "X-ABI-${VAR}_VERSION=$( \
+            grep -Po "${VAR}_V.*\(\K[^)]*" \
+                "${srcdir}/xserver/hw/xfree86/common/xf86Module.h" \
+            |& sed 's/, /./' \
+        )"
+    done
+
+    _exports
+    ninja $NINJAFLAGS -C "${srcdir}/build"
+}
+
+package() {
+    DESTDIR="${pkgdir}" ninja $NINJAFLAGS -C "${srcdir}/build" install
+
+    ln -s /usr/bin/Xorg "${pkgdir}/usr/bin/X"
+
+    install -m644 -Dt "${pkgdir}/var/lib/xkb/" \
+        "${srcdir}/xserver/xkb/README.compiled"
+
+    # distro specific files must be installed in /usr/share/X11/xorg.conf.d
+    install -m755 -d "${pkgdir}/etc/X11/xorg.conf.d"
+
+    install -m755 "${srcdir}/xvfb-run" "${pkgdir}/usr/bin/"
+    install -m644 "${srcdir}/xvfb-run.1" "${pkgdir}/usr/share/man/man1/" # outda
+
+    # license
+    install -m644 -Dt "${pkgdir}/usr/share/licenses/${pkgname}" \
+        "${srcdir}/xserver/COPYING"
+}

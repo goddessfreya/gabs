@@ -1,0 +1,14 @@
+#!/bin/zsh -x
+
+source PKGBUILD
+
+local NEW_PKGVER="$(curl https://archive.mozilla.org/pub/${_name}/nightly/latest-mozilla-central/ \
+    | grep "${_name}-[0-9]*\.[0-9a-zA-Z]*\.${_lang}\.linux-x86_64.tar.bz2" -o \
+    | head -n1 \
+    | cut -d- -f2- \
+    | cut -d. -f1-2)"
+
+sed -i "s/_pkgver=${_pkgver}/_pkgver=${NEW_PKGVER}/" PKGBUILD
+updpkgsums
+
+../build_master "$@"
