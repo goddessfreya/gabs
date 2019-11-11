@@ -4,8 +4,8 @@
 # Array names cannot start with RFA_
 remove_from_array() {
     RFA_RETURN=()
-    local RFA_ARRAY=$1
-    local RFA_TO_REMOVE=$2
+    local RFA_ARRAY=${1}
+    local RFA_TO_REMOVE=${2}
     for mem in "${(P)${RFA_ARRAY}[@]}"; do
         for remove in "${(P)${RFA_TO_REMOVE}[@]}"; do
             local KEEP=true
@@ -21,7 +21,7 @@ remove_from_array() {
 }
 
 array_contains_element () {
-    local e match="$1"
+    local e match="${1}"
     shift
     for e; do [[ "${e}" == "${match}" ]] && return 0; done
     return 1
@@ -41,13 +41,22 @@ sudo_loop() {
     done &
 }
 
-change_fallback_param() {
-    echo "Falling back to using \"${1}\" of \"${@:2}\"."
+print_fallback_param() {
+    >&2 echo "Falling back to using \"${1}\" of \"${@:2}\"."
 }
 
 error_blank_param() {
     if [[ "${(P)1}" == "" ]]; then
-        echo "\"$1\" was never passed."
+        >&2 echo "\"${1}\" was never passed."
+        exit 1
+    fi
+}
+
+error_blank_nondir_param() {
+    error_blank_param "${2}"
+
+    if [[ ("${1}" == "-f" && ! -f "${(P)2}") || ("${1}" == "-d" && ! -d "${(P)2}") ]]; then
+        >&2 echo "\"${2}\"'s directory \"${(P)2}\" does not exist."
         exit 1
     fi
 }
@@ -60,25 +69,26 @@ if_buildenv_uses() {
                 split(a[i], b, \")\");
                 for (j in b) if (j == 1) {
                     split(b[j], c, \" \")
-                    for(k in c) if(c[k] == tolower(\"$1\") || c[k] == tolower(\"!$1\"))
+                    for(k in c) if(c[k] == tolower(\"${1}\") || c[k] == tolower(\"!${1}\"))
                         printf c[k]
                 }
             }
         }
-    }" "${EPHEMERAL_DIR}/custom/makepkg.conf")" == "$(echo "$1" | awk '{ printf tolower($0) }')" ]]; then
-        eval USE_$1=true
+    }" "${EPHEMERAL_DIR}/custom.${CHROOT_NAME}/makepkg.conf")"
+        == "$(echo "${1}" | awk '{ printf tolower($0) }')" ]]; then
+        eval USE_${1}=true
     else
-        eval USE_$1=false
+        eval USE_${1}=false
     fi
 }
 
 clone_file() {
     for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
         [[ ! -d "${CHROOT_DIR2}" ]] && continue
-        sudo cp "$1" "${CHROOT_DIR2}$2"
+        sudo cp "${1}" "${CHROOT_DIR2}${2}"
 
-        sudo chown $3 "${CHROOT_DIR2}$2"
-        sudo chmod $4 "${CHROOT_DIR2}$2"
+        sudo chown ${3} "${CHROOT_DIR2}${2}"
+        sudo chmod ${4} "${CHROOT_DIR2}${2}"
     done
 }
 
@@ -95,6 +105,16 @@ cleanup_loopdevice3() {
         until sudo umount "${CHROOT_MOUNT}"; do sleep 2; done
         until sudo losetup -d "${LOOP_DEVICE}"; do sleep 2; done
     fi
+}
+
+# Unmount old loopdevices that where kept due to bad cleanup
+cleanup_loopdevice() {
+    losetup -j "${CHROOT_FILE}" \
+        | cut -d":" -f1 \
+        | xargs -I% bash -xc '
+            sudo umount "%"
+            sudo losetup -d "%"
+        '
 }
 
 # We use a loop device cause sometimes the partitions have nosuid on them,

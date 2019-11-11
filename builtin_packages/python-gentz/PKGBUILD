@@ -7,7 +7,7 @@
 
 pkgbase=python-gentz
 pkgname=('python-gentz' 'lib32-python-gentz')
-pkgver=3.7.4
+pkgver=3.8.0
 pkgrel=20
 pkgdesc='Next generation of the python high-level scripting language'
 arch=('x86_64')
@@ -22,32 +22,30 @@ makedepends=(
 )
 source=(
     "https://www.python.org/ftp/python/${pkgver%rc*}/Python-${pkgver}.tar.xz"{,.asc}
-    'dont-make-libpython-readonly.patch'
     '0001-compileall-Fix-ddir-when-recursing.patch'
     'pyconfig.h'
     'Use-right-mpdecimal.patch'
     'lib32-distutils-sysconfig.patch'
     'python-config-32.patch'
 )
-sha512sums=('71f64668c259f3ed07bd4aa239dbba6cc1b6b0a84d50bbff160664845d7986f757e4d65fca327e62a2d12ba593742ca83a22f7cb6093aff8715ec916c2ba9416'
+sha512sums=('5f9bfcb3acdf592770a9d5abd2c32c68c55a49b92f958ded069e3ef31cf2d415e67112b4f6738fab237dc29e5c622298719946d2e9471e7e78e3a6bdf2fac1d1'
             'SKIP'
-            '2ef96708d5b13ae2a3d2cc62c87b4780e60ecfce914e190564492def3a11d5e56977659f41c7f9d12266e58050c766bce4e2b5d50b708eb792794fa8357920c4'
             'ebd04c3b6d41321b1f0d439d356e0ce463760db55dc64109854c70d017cf56608aa19de9fc4a21bf840795ff202b4703444f9af8074b661780798c17e03089ff'
             'e0df774b373178632963c5744eeeff7e2b460e28c2208c8a7f6ddda7f316d5b2d12576bec52a41a3eed0636339266121a4bb068d4a00ed0050bbd5f9cbf800db'
             'a8ba987239600e43cdb83bbed9810e8d34b1239784dd6d16cbeecb5a4f92440e3656e0622e756eace2e9d2d7bd5ac8b4593538195308f852a2000f168a2c5d4e'
             'c6aeb74260740155b3ccee350230613b91567ae945026ce2a7f1f568cd0092d6fc7c49ad8d217dab3ad2e8b2ebe40b95c45b7e6feda2eb8849217ba6c31d7796'
-            'f6119c9fb535e28d19c7500d8ce4859f9fa71738520357f4f7b418af25574380861381e911622b8cb85a21297083a3a96252d01595ba5803374b3f3f09d0e647')
+            'ab772cda692548c0ab1d7db1b84e0f64cede99b206de36d983db3b9a0b576d5d4201f6ff160dccc4e6ec00073b46621a44946b3cddbda8705357e176508b1980')
 
-# Ned Deily (Python release signing key) <nad@python.org>
-validpgpkeys=('0D96DF4D4110E5C43FBFB17F2D347EA6AA65421D')
+validpgpkeys=('0D96DF4D4110E5C43FBFB17F2D347EA6AA65421D'  # Ned Deily (Python release signing key) <nad@python.org>
+              'E3FF2839C048B25C084DEBE9B26995E310250568') # Łukasz Langa (GPG langa.pl) <lukasz@langa.pl>
 
 _pybasever=${pkgver%.*}
 
 prepare() {
+    [[ "$(pacman -S --print-format "%v" python | rev | cut -d"-" -f2- | rev)" != "${pkgver}" ]] && exit 1
+
     mv "${srcdir}/Python-${pkgver}" "${srcdir}/${pkgbase}64"
     pushd "${srcdir}/${pkgbase}64"
-    # FS#45809
-    patch -Np1 -i ../dont-make-libpython-readonly.patch
 
     # FS#59997
     patch -Np1 -i ../0001-compileall-Fix-ddir-when-recursing.patch
@@ -228,9 +226,9 @@ package_python-gentz() {
     ln -s pydoc3 "${pkgdir}/usr/bin/pydoc"
 
     # pyconfs
-    mv "${pkgdir}/usr/include/python${_pybasever}m/pyconfig"{,-64}.h
+    mv "${pkgdir}/usr/include/python${_pybasever}/pyconfig"{,-64}.h
     install -Dm644 ../pyconfig.h \
-        "${pkgdir}/usr/include/python${_pybasever}m/pyconfig.h"
+        "${pkgdir}/usr/include/python${_pybasever}/pyconfig.h"
 }
 
 package_lib32-python-gentz() {
@@ -265,10 +263,10 @@ package_lib32-python-gentz() {
 
     # No conflicts
     rm -rf "${pkgdir}/"{etc,usr/{share,include}}
-    rm "${pkgdir}/usr/bin/"{pydoc*,idle*,2to3*,pyvenv*}
+    rm "${pkgdir}/usr/bin/"{pydoc*,idle*,2to3*}
 
     # Why this is in the wrong place, I don't knpw
-    mv "${pkgdir}/usr/lib"{,32}"/python${_pybasever}/config-3.7m-x86_64-linux-gnu"
+    mv "${pkgdir}/usr/lib"{,32}"/python${_pybasever}/config-${_pybasever}-x86_64-linux-gnu"
 
     # This symlink has the wrong name for some reason
     mv "${pkgdir}/usr/bin/python3"{,-32}"-config"

@@ -1,0 +1,71 @@
+#!/bin/zsh -x
+
+# Find and load script config
+local SCRIPTS_DIR="${0:A:h}"
+[[ ! -d "${SCRIPTS_DIR}" ]] && exit 1
+
+source "${SCRIPTS_DIR}/gabs-build-common" || exit $?
+
+local CHROOT_MOUNT=
+local CHROOT_FILE=
+local EPHEMERAL_DIR=
+local CHROOT_NAME=
+local CLEANUP=false
+local SETUP=false
+local REMAKE_CHROOT=false
+local LOOP_DEVICE_SIZE=50G
+
+while [[ $# -gt 0 ]]; do
+	case "${1}" in
+        -ed) EPHEMERAL_DIR="${2}"; shift;;
+		-cn) CHROOT_NAME="${2}"; shift;;
+		-cm) CHROOT_MOUNT="${2}"; shift;;
+		-cf) CHROOT_FILE="${2}"; shift;;
+        -c) CLEANUP=true;;
+        -s) SETUP=true;;
+        -rm) REMAKE_CHROOT=true;;
+        -lds) LOOP_DEVICE_SIZE="${2}"; shift;;
+        --help)
+            >&2 echo "Please refer to the README."
+            exit
+        ;;
+        *) # unknown option
+			>&2 echo "Unkown option \"${1}\""
+            exit 1
+        ;;
+    esac
+    shift
+done
+
+if [[ "${CHROOT_NAME}" == "" ]]; then
+    CHROOT_NAME="chroot"
+    print_fallback_param "CHROOT_NAME" "${CHROOT_NAME}"
+fi
+
+if [[ "${EPHEMERAL_DIR}" != "" ]]; then
+    if [[ "${CHROOT_FILE}" == "" ]]; then
+        CHROOT_FILE="${EPHEMERAL_DIR}/chroots/${CHROOT_NAME}.img"
+        print_fallback_param "CHROOT_FILE" "${CHROOT_FILE}"
+    fi
+
+    if [[ "${SETUP}" == "true" ]]; then
+        if [[ "${CHROOT_MOUNT}" == "" ]]; then
+            CHROOT_MOUNT="${EPHEMERAL_DIR}/chroots/${CHROOT_NAME}"
+            print_fallback_param "CHROOT_MOUNT" "${CHROOT_MOUNT}"
+        fi
+        error_blank_param CHROOT_MOUNT
+    fi
+fi
+
+[[ "${REMAKE_CHROOT}" == false ]] \
+    && error_blank_nondir_param -f CHROOT_FILE \
+    || error_blank_param CHROOT_FILE
+
+[[ "${CLEANUP}" == "true" ]] && cleanup_loopdevice
+
+if [[ "${SETUP}" == "true" ]]; then
+    local LOOP_DEVICE="$(sudo losetup -f)"
+    UNMOUNT_LOOP_DEVICE=false
+    setup_loopdevice || exit $?
+    echo "${LOOP_DEVICE}"
+fi

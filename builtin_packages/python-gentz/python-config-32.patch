@@ -1,7 +1,8 @@
-diff -Naur Python-3.7.0.orig/Makefile.pre.in Python-3.7.0/Makefile.pre.in
---- Python-3.7.0.orig/Makefile.pre.in	2018-08-06 11:07:55.945672075 -0400
-+++ Python-3.7.0/Makefile.pre.in	2018-08-06 11:14:58.927173361 -0400
-@@ -1206,13 +1206,13 @@
+diff --git a/Makefile.pre.in b/Makefile.pre.in
+index d5ebaa5..b511e8d 100644
+--- a/Makefile.pre.in
++++ b/Makefile.pre.in
+@@ -1270,15 +1270,15 @@ bininstall: altbininstall
  	fi
  	(cd $(DESTDIR)$(BINDIR); $(LN) -s python$(VERSION)$(EXE) python3$(EXE))
  	-if test "$(VERSION)" != "$(LDVERSION)"; then \
@@ -11,14 +12,16 @@ diff -Naur Python-3.7.0.orig/Makefile.pre.in Python-3.7.0/Makefile.pre.in
 +		(cd $(DESTDIR)$(BINDIR); $(LN) -s python$(LDVERSION)$(EXE)-config python$(VERSION)$(EXE)-config); \
  		rm -f $(DESTDIR)$(LIBPC)/python-$(LDVERSION).pc; \
  		(cd $(DESTDIR)$(LIBPC); $(LN) -s python-$(VERSION).pc python-$(LDVERSION).pc); \
+ 		rm -f $(DESTDIR)$(LIBPC)/python-$(LDVERSION)-embed.pc; \
+ 		(cd $(DESTDIR)$(LIBPC); $(LN) -s python-$(VERSION)-embed.pc python-$(LDVERSION)-embed.pc); \
  	fi
  	-rm -f $(DESTDIR)$(BINDIR)/python3-config
 -	(cd $(DESTDIR)$(BINDIR); $(LN) -s python$(VERSION)-config python3-config)
 +	(cd $(DESTDIR)$(BINDIR); $(LN) -s python$(VERSION)$(EXE)-config python3-config)
  	-rm -f $(DESTDIR)$(LIBPC)/python3.pc
  	(cd $(DESTDIR)$(LIBPC); $(LN) -s python-$(VERSION).pc python3.pc)
- 	-rm -f $(DESTDIR)$(BINDIR)/idle3
-@@ -1422,12 +1422,12 @@
+ 	-rm -f $(DESTDIR)$(LIBPC)/python3-embed.pc
+@@ -1494,12 +1494,12 @@ python-config: $(srcdir)/Misc/python-config.in Misc/python-config.sh
  	@ # is not available in configure
  	sed -e "s,@EXENAME@,$(BINDIR)/python$(LDVERSION)$(EXE)," < $(srcdir)/Misc/python-config.in >python-config.py
  	@ # Replace makefile compat. variable references with shell script compat. ones; $(VAR) -> ${VAR}
@@ -33,7 +36,7 @@ diff -Naur Python-3.7.0.orig/Makefile.pre.in Python-3.7.0/Makefile.pre.in
  	fi
  
  
-@@ -1486,7 +1486,7 @@
+@@ -1579,7 +1579,7 @@ libainstall:	@DEF_MAKE_RULE@ python-config
  	$(INSTALL_SCRIPT) $(srcdir)/Modules/makesetup $(DESTDIR)$(LIBPL)/makesetup
  	$(INSTALL_SCRIPT) $(srcdir)/install-sh $(DESTDIR)$(LIBPL)/install-sh
  	$(INSTALL_SCRIPT) python-config.py $(DESTDIR)$(LIBPL)/python-config.py
@@ -42,7 +45,7 @@ diff -Naur Python-3.7.0.orig/Makefile.pre.in Python-3.7.0/Makefile.pre.in
  	@if [ -s Modules/python.exp -a \
  		"`echo $(MACHDEP) | sed 's/^\(...\).*/\1/'`" = "aix" ]; then \
  		echo; echo "Installing support files for building shared extension modules on AIX:"; \
-@@ -1693,7 +1693,7 @@
+@@ -1778,7 +1778,7 @@ clobber: clean profile-removal
  		config.cache config.log pyconfig.h Modules/config.c
  	-rm -rf build platform
  	-rm -rf $(PYTHONFRAMEWORKDIR)

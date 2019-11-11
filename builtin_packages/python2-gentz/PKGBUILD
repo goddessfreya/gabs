@@ -6,7 +6,7 @@
 
 pkgbase=python2-gentz
 pkgname=('python2-gentz' 'lib32-python2-gentz')
-pkgver=2.7.16
+pkgver=2.7.17
 pkgrel=39
 pkgdesc='A high-level scripting language'
 arch=('x86_64')
@@ -22,7 +22,7 @@ source=(
     'lib32-distutils-sysconfig.patch'
     'python-config-32.patch'
 )
-sha512sums=('16e814e8dcffc707b595ca2919bd2fa3db0d15794c63d977364652c4a5b92e90e72b8c9e1cc83b5020398bd90a1b397dbdd7cb931c49f1aa4af6ef95414b43e0'
+sha512sums=('2dc19a0b0d818c71429dae94783e58b2aac0fa31f5faa1e840cac06245a59932ecc4658d913515736601bcf70a78c9ec60367aed75f4567d1e41ff3bb104da9a'
             'SKIP'
             'e0df774b373178632963c5744eeeff7e2b460e28c2208c8a7f6ddda7f316d5b2d12576bec52a41a3eed0636339266121a4bb068d4a00ed0050bbd5f9cbf800db'
             '3bda8aa91a8cddee7f15e42cf4e0d96555aaa2ef21a2b2a9bedd907a24ba3242d1a681229e99a81f5501abad4e6250f36d3fb105d3f4a62b79596599a959a530'
@@ -34,6 +34,8 @@ validpgpkeys=('C01E1CAD5EA2C4F0B8E3571504C367C218ADD4FF')
 _pybasever=${pkgver%.*}
 
 prepare() {
+    [[ "$(pacman -S --print-format "%v" python2 | rev | cut -d"-" -f2- | rev)" != "${pkgver}" ]] && exit 1
+
     mv "${srcdir}/Python-${pkgver}" "${srcdir}/${pkgbase}64"
     pushd "${srcdir}/${pkgbase}64"
     # Temporary workaround for FS#22322
@@ -220,7 +222,7 @@ package_python2-gentz() {
     # fix conflicts with python
     mv "${pkgdir}/usr/bin/idle"{,2}
     mv "${pkgdir}/usr/bin/pydoc"{,2}
-    mv "${pkgdir}/usr/bin/2to3"{,-2.7}
+    mv "${pkgdir}/usr/bin/2to3"{,"-${_pybasever}"}
 
     # pyconfs
     mv "${pkgdir}/usr/include/python${_pybasever}/pyconfig"{,-64}.h

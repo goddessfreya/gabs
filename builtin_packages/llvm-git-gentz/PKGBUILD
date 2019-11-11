@@ -21,7 +21,7 @@ pkgrel=1
 pkgdesc='Collection of compiler and toolchain technologies. Inc/ clang and many other tools'
 arch=('x86_64')
 url='https://llvm.org/'
-license=('custom:University of Illinois/NCSA Open Source License')
+license=('custom:Apache 2.0 with LLVM Exception')
 groups=('gentz_custom')
 makedepends=(
     'git'
@@ -60,7 +60,7 @@ makedepends=(
 )
 
 # 36gb of debug symbols is not going to strip in my lifetime
-options=('!debug' '!strip')
+options=('!debug' '!strip' 'staticlibs')
 
 source=(
     'llvm-project64::git+https://github.com/llvm/llvm-project.git'
@@ -70,7 +70,7 @@ source=(
 )
 sha512sums=('SKIP'
             '75e743dea28b280943b3cc7f8bbb871b57d110a7f2b9da2e6845c1c36bf170dd883fca54e463f5f49e0c3effe07fbd0db0f8cf5a12a2469d3f792af21a73fcdd'
-            'd1e0e0f236d9395573da6519db66635a9e55dc4f90a7b54d5d1f08023837738dabec303a5189598db2f460d1f365a3d03747dff8a98047b68af35d9bda32506d'
+            'de5dfed73b824c6de8820a90157c8709a5c4ea36a4044b097e0067841f696b9bd507ef29bab1dd321efcf3d103fc3cd968f385c90ad37c9ddfcfb5ffe1a8881a'
             'c9d4a94327cbbb4f64dc04141fe273ac2f811458fca642357d0f9eb4890cb796c7bf9eea78bed8c765e82cd4e09f9ce92e35d80e2ab221be782feea7d9233f27')
 
 # The docs say we should build a stage 1 compiler, and use that to build the
@@ -208,17 +208,6 @@ _build_cmake_sub() {
     ninja $NINJAFLAGS all
 }
 
-_build_cmake_test() {
-    # Tests hang 99% of the time, so just return
-    return
-
-    for i in "$@"; do
-        msg2 "Testing $i"
-        # The tests failing is only a "minor" inconvenience.
-        ninja $NINJAFLAGS "check-$i" || warning "Test $i failed"
-    done
-}
-
 _build_cmake() {
     _exports_$1
 
@@ -263,7 +252,6 @@ _build_cmake() {
                 "${_stage_1_opts[@]}" \
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld"
 
-            _build_cmake_test llvm clang lld
             touch "${srcdir}/build$1_stg1.built"
         fi
 
@@ -294,7 +282,6 @@ _build_cmake() {
                 -D LLVM_BUILD_RUNTIME=No \
                 -D LLVM_BUILD_INSTRUMENTED=IR
 
-            _build_cmake_test llvm clang lld
             touch "${srcdir}/.build$1_instr.built"
         fi
 
@@ -316,7 +303,6 @@ _build_cmake() {
                 "${_high_perf_compile_opts[@]}" \
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld;lldb;clang-tools-extra"
 
-            _build_cmake_test llvm clang lld lldb
             touch "${srcdir}/.build$1_to_instr1.built"
             cd ..
         fi
@@ -333,7 +319,6 @@ _build_cmake() {
                 "${_stage_1_tablegen[@]}" \
                 "${_low_perf_compile_opts[@]}" \
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld;lldb;clang-tools-extra" \
-            _build_cmake_test llvm clang lld lldb
             touch "${srcdir}/.build$1_to_instr2.built"
             cd ..
         fi
@@ -386,18 +371,6 @@ build() {
 
     _build_cmake 64 \
         -D PYTHON_EXECUTABLE="$(which python)"
-}
-
-check() {
-    pushd _build64_final
-    _exports_64
-    _build_cmake_test llvm clang lld lldb
-    popd
-
-    pushd _build32_final
-    _exports_32
-    _build_cmake_test llvm clang lld lldb
-    popd
 }
 
 _symlink_to_opt() {
@@ -459,6 +432,7 @@ package_llvm-git-gentz() {
         'lib32-python'
         'ocaml'
         'python-setuptools'
+        'python2-setuptools'
     )
     provides=(
         "compiler-rt-git=${pkgver}-${pkgrel}"

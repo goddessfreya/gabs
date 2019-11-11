@@ -74,7 +74,7 @@ _build_meson() {
         -D sysconfdir=/etc \
         -D platforms=x11,wayland,drm,surfaceless \
         -D dri-drivers=i915,i965 \
-        -D gallium-drivers=radeonsi,virgl,swrast,iris \
+        -D gallium-drivers=radeonsi,virgl,swrast,iris,zink,svga \
         -D vulkan-drivers=amd,intel \
         -D dri3=true \
         -D egl=true \

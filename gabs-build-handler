@@ -4,12 +4,7 @@
 local SCRIPTS_DIR="${0:A:h}"
 [[ ! -d "${SCRIPTS_DIR}" ]] && exit 1
 
-local BUILTIN_PACKAGES_DIR=
-
 source "${SCRIPTS_DIR}/gabs-build-common" || exit $?
-source "${SCRIPTS_DIR}/gabs-build-config" || exit $?
-
-[[ ! -d "${BUILTIN_PACKAGES_DIR}" ]] && exit 1
 
 local MAKEPKG_PARAM=("-s")
 local MAKECHROOTPKG_PARAM=()
@@ -33,15 +28,12 @@ proc_nw() {
 }
 
 while [[ ${#} -gt 0 ]]; do
-	case "$1" in
-		-m) MAKEPKG_PARAM+=("$2"); shift;;
-		-mc)
-            MAKECHROOTPKG_PARAM+=("$2")
-			shift 
-		;;
+	case "${1}" in
+		-m) MAKEPKG_PARAM+=("${2}"); shift;;
+		-mc) MAKECHROOTPKG_PARAM+=("${2}"); shift;;
 		-w)
             if [[ "${WIPE_SRC}" != "false" ]]; then
-                echo -w conflicts other parameter.
+                >&2 echo -w conflicts other parameter.
                 exit 1
             fi
             WIPE_SRC=true
@@ -49,21 +41,21 @@ while [[ ${#} -gt 0 ]]; do
 		;;
 		-nw)
             if [[ "${WIPE_SRC}" != "false" ]]; then
-                echo -nw conflicts other parameter.
+                >&2 echo -nw conflicts other parameter.
                 exit 1
             fi
             proc_nw
 		;;
 		-wn)
             if [[ "${WIPE_SRC}" != "false" ]]; then
-                echo -wn conflicts other parameter.
+                >&2 echo -wn conflicts other parameter.
                 exit 1
             fi
             WIPE_SRC=nothing
         ;;
         -r)
             if [[ "${ONLY_REPACKAGE}" != "false" || "${WIPE_SRC}" != "false" && "${RESUME_DIR}" == "" ]]; then
-                echo -r conflicts other parameter.
+                >&2 echo -r conflicts other parameter.
                 exit 1
             fi
             ONLY_REPACKAGE=true
@@ -72,66 +64,42 @@ while [[ ${#} -gt 0 ]]; do
         ;;
         -rs)
             if [[ "${RESUME_DIR}" != "" ]]; then
-                echo Resume dir already passed.
+                >&2 echo Resume dir already passed.
                 exit 1
             fi
             if [[ "${WIPE_SRC}" != "false" && "${ONLY_REPACKAGE}" != "true" ]]; then
-                echo -rs conflicts other parameter.
+                >&2 echo -rs conflicts other parameter.
                 exit 1
             fi
 
-            RESUME_DIR="$2"
+            RESUME_DIR="${2}"
             proc_nw
 			shift 
         ;;
-        -bk)
-            if [[ "${BACKUP_DIR}" != "" ]]; then
-                echo Backup dir already passed.
-                exit 1
-            fi
-
-            BACKUP_DIR="$2"
-			shift 
-        ;;
-        -c)
-            if [[ "${CHROOT_DIR}" != "" ]]; then
-                echo Chroot dir already passed.
-                exit 1
-            fi
-            CHROOT_DIR="$2"
-            MAKECHROOTPKG_PARAM+=("-r" "$2")
-			shift 
-        ;;
+        -bk) BACKUP_DIR="${2}"; shift;;
+        -c) CHROOT_DIR="${2}"; MAKECHROOTPKG_PARAM+=("-r" "${2}"); shift;;
         -dbr) DONT_BUMP_REL=true;;
         -nb) NO_BUILD=true;;
-        -rr) RESET_REL="$2"; shift;;
-		-cn)
-            if [[ "${CHROOT_NAME}" != "" ]]; then
-                echo Chroot name already passed.
-                exit 1
-            fi
-
-            CHROOT_NAME="$2"
-			shift 
-		;;
+        -rr) RESET_REL="${2}"; shift;;
+		-cn) CHROOT_NAME="${2}"; shift;;
         -dist) DISTC_SUPPORT=true;;
-        -ed) EPHEMERAL_DIR="$2"; shift;;
-        -pn) PKGNAME="$2"; shift;;
+        -ed) EPHEMERAL_DIR="${2}"; shift;;
+        -pn) PKGNAME="${2}"; shift;;
 
         --help)
-            echo "Please refer to the README."
+            >&2 echo "Please refer to the README."
             exit
         ;;
 		*) # unknown option
-			printf "Unkown option \`$1\`\n"
+			>&2 echo "Unkown option \"${1}\""
             exit 1
 		;;
 	esac
     shift
 done
 
-error_blank_param EPHEMERAL_DIR
-error_blank_param CHROOT_DIR
+error_blank_nondir_param -d EPHEMERAL_DIR
+error_blank_nondir_param -d CHROOT_DIR
 error_blank_param CHROOT_NAME
 error_blank_param PKGNAME
 
@@ -139,7 +107,7 @@ if [[ "${WIPE_SRC}" != "very_false" && "${DONT_BUMP_REL}" == "false" || "${RESET
     local PKGREL="$(cat PKGBUILD | grep "^pkgrel=[0-9]*$" | cut -d"=" -f2)"
 
     if [[ "$(echo "${PKGREL}" | wc -l)" != "1" ]]; then
-        echo Invalid number of pkgrel found, exiting
+        >&2 echo Invalid number of pkgrel found, exiting
         exit 1
     fi
 
@@ -173,7 +141,7 @@ fi
 # We got to make a copy of makechrootpkg... patch it to use pump....
 local MAKECHROOTPKG_EXEC="/usr/bin/makechrootpkg"
 if [[ "${DISTC_SUPPORT}" == "true" ]]; then
-    MAKECHROOTPKG_EXEC="${EPHEMERAL_DIR}/custom/makechrootpkg"
+    MAKECHROOTPKG_EXEC="${EPHEMERAL_DIR}/custom.${CHROOT_NAME}/makechrootpkg"
     cat /usr/bin/makechrootpkg | sed "s/makepkg /pump makepkg /g" > "${MAKECHROOTPKG_EXEC}"
     chmod +x "${MAKECHROOTPKG_EXEC}"
 fi
@@ -191,7 +159,7 @@ fi
 [[ "${NO_BUILD}" == "true" ]] && exit
 
 if [[ "$(ls *.pkg.(tar|tar.gz|tar.xz|tar.bz2) | wc -l)" == "0" ]]; then
-    echo No packages generated.
+    >&2 echo No packages generated.
     exit 1
 fi
 

@@ -1,8 +1,8 @@
 #!/bin/zsh -x
 
-BASE_PATH="$(pwd)/mesa-git-gentz"
-[[ "$1" == "" ]] && exit
-cd $1 || exit $?
+BASE_PATH="$(pwd)/builtin_packages/mesa-git-gentz"
+[[ "${1}" == "" ]] && exit
+cd ${1} || exit $?
 
 ssh-add ~/.ssh/id_ed25519_mesa
 
@@ -19,25 +19,25 @@ git fetch upstream || exit $?
 git fetch origin || exit $?
 
 make_branch() {
-    read -q "REPLY?Do $1? "
-    [[ $REPLY =~ ^[Yy]$ ]] || return
+    read -q "REPLY?Do ${1}? "
+    [[ ${REPLY} =~ ^[Yy]$ ]] || return
 
     git checkout upstream/master || exit $?
-    git branch -D "$1"
-    git checkout -b "$1" || exit $?
+    git branch -D "${1}"
+    git checkout -b "${1}" || exit $?
     for PATCH in "${@:2}"; do
-        git am "$PATCH" || exit $?
+        git am "${PATCH}" || exit $?
     done
     rm "${@:2}"
-    git format-patch HEAD~"$(( $# - 1 ))" | xargs -I% mv % "$BASE_PATH"
-    git push --set-upstream origin "$1" --force || exit $?
+    git format-patch HEAD~"$(( $# - 1 ))" | xargs -I% mv % "${BASE_PATH}"
+    git push --set-upstream origin "${1}" --force || exit $?
 }
 
 make_branch egl-trans-sup \
-    "$BASE_PATH/0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch" \
-    "$BASE_PATH/0002-egl-Fixes-transparency-with-EGL-and-X11.patch" \
-    "$BASE_PATH/0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch" \
-    "$BASE_PATH/0004-egl-Configs-w-o-double-buffering-support-have-no-EGL.patch"
+    "${BASE_PATH}/0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch" \
+    "${BASE_PATH}/0002-egl-Fixes-transparency-with-EGL-and-X11.patch" \
+    "${BASE_PATH}/0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch" \
+    "${BASE_PATH}/0004-egl-Configs-w-o-double-buffering-support-have-no-EGL.patch"
 
-cd "$BASE_PATH"
+cd "${BASE_PATH}"
 updpkgsums
