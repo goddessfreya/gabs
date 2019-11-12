@@ -11,6 +11,7 @@ sudo_loop
 local SHOULD_RESUME=false
 local SHOULD_RESUME_AFTER=false
 local RESUME_PKG=
+local BUILTIN_PACKAGES=()
 local PACKAGES=()
 local FIRST_PARAMS=()
 local EVERY_PARAMS=()
@@ -88,7 +89,10 @@ if [[ "${SHOULD_RESUME}" == "true" && "${RESUME_PKG}" == "" ]]; then
     print_fallback_param "RESUME_PKG" "${RESUME_PKG}"
 fi
 
-populate_builtins
+if [[ "${#PACKAGES[@]}" == "0" ]]; then
+    PACKAGES=("${BUILTIN_PACKAGES[@]}")
+    print_fallback_param "PACKAGES" "${PACKAGES[@]}"
+fi
 
 for PKG_DIR in ${PACKAGES}; do
     local EVAL_PKG_DIR="$(eval "echo \"${PKG_DIR}\"")"
