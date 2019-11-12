@@ -6,6 +6,7 @@ local SCRIPTS_DIR="${0:A:h}"
 
 source "${SCRIPTS_DIR}/gabs-build-common" || exit $?
 
+local STARTING_PARAMS=("$@")
 local MAKEPKG_PARAM=("-s")
 local MAKECHROOTPKG_PARAM=()
 local CHROOT_DIR=
@@ -20,6 +21,9 @@ local DISTC_SUPPORT=false
 local ONLY_REPACKAGE=false
 local EPHEMERAL_DIR=
 local PKGNAME=
+local BUILD_CONFIG_SCRIPT="${SCRIPTS_DIR}/gabs-build-config"
+local REAL_PACKAGE_DIR=
+local PREVIOUS_REPAIR=
 
 proc_nw() {
     [[ "${WIPE_SRC}" == "very_false" ]] && return
@@ -85,6 +89,9 @@ while [[ ${#} -gt 0 ]]; do
         -dist) DISTC_SUPPORT=true;;
         -ed) EPHEMERAL_DIR="${2}"; shift;;
         -pn) PKGNAME="${2}"; shift;;
+        -bcs) BUILD_CONFIG_SCRIPT="${2}"; shift;;
+        -rpd) REAL_PACKAGE_DIR="${2}"; shift;;
+        -pr) PREVIOUS_REPAIR="${2}"; shift;;
 
         --help)
             >&2 echo "Please refer to the README."
@@ -98,6 +105,12 @@ while [[ ${#} -gt 0 ]]; do
     shift
 done
 
+BUILTINS_DIR=
+error_blank_nondir_param -f BUILD_CONFIG_SCRIPT
+source "${BUILD_CONFIG_SCRIPT}" || exit $?
+[[ ! -d "${BUILTINS_DIR}" ]] && exit 1
+
+error_blank_nondir_param -d REAL_PACKAGE_DIR
 error_blank_nondir_param -d EPHEMERAL_DIR
 error_blank_nondir_param -d CHROOT_DIR
 error_blank_param CHROOT_NAME
@@ -123,9 +136,6 @@ fi
 
 [[ "${WIPE_SRC}" == "false" ]] && MAKEPKG_PARAM+=("-c")
 
-local DEPS_PREFIX="${EPHEMERAL_DIR}/deps.${CHROOT_NAME}/${PKGNAME}"
-mkdir -p "${DEPS_PREFIX}"
-
 # Remove old packages
 sudo rm *.pkg*
 sudo rm  -rf "${CHROOT_DIR}/root/pkgs/"
@@ -138,18 +148,47 @@ if [[ "${RESUME_DIR}" != "" ]]; then
         "${RESUME_DIR}/" "${CHROOT_DIR}/${USER}/build" || exit $?
 fi
 
-# We got to make a copy of makechrootpkg... patch it to use pump....
-local MAKECHROOTPKG_EXEC="/usr/bin/makechrootpkg"
+local MAKECHROOTPKG_BIN="${EPHEMERAL_DIR}/custom.${CHROOT_NAME}/makechrootpkg"
+local MAKEPKG_BIN="${CHROOT_DIR}/${USER}/bin/makepkg"
+
+mkdir -p data
+
+sudo cp "/bin/makechrootpkg" "${MAKECHROOTPKG_BIN}"
+chmod +x "${MAKECHROOTPKG_BIN}"
+patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/use_custom.patch" \
+    -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}"
+
+# We got to make a copy of makepkg... make it use pump
+sudo rm "${CHROOT_DIR}/${USER}/bin/makepkg.gabs-inner"
+sudo cp "${CHROOT_DIR}/root/bin/makepkg" "${MAKEPKG_BIN}"
+
+sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/force_color.patch" \
+    -d"${CHROOT_DIR}/${USER}/bin"
+
 if [[ "${DISTC_SUPPORT}" == "true" ]]; then
-    MAKECHROOTPKG_EXEC="${EPHEMERAL_DIR}/custom.${CHROOT_NAME}/makechrootpkg"
-    cat /usr/bin/makechrootpkg | sed "s/makepkg /pump makepkg /g" > "${MAKECHROOTPKG_EXEC}"
-    chmod +x "${MAKECHROOTPKG_EXEC}"
+    sudo mv "${CHROOT_DIR}/${USER}/bin/makepkg"{,.gabs-inner}
+    printf '#!/bin/zsh -x\npump /bin/makepkg.gabs-inner "$@"\n' \
+        | sudo tee "${MAKEPKG_BIN}"
+    sudo chmod +x "${MAKEPKG_BIN}"
 fi
 
 # Then actually build it
 if [[ "${NO_BUILD}" != "true" ]]; then
-    sudo "${MAKECHROOTPKG_EXEC}" "${MAKECHROOTPKG_PARAM[@]}" \
-        -- CCACHE_DIR=/ccache "${MAKEPKG_PARAM[@]}" || exit $?
+    if ! sudo "${MAKECHROOTPKG_BIN}" "${MAKECHROOTPKG_PARAM[@]}" \
+        -- CCACHE_DIR=/ccache "${MAKEPKG_PARAM[@]}" \
+        2> >(tee data/makechrootpkgerrors 1>&2); then
+
+        if [[ "$(cat data/makechrootpkgerrors | tail -n2)" \
+            == "$(cat "${BUILTINS_DIR}/makepkg_errors/updpkgsums")" \
+            && "${PREVIOUS_REPAIR}" != "updpkgsums" ]]; then
+            updpkgsums
+            cp PKGBUILD "${REAL_PACKAGE_DIR}/PKGBUILD"
+            exec "${SCRIPTS_DIR}/gabs-build-handler" "${STARTING_PARAMS[@]}" \
+                -pr updpkgsums
+        else
+            exit $?
+        fi
+    fi
 fi
 
 [[ "${BACKUP_DIR}" != "" ]] && \
@@ -173,14 +212,14 @@ for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
 done
 
 # Move the old packages out
-if [[ -f "${DEPS_PREFIX}/packages" && "$(cat "${DEPS_PREFIX}/packages" | wc -l)" != "0" ]]; then
+if [[ -f "data/packages" && "$(cat "data/packages" | wc -l)" != "0" ]]; then
     pushd "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"
-    cat "${DEPS_PREFIX}/packages" | xargs -I% sudo mv % "${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}"
+    cat "data/packages" | xargs -I% sudo mv % "${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}"
     popd
 fi
 
 # Update the package list.
-ls *.pkg.(tar|tar.gz|tar.xz|tar.bz2) > "${DEPS_PREFIX}/packages"
+ls *.pkg.(tar|tar.gz|tar.xz|tar.bz2) > "data/packages"
 
 # Add it with the rest of the packages
-cat "${DEPS_PREFIX}/packages" | xargs -I% sudo mv % "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"
+cat "data/packages" | xargs -I% sudo mv % "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"

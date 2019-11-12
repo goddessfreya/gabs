@@ -1,38 +1,38 @@
 #!/bin/zsh
 
 # This is kept in a separate file so it is easily modifable
-BUILTIN_PACKAGES_DIR="${SCRIPTS_DIR}/builtin_packages"
+BUILTINS_DIR="${SCRIPTS_DIR}/builtins"
 
 populate_builtins() {
     if [[ "${#PACKAGES[@]}" == "0" ]]; then
         PACKAGES=(
-            "${BUILTIN_PACKAGES_DIR}/xorgproto-git-gentz"
+            '${BUILTINS_DIR}/xorgproto-git-gentz'
 
-            "${BUILTIN_PACKAGES_DIR}/lib32-tk-gentz"
-            "${BUILTIN_PACKAGES_DIR}/lib32-mpdecimal-gentz"
-            "${BUILTIN_PACKAGES_DIR}/python2-gentz"
-            "${BUILTIN_PACKAGES_DIR}/python-gentz"
+            '${BUILTINS_DIR}/lib32-tk-gentz'
+            '${BUILTINS_DIR}/lib32-mpdecimal-gentz'
+            '${BUILTINS_DIR}/python2-gentz'
+            '${BUILTINS_DIR}/python-gentz'
 
-            "${BUILTIN_PACKAGES_DIR}/libx11-git-gentz"
+            '${BUILTINS_DIR}/libx11-git-gentz'
 
-            "${BUILTIN_PACKAGES_DIR}/lib32-libedit-gentz"
-            "${BUILTIN_PACKAGES_DIR}/llvm-git-gentz"
+            '${BUILTINS_DIR}/lib32-libedit-gentz'
+            '${BUILTINS_DIR}/llvm-git-gentz'
 
-            "${BUILTIN_PACKAGES_DIR}/openmpi-git-gentz"
-            "${BUILTIN_PACKAGES_DIR}/valgrind-git-gentz"
+            '${BUILTINS_DIR}/openmpi-git-gentz'
+            '${BUILTINS_DIR}/valgrind-git-gentz'
 
-            "${BUILTIN_PACKAGES_DIR}/lib32-libomxil-bellagio-gentz"
-            "${BUILTIN_PACKAGES_DIR}/libdrm-git-gentz"
-            "${BUILTIN_PACKAGES_DIR}/mesa-git-gentz"
+            '${BUILTINS_DIR}/lib32-libomxil-bellagio-gentz'
+            '${BUILTINS_DIR}/libdrm-git-gentz'
+            '${BUILTINS_DIR}/mesa-git-gentz'
 
-            "${BUILTIN_PACKAGES_DIR}/xorg-server-git-gentz"
-            "${BUILTIN_PACKAGES_DIR}/xf86-video-amdgpu-git-gentz"
-            "${BUILTIN_PACKAGES_DIR}/xf86-video-ati-git-gentz"
-            "${BUILTIN_PACKAGES_DIR}/xf86-video-fbdev-git-gentz"
-            "${BUILTIN_PACKAGES_DIR}/xf86-video-vesa-git-gentz"
+            '${BUILTINS_DIR}/xorg-server-git-gentz'
+            '${BUILTINS_DIR}/xf86-video-amdgpu-git-gentz'
+            '${BUILTINS_DIR}/xf86-video-ati-git-gentz'
+            '${BUILTINS_DIR}/xf86-video-fbdev-git-gentz'
+            '${BUILTINS_DIR}/xf86-video-vesa-git-gentz'
 
-            "${BUILTIN_PACKAGES_DIR}/wine-staging-git-gentz"
-            "${BUILTIN_PACKAGES_DIR}/winetricks-git"
+            '${BUILTINS_DIR}/wine-staging-git-gentz'
+            '${BUILTINS_DIR}/winetricks-git'
         )
 
         print_fallback_param "PACKAGES" "${PACKAGES[@]}"

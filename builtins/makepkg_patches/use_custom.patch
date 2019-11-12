@@ -1,0 +1,28 @@
+diff --git a/makechrootpkg b/makechrootpkg
+index c9ae879..03ec607 100755
+--- a/makechrootpkg
++++ b/makechrootpkg
+@@ -28,13 +28,7 @@ export LANG=C
+ 
+ shopt -s extglob
+ 
+-# check if messages are to be printed using color
+-if [[ -t 2 ]]; then
+-	colorize
+-else
+-	# shellcheck disable=2034
+-	declare -gr ALL_OFF='' BOLD='' BLUE='' GREEN='' RED='' YELLOW=''
+-fi
++colorize
+ 
+ stat_busy() {
+ 	local mesg=$1; shift
+@@ -503,7 +497,7 @@ download_sources() {
+ 	# Ensure sources are downloaded
+ 	sudo -u "$makepkg_user" --preserve-env=GNUPGHOME \
+ 		env SRCDEST="$SRCDEST" BUILDDIR="$WORKDIR" \
+-		makepkg --config="$copydir/etc/makepkg.conf" --verifysource -o "${verifysource_args[@]}" ||
++		"$copydir/bin/makepkg" --config="$copydir/etc/makepkg.conf" --verifysource -o "${verifysource_args[@]}" ||
+ 		die "Could not download sources."
+ }
+ 

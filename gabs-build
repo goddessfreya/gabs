@@ -12,7 +12,6 @@ local SHOULD_RESUME=false
 local SHOULD_RESUME_AFTER=false
 local RESUME_PKG=
 local PACKAGES=()
-local EXCLUDED_PACKAGES=()
 local FIRST_PARAMS=()
 local EVERY_PARAMS=()
 local ONE_ONLY=false
@@ -44,7 +43,6 @@ while [[ $# -gt 0 ]]; do
 		;;
         -ra) SHOULD_RESUME_AFTER=true;;
 		-p) PACKAGES+=("${2}"); shift;;
-		-e) EXCLUDED_PACKAGES+=("${2}"); shift;;
 		-fp) FIRST_PARAMS+=("${2}"); shift;;
 		-ep) EVERY_PARAMS+=("${2}"); shift;;
 		-o) ONE_ONLY=true;;
@@ -68,9 +66,10 @@ while [[ $# -gt 0 ]]; do
 	shift
 done
 
-BUILTIN_PACKAGES_DIR=
+BUILTINS_DIR=
+error_blank_nondir_param -f BUILD_CONFIG_SCRIPT
 source "${BUILD_CONFIG_SCRIPT}" || exit $?
-[[ ! -d "${BUILTIN_PACKAGES_DIR}" ]] && exit 1
+[[ ! -d "${BUILTINS_DIR}" ]] && exit 1
 
 error_blank_param -d EPHEMERAL_DIR
 
@@ -92,8 +91,9 @@ fi
 populate_builtins
 
 for PKG_DIR in ${PACKAGES}; do
-    if [[ ! -d "${PKG_DIR}" ]]; then
-        >&2 echo "Package \"${PKG_DIR}\" is missing"
+    local EVAL_PKG_DIR="$(eval "echo \"${PKG_DIR}\"")"
+    if [[ ! -d "${EVAL_PKG_DIR}" ]]; then
+        >&2 echo "Package \"${PKG_DIR}\" (\"${EVAL_PKG_DIR}\") is missing"
         exit 1
     fi
 done
@@ -142,15 +142,16 @@ local REMAKE_CHROOT=false
     && REMAKE_CHROOT=true
 
 if [[ "${REMAKE_CHROOT}" == "true" ]]; then
-    sudo rm -rf "${EPHEMERAL_DIR}/deps.${CHROOT_NAME}"
-    mkdir -p "${EPHEMERAL_DIR}/deps.${CHROOT_NAME}"
+    for PKGBUILD_CLONE in "${PKGBUILD_CLONE_DIR}"/*; do
+        rm "$PKGBUILD_CLONE/data/packages"
+    done
 
     mkdir -p "${PKGBUILD_CLONE_DIR}"
 
     mkdir -p "${EPHEMERAL_DIR}/alt_pkgs.${CHROOT_NAME}"
     mkdir -p "${EPHEMERAL_DIR}/chroots"
 
-    rm "${EPHEMERAL_DIR}/last_pkg.${CHROOT_NAME}" || true
+    rm "${EPHEMERAL_DIR}/last_pkg.${CHROOT_NAME}"
 
     mkdir -p "${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}"
     mkdir -p "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"
@@ -206,23 +207,31 @@ if [[ "${USE_DISTCC}" == "true" ]]; then
     clone_file /etc/conf.d/distccd{,} root:root 644
     FIRST_PARAMS+=(-dist)
     EVERY_PARAMS+=(-dist)
+fi
 
-    for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
-        [[ ! -d "${CHROOT_DIR2}" ]] && continue
+for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+    [[ ! -d "${CHROOT_DIR2}" ]] && continue
+    if [[ "${USE_DISTCC}" == "true" ]]; then
         sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/bin/clang++"
         sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/bin/clang"
         sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/clang++"
         sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/clang"
-    done
-fi
+    else 
+        sudo rm "${CHROOT_DIR2}/usr/lib/distcc/bin/clang++"
+        sudo rm "${CHROOT_DIR2}/usr/lib/distcc/bin/clang"
+        sudo rm "${CHROOT_DIR2}/usr/lib/distcc/clang++"
+        sudo rm "${CHROOT_DIR2}/usr/lib/distcc/clang"
+    fi
+done
 
 [[ "${RESUME_DIR}" != "" ]] && mkdir -p "${RESUME_DIR}"
 [[ "${BACKUP_DIR}" != "" ]] && mkdir -p "${BACKUP_DIR}"
 
 for PKG_DIR in ${PACKAGES}; do
+    local EVAL_PKG_DIR="$(eval "echo \"${PKG_DIR}\"")"
     if [[ "${SHOULD_RESUME}" != "false" ]]; then
-        if [[ "${PKG_DIR}" != "$(eval "echo \"${RESUME_PKG}\"")" ]]; then
-            >&2 echo "Skipping ${PKG_DIR}"
+        if [[ "${EVAL_PKG_DIR}" != "$(eval "echo \"${RESUME_PKG}\"")" ]]; then
+            >&2 echo "Skipping \"${PKG_DIR}\" (\"${EVAL_PKG_DIR}\")"
             continue
         fi
         SHOULD_RESUME=false
@@ -231,17 +240,12 @@ for PKG_DIR in ${PACKAGES}; do
         fi
     fi
 
-    if array_contains_element ${PKG_DIR} ${EXCLUDED_PACKAGES[@]} ; then
-        >&2 echo "Excluding ${PKG_DIR}"
-        continue
-    fi
-
-    >&2 echo "Doing ${PKG_DIR}"
+    >&2 echo "Doing \"${PKG_DIR}\" (\"${EVAL_PKG_DIR}\")"
 
     >&2 echo "${PKG_DIR}" > "${EPHEMERAL_DIR}/last_pkg.${CHROOT_NAME}"
 
     local PARAMS=(${EVERY_PARAMS[@]})
-    local PKGNAME="$(basename "${PKG_DIR}").$(md5sum <(echo "${PKG_DIR}") | cut -d" " -f1)"
+    local PKGNAME="$(basename "${EVAL_PKG_DIR}").$(md5sum <(echo "${PKG_DIR}") | cut -d" " -f1)"
 
     if [[ "${#FIRST_PARAMS[@]}" != "0" ]]; then
         PARAMS=("${FIRST_PARAMS[@]}")
@@ -269,28 +273,29 @@ for PKG_DIR in ${PACKAGES}; do
                 && PARAMS+=("-bk" "${BACKUP_DIR}/$PKGNAME")
         }
 
-    local BUILD_SCRIPT="${PKG_DIR}/gabs-build"
+    local BUILD_SCRIPT="${EVAL_PKG_DIR}/gabs-build"
     if [[ ! -f "${BUILD_SCRIPT}" ]]; then
         BUILD_SCRIPT="${SCRIPTS_DIR}/gabs-build-handler"
     fi
 
     mkdir -p "${PKGBUILD_CLONE_DIR}/${PKGNAME}"
     sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
-        "${PKG_DIR}/" "${PKGBUILD_CLONE_DIR}/${PKGNAME}" || exit $?
+        "${EVAL_PKG_DIR}/" "${PKGBUILD_CLONE_DIR}/${PKGNAME}" || exit $?
 
     pushd "${PKGBUILD_CLONE_DIR}/${PKGNAME}"
-    >&2 echo "Delegating \"${PKG_DIR}\" @ \"${PKGBUILD_CLONE_DIR}/${PKGNAME}\" to \"${BUILD_SCRIPT}\""
+    >&2 echo "Delegating \"${PKG_DIR}\" (\"${EVAL_PKG_DIR}\") @ \"${PKGBUILD_CLONE_DIR}/${PKGNAME}\" to \"${BUILD_SCRIPT}\""
     "${BUILD_SCRIPT}" "${PARAMS[@]}" \
         -c "${CHROOT_DIR}" \
         -cn "${CHROOT_NAME}" \
         -pn "${PKGNAME}" \
-        -ed "${EPHEMERAL_DIR}" || {
+        -ed "${EPHEMERAL_DIR}" \
+        -rpd "${EVAL_PKG_DIR}" || {
         local ERROR=$?
-        >&2 echo "Failed to build ${PKG_DIR}"
+        >&2 echo "Failed to build \"${PKG_DIR}\" (\"${EVAL_PKG_DIR}\")"
         UNMOUNT_LOOP_DEVICE=false
         exit ${ERROR}
     }
-    >&2 echo "Done ${PKG_DIR}"
+    >&2 echo "Done \"${PKG_DIR\"} (\"${EVAL_PKG_DIR}\")"
     popd
 
     if [[ "${ONE_ONLY}" == "true" ]]; then

@@ -1,0 +1,15 @@
+diff --git a/makepkg b/makepkg
+old mode 100755
+new mode 100755
+index ab1d62f..8e2a286
+--- a/makepkg
++++ b/makepkg
+@@ -1128,7 +1128,7 @@ PACMAN=${PACMAN:-pacman}
+ PACMAN_PATH=$(type -P $PACMAN)
+ 
+ # check if messages are to be printed using color
+-if [[ -t 2 && $USE_COLOR != "n" ]] && check_buildenv "color" "y"; then
++if [[ $USE_COLOR != "n" ]] && check_buildenv "color" "y"; then
+ 	colorize
+ else
+ 	unset ALL_OFF BOLD BLUE GREEN RED YELLOW
