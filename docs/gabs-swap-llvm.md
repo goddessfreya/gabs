@@ -7,8 +7,8 @@ gabs-swap-llvm(1) -- change the system's active LLVM in use
 
 ## DESCRIPTION
 
-For use in-tangent with llvm-git-gentz, **gabs-swap-llvm** let's you swap out
-the system's current llvm-git-gentz for another. This lets you avoid having to
+For use in-tangent with llvm-git-gentz, `gabs-swap-llvm` let's you swap out the
+system's current llvm-git-gentz for another. This lets you avoid having to
 `pacman -U` the new one, which can be slow for the bigger multi-gigabyte LLVM
 builds.
 

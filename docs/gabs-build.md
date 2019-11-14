@@ -3,7 +3,7 @@ gabs-build(1) -- builds your package(s) in a chroot
 
 ## SYNOPSIS
 
-`gabs-build` **-ed** <EPHEMERAL_DIR> [OPTIONS...]
+`gabs-build` `-ed` <EPHEMERAL_DIR> [OPTIONS...]
 
 ## DESCRIPTION
 
@@ -13,8 +13,8 @@ automate more and more of the workflow, including things like automatically
 running `updpkgsums`. 
 
 For full functionality (like auto-`updpkgsums`ing builtin packages), I'd only
-install **gabs-build**'s AUR packages for access to the manpages (should be a
-flag in the `PKGBUILD`), and manually `git clone
+install `gabs-build`'s AUR packages for access to the manpages (should be a flag
+in the `PKGBUILD`), and manually `git clone
 git@github.com:goddessfreya/gabs.git` into some local directory.
 
 ## BASIC USAGE
@@ -54,8 +54,8 @@ Our patched `makechrootpkg` calls the `/bin/makepkg` in the chroot, which if
 distcc is in use becomes a small wrapper around `/bin/makepkg.gabs-inner`.
 
 Chances are you either want to forward some parameter to either `makepkg`,
-`makechrootpkg` or `gabs-build-handler`. Please refer to gabs-build(1)'s **-ep**
-and **-fp** options and gabs-build-handler(1)'s **-m** and **-mc** options.
+`makechrootpkg` or `gabs-build-handler`. Please refer to gabs-build(1)'s `-ep`
+and `-fp` options and gabs-build-handler(1)'s `-m` and `-mc` options.
 
 ## OPTIONS
 
