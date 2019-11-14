@@ -1,0 +1,232 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GABS\-BUILD" "1" "November 2019" "" ""
+.
+.SH "NAME"
+\fBgabs\-build\fR \- builds your package(s) in a chroot
+.
+.SH "SYNOPSIS"
+\fBgabs\-build\fR \fB\-ed\fR \fIEPHEMERAL_DIR\fR [OPTIONS\.\.\.]
+.
+.SH "DESCRIPTION"
+Builds package(s) in a clean chroot\. Originally started as a small script to automate the building of mesa\-git, llvm\-svn, et\. al, but has quickly spiraled to automate more and more of the workflow, including things like automatically running \fBupdpkgsums\fR\.
+.
+.P
+For full functionality (like auto\-\fBupdpkgsums\fRing builtin packages), I\'d only install \fBgabs\-build\fR\'s AUR packages for access to the manpages (should be a flag in the \fBPKGBUILD\fR), and manually \fBgit clone git@github\.com:goddessfreya/gabs\.git\fR into some local directory\.
+.
+.SH "BASIC USAGE"
+In the most minimal use case, the only option you must pass in is \fB\-ed\fR, so that the script knows where you want your "ephemeral directory," a\.k\.a\. where we store all the "temporary"\-ish files\. This includes things like the chroots and the cloned VCS repos, which you probably don\'t want to be recreating all the time\.
+.
+.P
+For this reason, the "ephemeral directory" should rarely be changed, if ever, after all, what is the point of recloning all the cloned VCS repos? If you do ever have to do this, please file a bug report/feature request!
+.
+.P
+Of course, there are many options, and not using them will leave you with an uncomfortable experience for a large majority of the time\.
+.
+.SH "CALL TREE"
+When you call \fBgabs\-build\fR, it won\'t call \fBmakepkg\fR directly, of course\. There are a couple layers of indirection\.
+.
+.P
+First, \fBgabs\-build\fR looks for one of the following files, in this order, calling the first one it spots:
+.
+.IP "" 4
+.
+.nf
+
+1\- `<PKG_DIR>/build`
+2\- `gabs\-build\-handler`
+.
+.fi
+.
+.IP "" 0
+.
+.P
+It is generally assumed that \fB<PKG_DIR>/build\fR will eventually call \fBgabs\-build\-handler\fR\.
+.
+.P
+\fBgabs\-build\-handler\fR will call \fB<EPHEMERAL_DIR>/custom\.${CHROOT_NAME}/makechrootpkg\fR, which is a copy of \fBmakechrootpkg\fR that we patch on the spot\.
+.
+.P
+Our patched \fBmakechrootpkg\fR calls the \fB/bin/makepkg\fR in the chroot, which if distcc is in use becomes a small wrapper around \fB/bin/makepkg\.gabs\-inner\fR\.
+.
+.P
+Chances are you either want to forward some parameter to either \fBmakepkg\fR, \fBmakechrootpkg\fR or \fBgabs\-build\-handler\fR\. Please refer to gabs\-build(1)\'s \fB\-ep\fR and \fB\-fp\fR options and gabs\-build\-handler(1)\'s \fB\-m\fR and \fB\-mc\fR options\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB\-p <PACKAGE>\fR:
+.
+.IP
+Adds \fB<PACKAGE>\fR to the package list\. If the package list is empty, i\.e\. \fB\-p\fR was never passed, \fBgabs\-build\fR will fallback to the builtin package list provided by \fBgabs\-build\-config\fR\.
+.
+.IP
+\fB<PACKAGE>\fR is \fBeval\fRed after \fBgabs\-build\-config\fR is loaded, so doing things like \fB\-p \'${BUILTINS_DIR}/<SOME_BUILTIN_PACKAGE>\'\fR is allowed\. Please refer to gabs\-build\-config(5) for more info\.
+.
+.TP
+\fB\-r\fR:
+.
+.IP
+Resume on the last package that was building\.
+.
+.TP
+\fB\-rp <PACKAGE>\fR:
+.
+.IP
+Resume on the package \fB<PACKAGE>\fR\.
+.
+.IP
+\fB<PACKAGE>\fR is \fBeval\fRed after \fBgabs\-build\-config\fR is loaded, so doing things like \fB\-rp \'${BUILTINS_DIR}/<SOME_BUILTIN_PACKAGE>\'\fR is allowed\. Please refer to gabs\-build\-config(5) for more info\.
+.
+.TP
+\fB\-ra\fR:
+.
+.IP
+When resuming (i\.e\., either \fB\-rp\fR or \fB\-r\fR is also present), resume one package after the package that you are set to resume at, as ordered in the package list, otherwise doing nothing\.
+.
+.TP
+\fB\-fp <PARAM>\fR:
+.
+.IP
+For the first package that gets built, pass these options to \fBgabs\-build\-handler\fR instead of those normally passed in by \fB\-ep\fR\. If you don\'t want \fB\-ep\fR passed, but don\'t want something else passed, \fB\-fp \-\-\fR works\. For more info, please refer to gabs\-build\-handler(1)\.
+.
+.TP
+\fB\-ep <PARAM>\fR:
+.
+.IP
+For every package (exluding the first if \fB\-fp\fR is in use), pass these options to \fBgabs\-build\-handler\fR\. If unused, defaults to \fB\-w\fR\. If you don\'t want \fB\-w\fR passed, but want don\'t something else passed, \fB\-ep \-\-\fR works\. For more info, please refer to gabs\-build\-handler(1)\.
+.
+.TP
+\fB\-o\fR:
+.
+.IP
+Only builds one package\. Returns afterwards\.
+.
+.TP
+\fB\-lds <LOOP_DEVICE_SIZE>\fR:
+.
+.IP
+Forwarded to \fBgabs\-build\-chroot\fR\. See gabs\-build\-chroot(1)\.
+.
+.TP
+\fB\-kld\fR:
+.
+.IP
+Keeps the loop device mounted\. Implied if build fails\.
+.
+.TP
+\fB\-cn <CHROOT_NAME>\fR:
+.
+.IP
+Chroot name\. Defaults to \fBchroot\fR\. Only one \fBgabs\-build\-*\fR script may operate on a chroot with the same name in the same ephemeral directory at the same time\. Was originally in use when \fB${EPHEMERAL_DIR}\fR is not a thing yet\.
+.
+.IP
+Different chroots with the same \fB${EPHEMERAL_DIR}\fR will share the same \fBPKGBUILD\fRs, and therefor not require recloning the same VCS packages multiple times over\. The downside is that if two \fBgabs\-build\-handler\fRs try to build the same \fBPKGBUILD\fR at the same time, some funky shit might happen\.
+.
+.IP
+If you want to build the same package in different chroots, change \fB\-ed\fR instead\.
+.
+.TP
+\fB\-rs <RESUME_DIR>\fR:
+.
+.IP
+Passes \fB\-rs <RESUME_DIR>/<PKG_NAME>\.<MD5_HASH_OF_FULL_NAME>\fR to \fBgabs\-build\-handler\fR\. Must be a full path\. Before building, files will be \fBrsync\fRed from this directory into the build directory, allowing builds to resume from where they last completed\.
+.
+.IP
+Admitdly, I\'ve never needed to use this option, as generally a fresh build is plenty faster\.
+.
+.TP
+\fB\-bk <BACKUP_DIR>\fR:
+.
+.IP
+Passes \fB\-bk <BACKUP_DIR>/<PKG_NAME>\.<MD5_HASH_OF_FULL_NAME>\fR to \fBgabs\-build\-handler\fR\. Must be a full path\. After building, build files will be \fBrsync\fRed into this directory, preserving them for the future\. Originally made to be used in tangent with \fB\-rs\fR\.
+.
+.IP
+This option is very usefull for preserving the source code you used to build a package with, for things like gdb\. If you want to incrementally rebuild a package tho, you are probably better off with \fB\-fp \-nw\fR, instead of \fB\-rs\fR + \fB\-bk\fR, please refer to gabs\-build\-handler(1)\.
+.
+.TP
+\fB\-ed <EPHEMERAL_DIR>\fR:
+.
+.IP
+Sets the ephemeral dir, the directory used for storing "temporary" files\. Mandatory\. Must be a full path\. Normally you want to keep this the same for all runs, however, if you want to build the same \fBPKGBUILD\fR multiple times simoultanously, you\'re going to have to use different \fB${EPHEMERAL_DIR}\fR\.
+.
+.IP
+If you want to build the different packages in different chroots, change \fB\-cn\fR instead\.
+.
+.TP
+\fB\-bcs <BUILD_CONFIG_SCRIPT>\fR:
+.
+.IP
+Select an alternative to the default build config script for changing things like builtins\. Must be a full path\. If unused, \fBgabs\-build\fR will try looking for a valid file in these locations, in this order:
+.
+.IP "" 4
+.
+.nf
+
+         "$(pwd)/gabs\-build\-config"
+         "${EPHEMERAL_DIR}/gabs\-build\-config"
+         "${HOME}/\.config/gabs\-build\-config"
+         "/etc/gabs\-build\-config"
+         "${SCRIPTS_DIR}/gabs\-build\-config"
+.
+.fi
+.
+.IP "" 0
+
+.
+.SH "ISSUES"
+.
+.SS "The compilation is pegging my HDD/CPU\.\.\."
+\&\.\.\.and is leaving me unable to watch my YouTube videos, or whatever else I was doing\.
+.
+.P
+Operating under the assumption that your computer is not swapping, an easy way to alleviate the stress gabs places on your hardware is to prefix your command with \fBnice\fR and \fBionice\fR\.
+.
+.P
+For example, I always use \fBionice \-c 2 \-n 7 nice \-19 gabs\-build \.\.\.\fR when building\.
+.
+.SH "EXAMPLES"
+Simple build:
+.
+.IP "" 4
+.
+.nf
+
+$ gabs\-build \-ep "$(pwd)/eph"
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Please don\'t wipe and resume:
+.
+.IP "" 4
+.
+.nf
+
+$ gabs\-build \-ep "$(pwd)/epth" \-r \-fp \-nw
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Please just repackage, notice how \fBgabs\-build\-handler\fR\'s \fB\-m \-eRf\fR as to be prefaced with two different \fB\-fp\fRs:
+.
+.IP "" 4
+.
+.nf
+
+$ gabs\-build \-ep "$(pwd)/epth" \-r \-fp \-nw \-fp \-m \-fp \-eRf
+.
+.fi
+.
+.IP "" 0
+.
+.SH "AUTHOR"
+Freya Gentz <zegentzy@protonmail\.com>
+.
+.SH "SEE ALSO"
+gabs\-swap\-llvm(1), gabs\-build\-chroot(1), gabs\-build\-config(5), gabs\-build\-handler(1)

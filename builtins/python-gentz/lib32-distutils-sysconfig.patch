@@ -5,7 +5,7 @@
                  return os.path.normpath(incdir)
          python_dir = 'python' + get_python_version() + build_flags
 -        return os.path.join(prefix, "include", python_dir)
-+        return os.path.join(prefix, "lib32/python3.7m/include", python_dir)
++        return os.path.join(prefix, "lib32/python3.7/include", python_dir)
      elif os.name == "nt":
          return os.path.join(prefix, "include")
      else:

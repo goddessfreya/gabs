@@ -26,7 +26,7 @@ while [[ $# -gt 0 ]]; do
         -rm) REMAKE_CHROOT=true;;
         -lds) LOOP_DEVICE_SIZE="${2}"; shift;;
         --help)
-            >&2 echo "Please refer to the README."
+            >&2 echo "Please refer to the man page."
             exit
         ;;
         *) # unknown option

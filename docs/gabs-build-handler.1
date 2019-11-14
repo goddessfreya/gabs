@@ -1,0 +1,153 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GABS\-BUILD\-HANDLER" "1" "November 2019" "" ""
+.
+.SH "NAME"
+\fBgabs\-build\-handler\fR \- builds a package in a chroot
+.
+.SH "SYNOPSIS"
+\fBgabs\-build\-handler\fR \fB\-rpd\fR \fIREAL_PACKAGE_DIR\fR \fB\-ed\fR \fIEPHEMERAL_DIR\fR \fB\-c\fR \fICHROOT_DIR\fR \fB\-cn\fR \fICHROOT_NAME\fR \fB\-pn\fR \fIPKGNAME\fR [OPTIONS\.\.\.]
+.
+.SH "DESCRIPTION"
+Internal script that handles actually building in chroot once the chroot is made\. I guess it can be used manually, but don\'t expect it to be easy\. Normally, you want to use it via \fBgabs\-build\fR\'s \fB\-ep\fR and \fB\-fp\fR options, please refer to gabs\-build(1)\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB\-m <MAKEPKG_PARAM>\fR:
+.
+.IP
+Passes \fB<MAKEPKG_PARAM>\fR to \fBmakechrootpkg\fR, placing it after the \fB\-\-\fR so it\'s processed by \fBmakepkg\fR\.
+.
+.TP
+\fB\-mc <MAKECHROOTPKG_PARAM>\fR:
+.
+.IP
+Passes \fB<MAKECHROOTPKG_PARAM>\fR to \fBmakechrootpkg\fR, placing it before the \fB\-\-\fR so it\'s processed by \fBmakechrootpkg\fR\. Mostly used internally, but you can add stuff onto it, just make sure not to conflict with what \fBgabs\-build\-handler\fR is doing\.
+.
+.TP
+\fB\-nw\fR:
+.
+.IP
+Adds \fB\-\-noextract \-\-noprepare \-\-skipinteg\fR to \fB${MAKEPKG_PARAMS}\fR\. Please refer to makepkg(1)\. Stops adding \fB\-c\fR to \fB${MAKECHROOTPKG_PARAM}\fR\.
+.
+.TP
+\fB\-w\fR:
+.
+.IP
+Replaces the \fB\-c\fR that\'s normally added to \fB${MAKECHROOTPKG_PARAM}\fR with a \fB\-C\fR that\'s added to \fB${MAKEPKG_PARAM}\fR\. Please refer to makepkg(1)\.
+.
+.TP
+\fB\-r\fR:
+.
+.IP
+Repackages the package only\. Stops makepkg from calling \fBpackage\fR by passing \fB\-\-repackage\fR\. Please refer to makepkg(1)\. Also implies \fB\-nw\fR\.
+.
+.TP
+\fB\-wn\fR:
+.
+.IP
+"FOR FUCKS SAKE, STOP ADDING \fB\-c\fR TO MY PRECIOUS \fB<MAKECHROOTPKG_PARAM>\fR\.
+.
+.TP
+\fB\-dbr\fR:
+.
+.IP
+Don\'t bump the package release version\.
+.
+.TP
+\fB\-rr <val>\fR:
+.
+.IP
+Set the pkgrel to \fB<val>\fR then return\.
+.
+.TP
+\fB\-\-\fR:
+.
+.IP
+Does precicely nothing\. For use with \fBgabs\-build\fR\'s \fB\-ep\fR and \fB\-fp\fR, see gabs\-build(1)\.
+.
+.TP
+\fB\-nb\fR:
+.
+.IP
+Don\'t build anything, but do everything else, whatever that might be\. For use with \fB\-rr\fR\.
+.
+.SH "<code>gabs\-build</code>\-PROVIDED OPTIONS"
+The mandatory options above are are just some of the options that \fBgabs\-build\fR already passes in\. If you are using \fBgabs\-build\fR, trying to override them via \fB\-ep\fR or \fB\-fp\fR is NOT supported\. You\'ve been warned!
+.
+.TP
+\fB\-dist\fR:
+.
+.IP
+If \fBdistcc\fR is detected in use, we patch some files to make sure pump mode works\. Automatically detected by \fBgabs\-build\fR\. If you ever have to pass this in manually it is a bug! Report please!
+.
+.TP
+\fB\-bcs <BUILD_CONFIG_SCRIPT>\fR:
+.
+.IP
+Passed in from \fBgabs\-build\fR\. Please refer to the option of the same name in gabs\-build(1)\.
+.
+.TP
+\fB\-cn <CHROOT_NAME>\fR:
+.
+.IP
+Passed in from \fBgabs\-build\fR\. Please refer to the option of the same name in gabs\-build(1)\.
+.
+.TP
+\fB\-c <CHROOT_DIR>\fR:
+.
+.IP
+Passed in from \fBgabs\-build\fR\. This is the directory of the chroot we are currently operating on\.
+.
+.TP
+\fB\-rpd <REAL_PACKAGE_DIR>\fR:
+.
+.IP
+Passed in from \fBgabs\-build\fR\. This is the directory of the original \fBPKGBUILD\fR that got \fBrsync\fRed into the current \fB$(pwd)\fR\. The current \fB$(pwd)\fR should be inside \fB${PKGBUILD_CLONE_DIR}/${PKGNAME}\fR\.
+.
+.TP
+\fB\-ed <EPHEMERAL_DIR>\fR:
+.
+.IP
+Passed in from \fBgabs\-build\fR\. Please refer to the option of the same name in gabs\-build(1)\.
+.
+.TP
+\fB\-rs <RESUME_DIR>\fR:
+.
+.IP
+Passed in from \fBgabs\-build\fR\. Please refer to the option of the same name in gabs\-build(1)\.
+.
+.TP
+\fB\-bk <BACKUP_DIR>\fR:
+.
+.IP
+Passed in from \fBgabs\-build\fR\. Please refer to the option of the same name in gabs\-build(1)\.
+.
+.SH "INTERNALLY\-USED OPTIONS"
+.
+.TP
+\fB\-pr <PREVIOUS_REPAIR>\fR:
+.
+.IP
+When repairing issues in the \fBPKGBUILD\fR (currently only \fBupdpkgsums\fR), this is passed in to make sure the same repair isn\'t repeated\.
+.
+.SH "EXAMPLES"
+Generally, you want to pass in options to \fBgabs\-build\-handler\fR via \fBgabs\-build\fR\. Here is a nice example:
+.
+.IP "" 4
+.
+.nf
+
+$ gabs\-build \-ep "$(pwd)/epth" \-r \-fp \-nw \-fp \-m \-fp \-eRf
+.
+.fi
+.
+.IP "" 0
+.
+.SH "AUTHOR"
+Freya Gentz <zegentzy@protonmail\.com>
+.
+.SH "SEE ALSO"
+gabs\-swap\-llvm(1), gabs\-build\-chroot(1), gabs\-build\-config(5), gabs\-build(1)

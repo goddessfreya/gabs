@@ -7,8 +7,8 @@ local SCRIPTS_DIR="${0:A:h}"
 source "${SCRIPTS_DIR}/gabs-build-common" || exit $?
 
 local STARTING_PARAMS=("$@")
-local MAKEPKG_PARAM=("-s")
-local MAKECHROOTPKG_PARAM=()
+local MAKEPKG_PARAMS=("-s")
+local MAKECHROOTPKG_PARAMS=()
 local CHROOT_DIR=
 local RESUME_DIR=
 local BACKUP_DIR=
@@ -20,28 +20,27 @@ local CHROOT_NAME=
 local DISTC_SUPPORT=false
 local ONLY_REPACKAGE=false
 local EPHEMERAL_DIR=
-local PKGNAME=
-local BUILD_CONFIG_SCRIPT="${SCRIPTS_DIR}/gabs-build-config"
+local BUILD_CONFIG_SCRIPT=
 local REAL_PACKAGE_DIR=
-local PREVIOUS_REPAIR=
+local PREVIOUS_REPAIR=()
 
 proc_nw() {
     [[ "${WIPE_SRC}" == "very_false" ]] && return
     WIPE_SRC=very_false
-    MAKEPKG_PARAM+=("--noextract" "--noprepare" "--skipinteg")
+    MAKEPKG_PARAMS+=("--noextract" "--noprepare" "--skipinteg")
 }
 
 while [[ ${#} -gt 0 ]]; do
 	case "${1}" in
-		-m) MAKEPKG_PARAM+=("${2}"); shift;;
-		-mc) MAKECHROOTPKG_PARAM+=("${2}"); shift;;
+        -m) MAKEPKG_PARAMS+=("${2}"); shift;;
+        -mc) MAKECHROOTPKG_PARAMS+=("${2}"); shift;;
 		-w)
             if [[ "${WIPE_SRC}" != "false" ]]; then
                 >&2 echo -w conflicts other parameter.
                 exit 1
             fi
             WIPE_SRC=true
-            MAKEPKG_PARAM+=("-C")
+            MAKEPKG_PARAMS+=("-C")
 		;;
 		-nw)
             if [[ "${WIPE_SRC}" != "false" ]]; then
@@ -63,7 +62,7 @@ while [[ ${#} -gt 0 ]]; do
                 exit 1
             fi
             ONLY_REPACKAGE=true
-            MAKEPKG_PARAM+=("--repackage")
+            MAKEPKG_PARAMS+=("--repackage")
             proc_nw
         ;;
         -rs)
@@ -81,20 +80,20 @@ while [[ ${#} -gt 0 ]]; do
 			shift 
         ;;
         -bk) BACKUP_DIR="${2}"; shift;;
-        -c) CHROOT_DIR="${2}"; MAKECHROOTPKG_PARAM+=("-r" "${2}"); shift;;
+        -c) CHROOT_DIR="${2}"; MAKECHROOTPKG_PARAMS+=("-r" "${2}"); shift;;
         -dbr) DONT_BUMP_REL=true;;
         -nb) NO_BUILD=true;;
         -rr) RESET_REL="${2}"; shift;;
 		-cn) CHROOT_NAME="${2}"; shift;;
         -dist) DISTC_SUPPORT=true;;
         -ed) EPHEMERAL_DIR="${2}"; shift;;
-        -pn) PKGNAME="${2}"; shift;;
         -bcs) BUILD_CONFIG_SCRIPT="${2}"; shift;;
         -rpd) REAL_PACKAGE_DIR="${2}"; shift;;
-        -pr) PREVIOUS_REPAIR="${2}"; shift;;
+        -pr) PREVIOUS_REPAIR+=("${2}"); shift;;
+        --);;
 
         --help)
-            >&2 echo "Please refer to the README."
+            >&2 echo "Please refer to the man page."
             exit
         ;;
 		*) # unknown option
@@ -105,6 +104,7 @@ while [[ ${#} -gt 0 ]]; do
     shift
 done
 
+builtin_config_script_try_dirs
 BUILTINS_DIR=
 error_blank_nondir_param -f BUILD_CONFIG_SCRIPT
 source "${BUILD_CONFIG_SCRIPT}" || exit $?
@@ -114,7 +114,6 @@ error_blank_nondir_param -d REAL_PACKAGE_DIR
 error_blank_nondir_param -d EPHEMERAL_DIR
 error_blank_nondir_param -d CHROOT_DIR
 error_blank_param CHROOT_NAME
-error_blank_param PKGNAME
 
 if [[ "${WIPE_SRC}" != "very_false" && "${DONT_BUMP_REL}" == "false" || "${RESET_REL}" != "" ]]; then
     local PKGREL="$(cat PKGBUILD | grep "^pkgrel=[0-9]*$" | cut -d"=" -f2)"
@@ -132,9 +131,9 @@ if [[ "${WIPE_SRC}" != "very_false" && "${DONT_BUMP_REL}" == "false" || "${RESET
     sed -i "s/^pkgrel=${PKGREL}$/pkgrel=$(( ${PKGREL} + 1 ))/g" PKGBUILD
 fi
 
-[[ -d "${HOME}/.ccache" ]] && MAKECHROOTPKG_PARAM+=("-d" "${HOME}/.ccache:/ccache")
+[[ -d "${HOME}/.ccache" ]] && MAKECHROOTPKG_PARAMS+=("-d" "${HOME}/.ccache:/ccache")
 
-[[ "${WIPE_SRC}" == "false" ]] && MAKEPKG_PARAM+=("-c")
+[[ "${WIPE_SRC}" == "false" ]] && MAKEPKG_PARAMS+=("-c")
 
 # Remove old packages
 sudo rm *.pkg*
@@ -174,13 +173,13 @@ fi
 
 # Then actually build it
 if [[ "${NO_BUILD}" != "true" ]]; then
-    if ! sudo "${MAKECHROOTPKG_BIN}" "${MAKECHROOTPKG_PARAM[@]}" \
-        -- CCACHE_DIR=/ccache "${MAKEPKG_PARAM[@]}" \
+    if ! sudo "${MAKECHROOTPKG_BIN}" "${MAKECHROOTPKG_PARAMS[@]}" \
+        -- CCACHE_DIR=/ccache "${MAKEPKG_PARAMS[@]}" \
         2> >(tee data/makechrootpkgerrors 1>&2); then
 
         if [[ "$(cat data/makechrootpkgerrors | tail -n2)" \
-            == "$(cat "${BUILTINS_DIR}/makepkg_errors/updpkgsums")" \
-            && "${PREVIOUS_REPAIR}" != "updpkgsums" ]]; then
+            == "$(cat "${BUILTINS_DIR}/makepkg_errors/updpkgsums")" ]] \
+            && ! array_contains_element "updpkgsums" "${PREVIOUS_REPAIR[@]}"; then
             updpkgsums
             cp PKGBUILD "${REAL_PACKAGE_DIR}/PKGBUILD"
             exec "${SCRIPTS_DIR}/gabs-build-handler" "${STARTING_PARAMS[@]}" \
@@ -214,7 +213,7 @@ done
 # Move the old packages out
 if [[ -f "data/packages" && "$(cat "data/packages" | wc -l)" != "0" ]]; then
     pushd "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"
-    cat "data/packages" | xargs -I% sudo mv % "${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}"
+    cat "data/packages" | xargs -I% bash -c "sudo mv \"%\" \"${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}\""
     popd
 fi
 
@@ -222,4 +221,4 @@ fi
 ls *.pkg.(tar|tar.gz|tar.xz|tar.bz2) > "data/packages"
 
 # Add it with the rest of the packages
-cat "data/packages" | xargs -I% sudo mv % "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"
+cat "data/packages" | xargs -I% bash -c "sudo mv \"%\" \"${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}\""

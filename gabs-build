@@ -19,10 +19,10 @@ local ONE_ONLY=false
 local BACKUP_DIR=
 local RESUME_DIR=
 local CHROOT_NAME=
-local LOOP_DEVICE_SIZE=50G
+local LOOP_DEVICE_SIZE=
 local UNMOUNT_LOOP_DEVICE=true
 local EPHEMERAL_DIR=
-local BUILD_CONFIG_SCRIPT="${SCRIPTS_DIR}/gabs-build-config"
+local BUILD_CONFIG_SCRIPT=
 
 while [[ $# -gt 0 ]]; do
 	case "${1}" in
@@ -56,7 +56,7 @@ while [[ $# -gt 0 ]]; do
         -bcs) BUILD_CONFIG_SCRIPT="${2}"; shift;;
 
         --help)
-            >&2 echo "Please refer to the README."
+            >&2 echo "Please refer to the man page."
             exit
         ;;
 		*) # unknown option
@@ -67,6 +67,7 @@ while [[ $# -gt 0 ]]; do
 	shift
 done
 
+builtin_config_script_try_dirs
 BUILTINS_DIR=
 error_blank_nondir_param -f BUILD_CONFIG_SCRIPT
 source "${BUILD_CONFIG_SCRIPT}" || exit $?
@@ -136,21 +137,18 @@ local CHROOT_MOUNT="${EPHEMERAL_DIR}/chroots/${CHROOT_NAME}"
 local CHROOT_FILE="${EPHEMERAL_DIR}/chroots/${CHROOT_NAME}.img"
 local PKGBUILD_CLONE_DIR="${EPHEMERAL_DIR}/pkgbuilds.${CHROOT_NAME}"
 
-"${SCRIPTS_DIR}/gabs-build-chroot" \
-    -cm "${CHROOT_MOUNT}" \
-    -cf "${CHROOT_FILE}" \
-    -c
-
 local REMAKE_CHROOT=false
 [[ "${SHOULD_RESUME}" == "false" || ! -f "${CHROOT_FILE}" ]] \
     && REMAKE_CHROOT=true
 
 if [[ "${REMAKE_CHROOT}" == "true" ]]; then
+    mkdir -p "${PKGBUILD_CLONE_DIR}"
+
+    unsetopt nomatch
     for PKGBUILD_CLONE in "${PKGBUILD_CLONE_DIR}"/*; do
         rm "$PKGBUILD_CLONE/data/packages"
     done
-
-    mkdir -p "${PKGBUILD_CLONE_DIR}"
+    setopt nomatch
 
     mkdir -p "${EPHEMERAL_DIR}/alt_pkgs.${CHROOT_NAME}"
     mkdir -p "${EPHEMERAL_DIR}/chroots"
@@ -162,15 +160,21 @@ if [[ "${REMAKE_CHROOT}" == "true" ]]; then
 
     mv "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}/"* \
         "${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}"
+
+else
+    "${SCRIPTS_DIR}/gabs-build-chroot" \
+        -cm "${CHROOT_MOUNT}" \
+        -cf "${CHROOT_FILE}" \
+        -c
 fi
 
 local BUILD_CHROOT_PARAMS=()
 [[ "${REMAKE_CHROOT}" == true ]] && BUILD_CHROOT_PARAMS+="-rm"
+[[ "${LOOP_DEVICE_SIZE}" != "" ]] && BUILD_CHROOT_PARAMS+=("-lds" "${LOOP_DEVICE_SIZE}")
 
 local LOOP_DEVICE="$("${SCRIPTS_DIR}/gabs-build-chroot" \
     -cm "${CHROOT_MOUNT}" \
     -cf "${CHROOT_FILE}" \
-    -lds "${LOOP_DEVICE_SIZE}" \
     "${BUILD_CHROOT_PARAMS[@]}" \
     -s || exit $?)"
 
@@ -256,21 +260,21 @@ for PKG_DIR in ${PACKAGES}; do
         FIRST_PARAMS=()
     fi
 
-    array_contains_element "-rs" ${PARAMS[@]} \
+    array_contains_element "-rs" "${PARAMS[@]}" \
         && >&2 echo "Did not insert -rs as already present" \
         || {
             [[ "${RESUME_DIR}" != "" ]] \
                 && PARAMS+=("-rs" "${RESUME_DIR}/$PKGNAME")
         }
 
-    if array_contains_element "-rs" ${PARAMS[@]} ; then
+    if array_contains_element "-rs" "${PARAMS[@]}" ; then
         # Strip -w, as that conflicts
         TO_REMOVE=("-w")
         remove_from_array PARAMS TO_REMOVE
         PARAMS=("${RFA_RETURN[@]}")
     fi
 
-    array_contains_element "-bk" ${PARAMS[@]} \
+    array_contains_element "-bk" "${PARAMS[@]}" \
         && >&2 echo "Did not insert -bk as already present" \
         || {
             [[ "${BACKUP_DIR}" != "" ]] \
@@ -291,15 +295,15 @@ for PKG_DIR in ${PACKAGES}; do
     "${BUILD_SCRIPT}" "${PARAMS[@]}" \
         -c "${CHROOT_DIR}" \
         -cn "${CHROOT_NAME}" \
-        -pn "${PKGNAME}" \
         -ed "${EPHEMERAL_DIR}" \
-        -rpd "${EVAL_PKG_DIR}" || {
+        -rpd "${EVAL_PKG_DIR}" \
+        -bcs "${BUILD_CONFIG_SCRIPT}" || {
         local ERROR=$?
         >&2 echo "Failed to build \"${PKG_DIR}\" (\"${EVAL_PKG_DIR}\")"
         UNMOUNT_LOOP_DEVICE=false
         exit ${ERROR}
     }
-    >&2 echo "Done \"${PKG_DIR\"} (\"${EVAL_PKG_DIR}\")"
+    >&2 echo "Done \"${PKG_DIR}\" (\"${EVAL_PKG_DIR}\")"
     popd
 
     if [[ "${ONE_ONLY}" == "true" ]]; then

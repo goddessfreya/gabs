@@ -360,6 +360,9 @@ _exports_64() {
 }
 
 build() {
+    _build_cmake 64 \
+        -D PYTHON_EXECUTABLE="$(which python)"
+
     _build_cmake 32 \
         -D LLVM_DEFAULT_TARGET_TRIPLE="i686-pc-linux-gnu" \
         -D LLVM_LIBDIR_SUFFIX=32 \
@@ -368,9 +371,6 @@ build() {
         -D COMPILER_RT_BUILD_LIBFUZZER=OFF \
         -D LLVM_ENABLE_BINDINGS=OFF \
         -D PYTHON_EXECUTABLE="$(which python-32)"
-
-    _build_cmake 64 \
-        -D PYTHON_EXECUTABLE="$(which python)"
 }
 
 _symlink_to_opt() {
@@ -474,11 +474,13 @@ package_llvm-git-gentz() {
     DESTDIR="${pkgdir}" ninja $NINJAFLAGS install
     popd
 
+    local _python_location="$(python -c "import site; print(site.getsitepackages()[0]))")"
+    local _python2_location="$(python2 -c "import site; print(site.getsitepackages()[0]))")"
+
     # Clean up conflicting files
     # TODO: This should probably be discussed with upstream.
-    rm -rf "${pkgdir}/opt/llvm64/lib/python3.7/site-packages/six.py"
-    rm -rf "${pkgdir}/opt/llvm64/lib/python3.6/site-packages/six.py"
-    rm -rf "${pkgdir}/opt/llvm64/lib/python2.7/site-packages/six.py"
+    rm -rf "${pkgdir}/opt/llvm64${_python_location}/six.py"
+    rm -rf "${pkgdir}/opt/llvm64${_python2_location}/six.py"
 
     # Include lit for running lit-based tests in other projects
     pushd "${srcdir}/llvm-project64/llvm/utils/lit"
@@ -503,10 +505,10 @@ package_llvm-git-gentz() {
     pushd "${srcdir}/llvm-project64/llvm"
     # Install Python bindings and optimize them
     cp -a ./bindings/python/llvm \
-        "${pkgdir}/opt/llvm64/lib/python3.7/site-packages/"
+        "${pkgdir}/opt/llvm64${_python_location}/"
     cp -a ../clang/bindings/python/clang \
-        "${pkgdir}/opt/llvm64/lib/python3.7/site-packages/"
-    _python3_optimize "${pkgdir}/opt/llvm64/lib/python3.7/site-packages"
+        "${pkgdir}/opt/llvm64${_python_location}/"
+    _python3_optimize "${pkgdir}/opt/llvm64${_python_location}"
 
     # optimize other python files except 2 problem cases
     _python3_optimize "${pkgdir}/opt/llvm64/share" \

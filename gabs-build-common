@@ -139,3 +139,19 @@ setup_loopdevice() {
     sudo mount "${LOOP_DEVICE}" "${CHROOT_MOUNT}" || exit $?
     trap cleanup_loopdevice2 EXIT
 }
+
+builtin_config_script_try_dirs() {
+    try_build_config_script() {
+        if [[ "${BUILD_CONFIG_SCRIPT}" == "" || ! -f "${BUILD_CONFIG_SCRIPT}" ]]; then
+            BUILD_CONFIG_SCRIPT="$1"
+        fi
+    }
+
+    if [[ "${BUILD_CONFIG_SCRIPT}" == "" ]]; then 
+        try_build_config_script "$(pwd)/gabs-build-config"
+        try_build_config_script "${EPHEMERAL_DIR}/gabs-build-config"
+        try_build_config_script "${HOME}/.config/gabs-build-config"
+        try_build_config_script "/etc/gabs-build-config"
+        try_build_config_script "${SCRIPTS_DIR}/gabs-build-config"
+    fi
+}

@@ -42,14 +42,8 @@ prepare() {
     # See http://bugs.python.org/issue10835 for upstream report
     sed -i "/progname =/s/python/python${_pybasever}/" Python/pythonrun.c
 
-    # Enable built-in SQLite module to load extensions (fix FS#22122)
-    sed -i "/SQLITE_OMIT_LOAD_EXTENSION/d" setup.py
-
     # FS#23997
     sed -i -e "s|^#.* /usr/local/bin/python|#!/usr/bin/python|" Lib/cgi.py
-
-    sed -i "s/python2.3/python2/g" Lib/distutils/tests/test_build_scripts.py \
-      Lib/distutils/tests/test_install_scripts.py
 
     # Ensure that we are using the system copy of various libraries
     # (expat, zlib and libffi), rather than copies shipped in the tarball
@@ -64,9 +58,6 @@ prepare() {
     # Workaround asdl_c.py/makeopcodetargets.py errors after we touched the
     # shebangs
     touch Include/Python-ast.h Python/Python-ast.c Python/opcode_targets.h
-
-    # https://bugs.python.org/issue34587
-    sed -i -e "s|testCongestion|disabled_&|" Lib/test/test_socket.py
 
     popd
 
