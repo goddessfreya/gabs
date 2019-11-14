@@ -21,13 +21,13 @@ git@github.com:goddessfreya/gabs.git` into some local directory.
 
 In the most minimal use case, the only option you must pass in is `-ed`, so that
 the script knows where you want your "ephemeral directory," a.k.a. where we
-store all the "temporary"-ish files. This includes things like the chroots and
-the cloned VCS repos, which you probably don't want to be recreating all the
-time. 
+store all the "temporary"-ish files. 
 
-For this reason, the "ephemeral directory" should rarely be changed, if ever,
-after all, what is the point of recloning all the cloned VCS repos? If you do
-ever have to do this, please file a bug report/feature request!
+This directory includes things like the chroots and the cloned VCS repos, which
+you probably don't want to be recreating all the time. For this reason, the
+"ephemeral directory" should rarely be changed, if ever, after all, what is the
+point of recloning all the cloned VCS repos? If you do ever have to do this,
+please file a bug report/feature request!
 
 Of course, there are many options, and not using them will leave you with an
 uncomfortable experience for a large majority of the time.
@@ -53,9 +53,10 @@ It is generally assumed that `<PKG_DIR>/build` will eventually call
 Our patched `makechrootpkg` calls the `/bin/makepkg` in the chroot, which if
 distcc is in use becomes a small wrapper around `/bin/makepkg.gabs-inner`.
 
-Chances are you either want to forward some parameter to either `makepkg`,
+Chances are, you probably want to forward some parameter to either `makepkg`,
 `makechrootpkg` or `gabs-build-handler`. Please refer to gabs-build(1)'s `-ep`
-and `-fp` options and gabs-build-handler(1)'s `-m` and `-mc` options.
+and `-fp` options for the latter and gabs-build-handler(1)'s `-m` and `-mc`
+options for the former two, respectively.
 
 ## OPTIONS
 
