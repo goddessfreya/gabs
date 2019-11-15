@@ -474,13 +474,8 @@ package_llvm-git-gentz() {
     DESTDIR="${pkgdir}" ninja $NINJAFLAGS install
     popd
 
-    local _python_location="$(python -c "import site; print(site.getsitepackages()[0]))")"
-    local _python2_location="$(python2 -c "import site; print(site.getsitepackages()[0]))")"
-
-    # Clean up conflicting files
-    # TODO: This should probably be discussed with upstream.
-    rm -rf "${pkgdir}/opt/llvm64${_python_location}/six.py"
-    rm -rf "${pkgdir}/opt/llvm64${_python2_location}/six.py"
+    local _python_location="$(python -c "import site; print(site.getsitepackages()[0])" | grep "python[0-9]*\.[0-9]*" -o)"
+    local _python2_location="$(python2 -c "import site; print(site.getsitepackages()[0])" | grep "python[0-9]*\.[0-9]*" -o)"
 
     # Include lit for running lit-based tests in other projects
     pushd "${srcdir}/llvm-project64/llvm/utils/lit"
@@ -503,12 +498,15 @@ package_llvm-git-gentz() {
         "${pkgdir}/opt/llvm64/include/llvm/Config/llvm-config.h"
 
     pushd "${srcdir}/llvm-project64/llvm"
+
+    mkdir -p "${pkgdir}/opt/llvm64/lib/${_python_location}/site-packages/"
+
     # Install Python bindings and optimize them
     cp -a ./bindings/python/llvm \
-        "${pkgdir}/opt/llvm64${_python_location}/"
+        "${pkgdir}/opt/llvm64/lib/${_python_location}/site-packages/"
     cp -a ../clang/bindings/python/clang \
-        "${pkgdir}/opt/llvm64${_python_location}/"
-    _python3_optimize "${pkgdir}/opt/llvm64${_python_location}"
+        "${pkgdir}/opt/llvm64/lib/${_python_location}/site-packages/"
+    _python3_optimize "${pkgdir}/opt/llvm64/lib/${_python_location}/site-packages"
 
     # optimize other python files except 2 problem cases
     _python3_optimize "${pkgdir}/opt/llvm64/share" \
@@ -519,6 +517,12 @@ package_llvm-git-gentz() {
     # https://bugs.archlinux.org/task/28479
     install -d "${pkgdir}/opt/llvm64/lib/bfd-plugins"
     ln -s ../LLVMgold.so "${pkgdir}/opt/llvm64/lib/bfd-plugins/LLVMgold.so"
+
+    # Clean up conflicting files
+    # TODO: This should probably be discussed with upstream.
+    rm -rf "${pkgdir}/opt/llvm64/lib/${_python_location}/site-packages/six.py"
+    rm -rf "${pkgdir}/opt/llvm64/lib/${_python2_location}/site-packages/six.py"
+    rm -rf "${pkgdir}/opt/llvm64/lib/${_python_location}/site-packages/__pycache__/six.cpython-38."{opt-1.,opt-2.,}"pyc"
 
     _symlink_to_opt 64
     _move_licences 64

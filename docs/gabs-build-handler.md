@@ -43,7 +43,7 @@ gabs-build(1).
 
  * `-wn`:   
  
-    "FOR FUCKS SAKE, STOP ADDING `-c` TO MY PRECIOUS `<MAKECHROOTPKG_PARAM>`. 
+    "FOR FUCKS SAKE, STOP ADDING `-c` TO MY PRECIOUS `<MAKECHROOTPKG_PARAM>`."
 
  * `-dbr`: 
 

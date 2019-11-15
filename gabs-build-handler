@@ -190,9 +190,10 @@ if [[ "${NO_BUILD}" != "true" ]]; then
     fi
 fi
 
-[[ "${BACKUP_DIR}" != "" ]] && \
+if [[ "${BACKUP_DIR}" != "" ]]; then
     sudo rsync -chavPASWX --stats --inplace --compress-level=0 \
         "${CHROOT_DIR}/${USER}/build/" "${BACKUP_DIR}" || exit $?
+fi
 
 [[ "${NO_BUILD}" == "true" ]] && exit
 

@@ -16,10 +16,10 @@ Builds package(s) in a clean chroot\. Originally started as a small script to au
 For full functionality (like auto\-\fBupdpkgsums\fRing builtin packages), I\'d only install \fBgabs\-build\fR\'s AUR packages for access to the manpages (should be a flag in the \fBPKGBUILD\fR), and manually \fBgit clone git@github\.com:goddessfreya/gabs\.git\fR into some local directory\.
 .
 .SH "BASIC USAGE"
-In the most minimal use case, the only option you must pass in is \fB\-ed\fR, so that the script knows where you want your "ephemeral directory," a\.k\.a\. where we store all the "temporary"\-ish files\. This includes things like the chroots and the cloned VCS repos, which you probably don\'t want to be recreating all the time\.
+In the most minimal use case, the only option you must pass in is \fB\-ed\fR, so that the script knows where you want your "ephemeral directory," a\.k\.a\. where we store all the "temporary"\-ish files\.
 .
 .P
-For this reason, the "ephemeral directory" should rarely be changed, if ever, after all, what is the point of recloning all the cloned VCS repos? If you do ever have to do this, please file a bug report/feature request!
+This directory includes things like the chroots and the cloned VCS repos, which you probably don\'t want to be recreating all the time\. For this reason, the "ephemeral directory" should rarely be changed, if ever, after all, what is the point of recloning all the cloned VCS repos? If you do ever have to do this, please file a bug report/feature request!
 .
 .P
 Of course, there are many options, and not using them will leave you with an uncomfortable experience for a large majority of the time\.
@@ -51,7 +51,7 @@ It is generally assumed that \fB<PKG_DIR>/build\fR will eventually call \fBgabs\
 Our patched \fBmakechrootpkg\fR calls the \fB/bin/makepkg\fR in the chroot, which if distcc is in use becomes a small wrapper around \fB/bin/makepkg\.gabs\-inner\fR\.
 .
 .P
-Chances are you either want to forward some parameter to either \fBmakepkg\fR, \fBmakechrootpkg\fR or \fBgabs\-build\-handler\fR\. Please refer to gabs\-build(1)\'s \fB\-ep\fR and \fB\-fp\fR options and gabs\-build\-handler(1)\'s \fB\-m\fR and \fB\-mc\fR options\.
+Chances are, you probably want to forward some parameter to either \fBmakepkg\fR, \fBmakechrootpkg\fR or \fBgabs\-build\-handler\fR\. Please refer to gabs\-build(1)\'s \fB\-ep\fR and \fB\-fp\fR options for the latter and gabs\-build\-handler(1)\'s \fB\-m\fR and \fB\-mc\fR options for the former two, respectively\.
 .
 .SH "OPTIONS"
 .
