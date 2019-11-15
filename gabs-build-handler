@@ -177,8 +177,10 @@ if [[ "${NO_BUILD}" != "true" ]]; then
         -- CCACHE_DIR=/ccache "${MAKEPKG_PARAMS[@]}" \
         2> >(tee data/makechrootpkgerrors 1>&2); then
 
-        if [[ "$(cat data/makechrootpkgerrors | tail -n2)" \
-            == "$(cat "${BUILTINS_DIR}/makepkg_errors/updpkgsums")" ]] \
+        if [[ \
+            "$(cat data/makechrootpkgerrors | tail -n2)" == "$(cat "${BUILTINS_DIR}/makepkg_errors/updpkgsums")" \
+            || "$(cat data/makechrootpkgerrors | tail -n2 | sed "s/([a-z0-9]*)/(HASH)/")" == "$(cat "${BUILTINS_DIR}/makepkg_errors/updpkgsums2")" \
+        ]] \
             && ! array_contains_element "updpkgsums" "${PREVIOUS_REPAIR[@]}"; then
             updpkgsums
             cp PKGBUILD "${REAL_PACKAGE_DIR}/PKGBUILD"

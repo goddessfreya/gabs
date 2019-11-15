@@ -13,7 +13,7 @@
 pkgbase=mesa-git-gentz
 pkgname=('mesa-git-gentz' 'lib32-mesa-git-gentz')
 pkgver=20.0.0_devel.117464.a3dc975ee79
-pkgrel=1
+pkgrel=2
 pkgdesc='an open-source implementation of the OpenGL specification, git version'
 arch=('x86_64')
 url='https://www.mesa3d.org'
@@ -43,6 +43,7 @@ source=(
 sha512sums=('SKIP'
             '25da77914dded10c1f432ebcbf29941124138824ceecaf1367b3deedafaecabc082d463abcfa3d15abff59f177491472b505bcb5ba0c4a51bb6b93b4721a23c2'
             'cea98a22ed8b3d592ea8a43e3bb7cba7755d79dea94bd555ec753fb59bb1ba10fc904d11ec869aa9349d18bf9b7d86db274471ef2f10bfbace50f7a15b6c9844'
+            'c3b512173fe7939caae0d7b9f992e9df076f1c52bfce498d8e24c592b6480ab7cce0b719914ce3bfd902f2870650baf625d8be7b15108934d7d5f6cb48c535aa'
             'c73afdcaf6b7ab9c80b77568f0052ed71a1d8e91b5e618d6a48bdbdcffa5982c9bb52a166fa6d65567da23cc2fe8d927ec2a1b44fab9d785b525f1979096e79b'
             '7d8d964b8311094d359d3069fed0bb7f90746f2a4967056363e97718591cc10a45eea60152aab0d27af925484d8426b2298fe09bc64cd7d43525170a8b9e88ec'
             'c263d611c8b28bf4cd609f4b7691c7d77cb392cfcb23c82f5f1248c689385dbeca646f48d2a631c822b0f91c5aed00881580b37c3ed6f8f2c254e17d5902e571'
