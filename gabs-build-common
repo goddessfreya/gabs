@@ -112,7 +112,7 @@ cleanup_loopdevice() {
     losetup -j "${CHROOT_FILE}" \
         | cut -d":" -f1 \
         | xargs -I% bash -xc '
-            sudo umount "%"
+            lsblk "%" -o MOUNTPOINT -n | xargs sudo umount
             sudo losetup -d "%"
         '
 }

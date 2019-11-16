@@ -214,9 +214,10 @@ for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
 done
 
 # Move the old packages out
+local DATA_DIR="$(pwd)/data"
 if [[ -f "data/packages" && "$(cat "data/packages" | wc -l)" != "0" ]]; then
     pushd "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"
-    cat "data/packages" | xargs -I% bash -c "sudo mv \"%\" \"${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}\""
+    cat "${DATA_DIR}/packages" | xargs -I% bash -c "sudo mv \"%\" \"${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}\""
     popd
 fi
 

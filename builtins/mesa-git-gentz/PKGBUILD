@@ -13,28 +13,34 @@
 pkgbase=mesa-git-gentz
 pkgname=('mesa-git-gentz' 'lib32-mesa-git-gentz')
 pkgver=20.0.0_devel.117464.a3dc975ee79
-pkgrel=2
+pkgrel=3
 pkgdesc='an open-source implementation of the OpenGL specification, git version'
 arch=('x86_64')
 url='https://www.mesa3d.org'
 license=('custom')
 groups=('gentz_custom')
 makedepends=(
-    'git' 'python-mako' 'xorgproto' 'libomxil-bellagio' 'ocl-icd'
-    'vulkan-icd-loader' 'wayland-protocols' 'meson' 'lib32-gcc-libs'
+    'git' 'meson'
+    'lib32-libomxil-bellagio' 'lib32-libelf' 'lib32-libdrm'
+    'lib32-libxxf86vm' 'lib32-libxdamage' 'lib32-libxshmfence'
+    'lib32-llvm-libs-git' 'lib32-libunwind' 'lib32-zstd'
+    'lib32-wayland' 'lib32-lm_sensors' 'lib32-gcc-libs'
     'lib32-llvm-git' 'lib32-libxml2' 'lib32-libx11' 'lib32-libvdpau'
     'lib32-libva' 'lib32-elfutils' 'lib32-libxrandr' 'lib32-libgcrypt'
-    'lib32-wayland' 'lib32-libelf' 'llvm-git' 'libxml2' 'libx11' 'libvdpau'
-    'libva' 'elfutils' 'libxrandr' 'libgcrypt' 'wayland' 'libelf' 'clang-git'
-    'libclc' 'glslang' 'lib32-libomxil-bellagio' 'lib32-libunwind' 'libunwind'
+    'lib32-wayland' 'lib32-vulkan-icd-loader'
+    'libomxil-bellagio' 'libclc' 'libelf' 'libdrm' 'libxxf86vm' 'wayland'
+    'libxdamage' 'libxshmfence' 'llvm-libs-git' 'libunwind' 'libgcrypt' 
+    'wayland' 'lm_sensors' 'zstd' 'python-mako' 'libxrandr' 
+    'xorgproto' 'ocl-icd' 'glslang' 'vulkan-icd-loader' 'wayland-protocols' 
+    'llvm-git' 'libxml2' 'libx11' 'libvdpau' 'libva' 'elfutils' 'clang-git'
 )
+
 optdepends=('opengl-man-pages: for the OpenGL API man pages')
 
 source=(
     'git+https://github.com/freedesktop/mesa.git'
     'LICENSE'
     'llvm32.cross.in'
-    '2747.patch'
     '0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch'
     '0002-egl-Fixes-transparency-with-EGL-and-X11.patch'
     '0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch'
@@ -43,7 +49,6 @@ source=(
 sha512sums=('SKIP'
             '25da77914dded10c1f432ebcbf29941124138824ceecaf1367b3deedafaecabc082d463abcfa3d15abff59f177491472b505bcb5ba0c4a51bb6b93b4721a23c2'
             'cea98a22ed8b3d592ea8a43e3bb7cba7755d79dea94bd555ec753fb59bb1ba10fc904d11ec869aa9349d18bf9b7d86db274471ef2f10bfbace50f7a15b6c9844'
-            'c3b512173fe7939caae0d7b9f992e9df076f1c52bfce498d8e24c592b6480ab7cce0b719914ce3bfd902f2870650baf625d8be7b15108934d7d5f6cb48c535aa'
             'c73afdcaf6b7ab9c80b77568f0052ed71a1d8e91b5e618d6a48bdbdcffa5982c9bb52a166fa6d65567da23cc2fe8d927ec2a1b44fab9d785b525f1979096e79b'
             '7d8d964b8311094d359d3069fed0bb7f90746f2a4967056363e97718591cc10a45eea60152aab0d27af925484d8426b2298fe09bc64cd7d43525170a8b9e88ec'
             'c263d611c8b28bf4cd609f4b7691c7d77cb392cfcb23c82f5f1248c689385dbeca646f48d2a631c822b0f91c5aed00881580b37c3ed6f8f2c254e17d5902e571'
@@ -131,8 +136,6 @@ prepare() {
     git config --global user.name "Hal Gentz"
 
     pushd "${srcdir}/mesa"
-    git am "../2747.patch"
-
     git am "../0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch"
     git am "../0002-egl-Fixes-transparency-with-EGL-and-X11.patch"
     git am "../0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch"
@@ -149,15 +152,15 @@ prepare() {
 }
 
 build () {
-    _build_meson 64 \
-        -D gallium-opencl=icd \
-        -D gallium-omx=bellagio
-
     _build_meson 32 \
         --cross-file "${srcdir}/llvm32.cross" \
         --libdir=/usr/lib32 \
         -D gallium-opencl=disabled \
         -D gallium-omx=disabled
+
+    _build_meson 64 \
+        -D gallium-opencl=icd \
+        -D gallium-omx=bellagio
 }
 
 _package_common() {
@@ -174,10 +177,15 @@ _package_common() {
 package_lib32-mesa-git-gentz() {
     pkgdesc+=" (32-bit)"
     depends=(
-        'libomxil-bellagio' 'libclc' 'lib32-libelf' 'lib32-libdrm'
+        'lib32-libomxil-bellagio' 'lib32-libelf' 'lib32-libdrm'
         'lib32-libxxf86vm' 'lib32-libxdamage' 'lib32-libxshmfence'
-        'lib32-llvm-libs-git' 'lib32-libunwind'
-        'lib32-wayland' 'lib32-lm_sensors' 'glslang'
+        'lib32-llvm-libs-git' 'lib32-libunwind' 'lib32-zstd'
+        'lib32-wayland' 'lib32-lm_sensors' 'lib32-gcc-libs'
+        'lib32-llvm-git' 'lib32-libxml2' 'lib32-libx11' 'lib32-libvdpau'
+        'lib32-libva' 'lib32-elfutils' 'lib32-libxrandr' 'lib32-libgcrypt'
+        'lib32-wayland' 'lib32-vulkan-icd-loader'
+
+        'mesa-git-gentz'
     )
     provides=(
         'lib32-mesa-git' 'lib32-libgl' 'lib32-libegl' 'lib32-libgles'
@@ -206,9 +214,11 @@ package_lib32-mesa-git-gentz() {
 
 package_mesa-git-gentz() {
     depends=(
-        'lib32-libomxil-bellagio' 'libclc' 'libelf' 'libdrm' 'libxxf86vm'
-        'libxdamage' 'libxshmfence' 'llvm-libs-git' 'libunwind'
-        'wayland' 'lm_sensors' 'glslang'
+        'libomxil-bellagio' 'libclc' 'libelf' 'libdrm' 'libxxf86vm' 'wayland'
+        'libxdamage' 'libxshmfence' 'llvm-libs-git' 'libunwind' 'libgcrypt' 
+        'wayland' 'lm_sensors' 'zstd' 'python-mako' 'libxrandr' 
+        'xorgproto' 'ocl-icd' 'glslang' 'vulkan-icd-loader' 'wayland-protocols' 
+        'llvm-git' 'libxml2' 'libx11' 'libvdpau' 'libva' 'elfutils' 'clang-git'
     )
     provides=(
         'mesa-git' 'libgl' 'libegl' 'libgles' 'libglvnd' 'libglvnd-git'

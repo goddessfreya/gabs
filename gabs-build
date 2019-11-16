@@ -85,14 +85,17 @@ if [[ "${CHROOT_NAME}" == "" ]]; then
     print_fallback_param "CHROOT_NAME" "${CHROOT_NAME}"
 fi
 
-if [[ "${SHOULD_RESUME}" == "true" && "${RESUME_PKG}" == "" ]]; then
-    RESUME_PKG="$(cat "${EPHEMERAL_DIR}/last_pkg.${CHROOT_NAME}")"
-    print_fallback_param "RESUME_PKG" "${RESUME_PKG}"
-fi
-
 if [[ "${#PACKAGES[@]}" == "0" ]]; then
     PACKAGES=("${BUILTIN_PACKAGES[@]}")
     print_fallback_param "PACKAGES" "${PACKAGES[@]}"
+fi
+
+if [[ "${SHOULD_RESUME}" == "true" && "${RESUME_PKG}" == "" ]]; then
+    RESUME_PKG="$(cat "${EPHEMERAL_DIR}/last_pkg.${CHROOT_NAME}")"
+    if [[ "${RESUME_PKG}" == "" ]]; then
+        RESUME_PKG="${PACKAGES[1]}"
+    fi
+    print_fallback_param "RESUME_PKG" "${RESUME_PKG}"
 fi
 
 for PKG_DIR in ${PACKAGES}; do
