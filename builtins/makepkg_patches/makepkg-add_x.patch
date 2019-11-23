@@ -1,0 +1,10 @@
+diff --git a/makepkg b/makepkg
+index ab1d62f..f55f60e
+--- a/makepkg
++++ b/makepkg
+@@ -1,4 +1,4 @@
+-#!/usr/bin/bash
++#!/usr/bin/bash -x
+ #
+ #   makepkg - make packages compatible for use with pacman
+ #   Generated from makepkg.sh.in; do not edit by hand.

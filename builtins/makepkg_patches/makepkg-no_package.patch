@@ -1,0 +1,98 @@
+diff --git a/makepkg b/makepkg
+index ab1d62f..f55f60e
+--- a/makepkg
++++ b/makepkg
+@@ -68,6 +68,7 @@ NOARCHIVE=0
+ NOBUILD=0
+ NODEPS=0
+ NOEXTRACT=0
++NOPACKAGE=0
+ PKGFUNC=0
+ PKGVERFUNC=0
+ PREPAREFUNC=0
+@@ -668,7 +669,7 @@ list_package_files() {
+ }
+ 
+ create_package() {
+-	(( NOARCHIVE )) && return 0
++	(( NOARCHIVE || NOPACKAGE )) && return 0
+ 
+ 	if [[ ! -d $pkgdir ]]; then
+ 		error "$(gettext "Missing %s directory.")" "\$pkgdir/"
+@@ -860,7 +861,7 @@ check_build_status() {
+ 		fullver=$(get_full_version)
+ 		pkgarch=$(get_pkg_arch)
+ 		if [[ -f $PKGDEST/${pkgname}-${fullver}-${pkgarch}${PKGEXT} ]] \
+-				 && ! (( FORCE || SOURCEONLY || NOBUILD || NOARCHIVE)); then
++				 && ! (( FORCE || SOURCEONLY || NOBUILD || NOARCHIVE || NOPACKAGE)); then
+ 			if (( INSTALL )); then
+ 				warning "$(gettext "A package has already been built, installing existing package...")"
+ 				install_package
+@@ -882,7 +883,7 @@ check_build_status() {
+ 				allpkgbuilt=0
+ 			fi
+ 		done
+-		if ! (( FORCE || SOURCEONLY || NOBUILD || NOARCHIVE)); then
++		if ! (( FORCE || SOURCEONLY || NOBUILD || NOARCHIVE || NOPACKAGE)); then
+ 			if (( allpkgbuilt )); then
+ 				if (( INSTALL )); then
+ 					warning "$(gettext "The package group has already been built, installing existing packages...")"
+@@ -977,6 +978,7 @@ usage() {
+ 	printf -- "$(gettext "  --noarchive      Do not create package archive")\n"
+ 	printf -- "$(gettext "  --nocheck        Do not run the %s function in the %s")\n" "check()" "$BUILDSCRIPT"
+ 	printf -- "$(gettext "  --noprepare      Do not run the %s function in the %s")\n" "prepare()" "$BUILDSCRIPT"
++	printf -- "$(gettext "  --nopackage      Do not run the %s function in the %s")\n" "package()" "$BUILDSCRIPT"
+ 	printf -- "$(gettext "  --nosign         Do not create a signature for the package")\n"
+ 	printf -- "$(gettext "  --packagelist    Only list package filepaths that would be produced")\n"
+ 	printf -- "$(gettext "  --printsrcinfo   Print the generated SRCINFO and exit")\n"
+@@ -1027,7 +1029,7 @@ OPT_LONG=('allsource' 'check' 'clean' 'cleanbuild' 'config:' 'force' 'geninteg'
+           'help' 'holdver' 'ignorearch' 'install' 'key:' 'log' 'noarchive' 'nobuild'
+           'nocolor' 'nocheck' 'nodeps' 'noextract' 'noprepare' 'nosign' 'packagelist'
+           'printsrcinfo' 'repackage' 'rmdeps' 'sign' 'skipchecksums' 'skipinteg'
+-          'skippgpcheck' 'source' 'syncdeps' 'verifysource' 'version')
++          'skippgpcheck' 'source' 'syncdeps' 'verifysource' 'version' 'nopackage')
+ 
+ # Pacman Options
+ OPT_LONG+=('asdeps' 'noconfirm' 'needed' 'noprogressbar')
+@@ -1052,6 +1054,7 @@ while true; do
+ 		-c|--clean)       CLEANUP=1 ;;
+ 		-C|--cleanbuild)  CLEANBUILD=1 ;;
+ 		--check)          RUN_CHECK='y' ;;
++		--package)        NOPACKAGE=0 ;;
+ 		--config)         shift; MAKEPKG_CONF=$1 ;;
+ 		-d|--nodeps)      NODEPS=1 ;;
+ 		-e|--noextract)   NOEXTRACT=1 ;;
+@@ -1066,6 +1069,7 @@ while true; do
+ 		-m|--nocolor)     USE_COLOR='n'; PACMAN_OPTS+=("--color" "never") ;;
+ 		--noarchive)      NOARCHIVE=1 ;;
+ 		--nocheck)        RUN_CHECK='n' ;;
++		--nopackage)      NOPACKAGE=1 ;;
+ 		--noprepare)      RUN_PREPARE='n' ;;
+ 		--nosign)         SIGNPKG='n' ;;
+ 		-o|--nobuild)     BUILDPKG=0 NOBUILD=1 ;;
+@@ -1145,7 +1149,7 @@ if ! ensure_writable_dir "BUILDDIR" "$BUILDDIR"; then
+ 	exit $E_FS_PERMISSIONS
+ fi
+ 
+-if (( ! (NOBUILD || GENINTEG) )) && ! ensure_writable_dir "PKGDEST" "$PKGDEST"; then
++if (( ! (NOBUILD || GENINTEG || NOPACKAGE) )) && ! ensure_writable_dir "PKGDEST" "$PKGDEST"; then
+ 	plain "$(gettext "Aborting...")"
+ 	exit $E_FS_PERMISSIONS
+ fi
+@@ -1452,9 +1456,14 @@ else
+ 		cd_safe "$startdir"
+ 	fi
+ 
+-	enter_fakeroot
++	if (( ! NOPACKAGE )); then
++        enter_fakeroot
+ 
+-	create_package_signatures || exit $E_PRETTY_BAD_PRIVACY
++        create_package_signatures || exit $E_PRETTY_BAD_PRIVACY
++    else
++        msg "$(gettext "Source directory is ready.")"
++        exit $E_OK
++    fi
+ fi
+ 
+ # if inhibiting archive creation, go no further

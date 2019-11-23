@@ -136,10 +136,10 @@ prepare() {
     git config --global user.name "Freya Gentz"
 
     pushd "${srcdir}/mesa"
-    git am "../0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch"
-    git am "../0002-egl-Fixes-transparency-with-EGL-and-X11.patch"
-    git am "../0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch"
-    git am "../0004-egl-Configs-w-o-double-buffering-support-have-no-EGL.patch"
+    #git am "../0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch"
+    #git am "../0002-egl-Fixes-transparency-with-EGL-and-X11.patch"
+    #git am "../0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch"
+    #git am "../0004-egl-Configs-w-o-double-buffering-support-have-no-EGL.patch"
     popd
 
     cat "${srcdir}/llvm32.cross.in" \

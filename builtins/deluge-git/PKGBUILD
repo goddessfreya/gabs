@@ -1,0 +1,103 @@
+# Maintainer: Freya Gentz <zegentzy@protonmail.com>
+# Contributor: Daniel Bermond < gmail-com: danielbermond >
+# Contributor: Jan "heftig" Steffens <jan.steffens@gmail.com>
+# Contributor: Ionut Biru <ibiru@archlinux.org>
+# Contributor: Hugo Doria <hugo@archlinux.org>
+
+pkgname=deluge-git
+pkgver=2.0.0b2.dev360.gbe74d96c6
+pkgrel=3
+pkgdesc="A BitTorrent client with multiple user interfaces in a client/server model (git version, 'develop' branch)"
+arch=('any')
+url='https://deluge-torrent.org/'
+license=('GPL3')
+depends=(
+    # Follows DEPENDS.md
+    'python-twisted>=17.1' python-service-identity python-idna
+    'openssl>=1.0.1'
+    python-pyopenssl
+    'python-rencode>=1.0.2'
+    python-xdg
+    xdg-utils
+    python-six
+    'python-zope-interface>=4.4.2' 
+    python-chardet 
+    python-setproctitle 
+    python-pillow
+    python-dbus
+    python-distro
+    'libtorrent-rasterbar>=1.1.1'
+    python-geoip
+    python-mako
+)
+makedepends=(
+    python-setuptools
+    intltool
+    gtk3
+    python-gobject
+    python-cairo
+    librsvg
+    libappindicator-gtk3
+    #python-pygame
+    libnotify
+    git
+)
+optdepends=(
+    'gtk3: gtk ui'
+    'python-gobject: gtk ui'
+    'python-cairo: gtk ui'
+    'librsvg: gtk ui'
+    'libappindicator-gtk3: appindicator notifications'
+    #'python-pygame: audible notifications'
+    'libnotify: desktop notifications'
+)
+provides=('deluge')
+conflicts=('deluge')
+source=(
+    "${pkgname}::git://deluge-torrent.org/deluge.git#branch=develop"
+    "py3.8.diff"
+)
+sha256sums=('SKIP'
+            'a0225692e5c312d7980f0047f8e840803e8e05d6c525464ae9f335f56e205297')
+
+pkgver() {
+    cd "${srcdir}/${pkgname}"
+
+    local _internalver
+    local _shorthash
+
+    _internalver="$(python version.py)"
+    _shorthash="$(git rev-parse --short HEAD)"
+
+    printf '%s.g%s' "${_internalver}" "${_shorthash}"
+}
+
+prepare() {
+    cd "${srcdir}/${pkgname}"
+
+    # Remove a broken logging.Logger.findCaller override
+    # https://bugs.archlinux.org/task/64571
+    patch -Np1 -i ../py3.8.diff
+}
+
+build() {
+    cd "${srcdir}/${pkgname}"
+    python setup.py build
+}
+
+package() {
+    cd "${srcdir}/${pkgname}"
+    python setup.py install --root="${pkgdir}" --optimize=1 --skip-build
+
+    install -m644 "./packaging/systemd/"*".service" \
+        -Dt "${pkgdir}/usr/lib/systemd/system"
+    install -m644 "./packaging/systemd/user.conf" \
+        -Dt "${pkgdir}/usr/lib/systemd/system/deluged.service.d"
+    install -m644 "./packaging/systemd/user.conf" \
+        -Dt "${pkgdir}/usr/lib/systemd/system/deluge-web.service.d"
+
+    echo 'u deluge - "Deluge BitTorrent daemon" /srv/deluge' |
+        install -Dm644 /dev/stdin "${pkgdir}/usr/lib/sysusers.d/${pkgname}.conf"
+    echo 'd /srv/deluge 0770 deluge deluge' |
+        install -Dm644 /dev/stdin "${pkgdir}/usr/lib/tmpfiles.d/${pkgname}.conf"
+}

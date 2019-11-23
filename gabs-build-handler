@@ -153,8 +153,13 @@ mkdir -p data
 
 sudo cp "/bin/makechrootpkg" "${MAKECHROOTPKG_BIN}"
 chmod +x "${MAKECHROOTPKG_BIN}"
-patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/use_custom.patch" \
+
+patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-use_custom.patch" \
     -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}"
+patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-force_color.patch" \
+    -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}"
+#patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-add_x.patch" \
+#    -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}"
 
 for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
     [[ ! -d "${CHROOT_DIR2}" ]] && continue
@@ -162,10 +167,12 @@ for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
     sudo rm "${CHROOT_DIR2}/bin/makepkg"{,.gabs-inner}
     nspawn "${CHROOT_DIR2}" /bin/bash -xc "yes | pacman -S pacman || exit \$?" || exit $?
 
-    sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/force_color.patch" \
+    sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-force_color.patch" \
         -d"${CHROOT_DIR2}/bin"
-    sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/no_package.patch" \
+    sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-no_package.patch" \
         -d"${CHROOT_DIR2}/bin"
+    #sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-add_x.patch" \
+    #    -d"${CHROOT_DIR2}/bin"
 
     if [[ "${DISTC_SUPPORT}" == "true" ]]; then
         sudo mv "${CHROOT_DIR2}/bin/makepkg"{,.gabs-inner}
