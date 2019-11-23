@@ -171,8 +171,8 @@ for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
         -d"${CHROOT_DIR2}/bin"
     sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-no_package.patch" \
         -d"${CHROOT_DIR2}/bin"
-    #sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-add_x.patch" \
-    #    -d"${CHROOT_DIR2}/bin"
+    sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-buildenv_during_prepare.patch" \
+        -d"${CHROOT_DIR2}/bin"
 
     if [[ "${DISTC_SUPPORT}" == "true" ]]; then
         sudo mv "${CHROOT_DIR2}/bin/makepkg"{,.gabs-inner}

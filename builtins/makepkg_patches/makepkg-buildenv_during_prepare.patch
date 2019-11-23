@@ -1,0 +1,23 @@
+diff --git a/makepkg b/makepkg
+index ab1d62f..d966b85
+--- a/makepkg
++++ b/makepkg
+@@ -1415,6 +1415,7 @@ if (( !REPKG )); then
+ 
+ 		extract_sources
+ 		if (( PREPAREFUNC )); then
++	        prepare_buildenv
+ 			run_prepare
+ 		fi
+ 		if (( REPRODUCIBLE )); then
+@@ -1444,7 +1445,9 @@ else
+ 	chmod a-srw "$pkgdirbase"
+ 	cd_safe "$startdir"
+ 
+-	prepare_buildenv
++	if (( ! PREPAREFUNC )); then
++       prepare_buildenv
++   fi
+ 
+ 	if (( ! REPKG )); then
+ 		(( BUILDFUNC )) && run_build
