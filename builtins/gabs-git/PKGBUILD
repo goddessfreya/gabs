@@ -1,4 +1,4 @@
-# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Maintainer: Freya Gentz <zegentzy@protonmail.com>
 
 pkgname=gabs-git
 pkgver=20.0.0_devel.117464.a3dc975ee79
@@ -29,19 +29,19 @@ build() {
 
 package() {
     cd "${srcdir}/gabs"
-	install -D "gabs-build" "${pkgdir}/usr/bin/gabs-build"
-	install -D "gabs-build-common" "${pkgdir}/usr/bin/gabs-build-common"
-	install -D "gabs-build-chroot" "${pkgdir}/usr/bin/gabs-build-chroot"
-    install -D "gabs-build-handler" "${pkgdir}/usr/bin/gabs-build-handler"
-	install -D "gabs-swap-llvm" "${pkgdir}/usr/bin/gabs-swap-llvm"
+	install -Dm755 "gabs-build" "${pkgdir}/usr/bin/gabs-build"
+	install -Dm755 "gabs-build-common" "${pkgdir}/usr/bin/gabs-build-common"
+	install -Dm755 "gabs-build-chroot" "${pkgdir}/usr/bin/gabs-build-chroot"
+    install -Dm755 "gabs-build-handler" "${pkgdir}/usr/bin/gabs-build-handler"
+	install -Dm755 "gabs-swap-llvm" "${pkgdir}/usr/bin/gabs-swap-llvm"
 
-    install -D "docs/gabs-build.1" "${pkgdir}/usr/share/man/man1/gabs-build.1"
-    install -D "docs/gabs-build-chroot.1" "${pkgdir}/usr/share/man/man1/gabs-build-chroot.1"
-    install -D "docs/gabs-build-config.5" "${pkgdir}/usr/share/man/man5/gabs-build-config.5"
-    install -D "docs/gabs-build-handler.1" "${pkgdir}/usr/share/man/man1/gabs-build-handler.1"
-    install -D "docs/gabs-swap-llvm.1" "${pkgdir}/usr/share/man/man1/gabs-swap-llvm.1"
+    install -Dm644 "docs/gabs-build.1" "${pkgdir}/usr/share/man/man1/gabs-build.1"
+    install -Dm644 "docs/gabs-build-chroot.1" "${pkgdir}/usr/share/man/man1/gabs-build-chroot.1"
+    install -Dm644 "docs/gabs-build-config.5" "${pkgdir}/usr/share/man/man5/gabs-build-config.5"
+    install -Dm644 "docs/gabs-build-handler.1" "${pkgdir}/usr/share/man/man1/gabs-build-handler.1"
+    install -Dm644 "docs/gabs-swap-llvm.1" "${pkgdir}/usr/share/man/man1/gabs-swap-llvm.1"
 
-	install -D "gabs-build-config" "${pkgdir}/etc/gabs-build-config"
-    find builtins -type f \
-        | xargs -I% bash -c 'echo "Installing %"; install -D "%" "'"${pkgdir}"'/usr/share/gabs/%"'
+	install -Dm755 "gabs-build-config" "${pkgdir}/etc/gabs-build-config"
+    install -dm755 "${pkgdir}/usr/share/gabs"
+    cp builtins "${pkgdir}/usr/share/gabs/" -r
 }

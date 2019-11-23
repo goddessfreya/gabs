@@ -23,6 +23,7 @@ local LOOP_DEVICE_SIZE=
 local UNMOUNT_LOOP_DEVICE=true
 local EPHEMERAL_DIR=
 local BUILD_CONFIG_SCRIPT=
+local DONT_UPDATE_PACKAGES=false
 
 while [[ $# -gt 0 ]]; do
 	case "${1}" in
@@ -54,6 +55,7 @@ while [[ $# -gt 0 ]]; do
         -kld) UNMOUNT_LOOP_DEVICE=false;;
         -ed) EPHEMERAL_DIR="${2}"; shift;;
         -bcs) BUILD_CONFIG_SCRIPT="${2}"; shift;;
+        -dup) DONT_UPDATE_PACKAGES=true;;
 
         --help)
             >&2 echo "Please refer to the man page."
@@ -207,10 +209,12 @@ if [[ "${REMAKE_CHROOT}" == "true" ]]; then
 else
     clone_file {"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}",/etc}/makepkg.conf root:root 644
 
-    for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
-        [[ ! -d "${CHROOT_DIR2}" ]] && continue
-        nspawn "${CHROOT_DIR2}" /bin/bash -xc 'yes | pacman -Syyu' || exit $?
-    done
+    if [[ "${DONT_UPDATE_PACKAGES}" == false ]]; then
+        for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+            [[ ! -d "${CHROOT_DIR2}" ]] && continue
+            nspawn "${CHROOT_DIR2}" /bin/bash -xc 'yes | pacman -Syyu' || exit $?
+        done
+    fi
 fi
 
 if [[ "${USE_DISTCC}" == "true" ]]; then
@@ -291,6 +295,7 @@ for PKG_DIR in ${PACKAGES}; do
 
     mkdir -p "${PKGBUILD_CLONE_DIR}/${PKGNAME}"
     sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
+        --chown="${USER}:${USER}" \
         "${EVAL_PKG_DIR}/" "${PKGBUILD_CLONE_DIR}/${PKGNAME}" || exit $?
 
     pushd "${PKGBUILD_CLONE_DIR}/${PKGNAME}"

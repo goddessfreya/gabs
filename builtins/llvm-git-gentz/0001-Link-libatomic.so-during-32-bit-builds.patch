@@ -1,5 +1,5 @@
 From af45425f22a72636ccc37d0245a2c8f262267afa Mon Sep 17 00:00:00 2001
-From: Hal Gentz <zegentzy@protonmail.com>
+From: Freya Gentz <zegentzy@protonmail.com>
 Date: Wed, 2 Oct 2019 18:29:40 -0600
 Subject: [PATCH] Link libatomic.so during 32-bit builds.
 
@@ -27,7 +27,7 @@ We also also unify the 64-bit version in `CheckAtomic.cmake` with the code in
 made, `CheckAtomic.cmake` did not have a 64-bit version, but that is no longer
 the case, so I see no reason not to merge them.
 
-Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
+Signed-off-by: Freya Gentz <zegentzy@protonmail.com>
 ---
  libcxx/CMakeLists.txt                        |   2 +-
  libcxx/cmake/Modules/CheckLibcxxAtomic.cmake |  56 ---------

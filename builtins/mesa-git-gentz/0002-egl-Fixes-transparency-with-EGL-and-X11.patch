@@ -1,5 +1,5 @@
 From 90a19074b4e1d4d8f8ababaade8170c05aeecffe Mon Sep 17 00:00:00 2001
-From: Hal Gentz <zegentzy@protonmail.com>
+From: Freya Gentz <zegentzy@protonmail.com>
 Date: Thu, 10 Oct 2019 18:35:50 -0600
 Subject: [PATCH 2/4] egl: Fixes transparency with EGL and X11.
 
@@ -12,7 +12,7 @@ Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=67676
 Fixes: 049f343e8ac "egl: Allow 24-bit visuals for 32-bit RGBA8888 configs"
 Cc: mesa-stable@lists.freedesktop.org
 Reviewed-by: Adam Jackson <ajax@redhat.com>
-Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
+Signed-off-by: Freya Gentz <zegentzy@protonmail.com>
 ---
  include/GL/internal/dri_interface.h |  3 ++-
  src/egl/drivers/dri2/egl_dri2.c     |  4 ++++

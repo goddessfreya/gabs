@@ -1,4 +1,4 @@
-# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Maintainer: Freya Gentz <zegentzy@protonmail.com>
 # Contributor: Lone_Wolf <lonewolf@xs4all.nl>
 # Contributor: yurikoles <root@yurikoles.com>
 # Contributor: bearoso <bearoso@gmail.com>
@@ -140,7 +140,7 @@ prepare() {
     # Yeah, we could use git apply, but I want to be able to run diff and only
     # get the changes for my patches.
     git config --global user.email "zegentzy@protonmail.com"
-    git config --global user.name "Hal Gentz"
+    git config --global user.name "Freya Gentz"
 
     mkdir _build{64,32}{_stg1,_instr,_to_instr{1,2},_final}
     mkdir dont_delete

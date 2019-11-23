@@ -1,4 +1,4 @@
-# Maintainer: Hal Gentz <zegentzy@protonmail.com>
+# Maintainer: Freya Gentz <zegentzy@protonmail.com>
 # Contributor: Lone_Wolf <lonewolf at xs4all dot nl>
 # Contributor: Armin K. <krejzi at email dot com>
 # Contributor: Kristian Klausen <klausenbusk@hotmail.com>
@@ -133,7 +133,7 @@ prepare() {
     # Yeah, we could use git apply, but I want to be able to run diff and only
     # get the changes for my patches.
     git config --global user.email "zegentzy@protonmail.com"
-    git config --global user.name "Hal Gentz"
+    git config --global user.name "Freya Gentz"
 
     pushd "${srcdir}/mesa"
     git am "../0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch"

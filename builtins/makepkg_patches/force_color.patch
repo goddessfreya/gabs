@@ -1,6 +1,4 @@
 diff --git a/makepkg b/makepkg
-old mode 100755
-new mode 100755
 index ab1d62f..8e2a286
 --- a/makepkg
 +++ b/makepkg

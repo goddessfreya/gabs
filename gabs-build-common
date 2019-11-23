@@ -28,7 +28,12 @@ array_contains_element () {
 }
 
 nspawn() {
-    sudo /usr/bin/arch-nspawn "$@"
+    sudo setarch x86_64 /usr/bin/systemd-nspawn -q \
+        -D "$1" \
+	    -E "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin" \
+        --register=no --keep-unit --as-pid2 \
+        --bind=/var/cache/pacman/pkg \
+        "${@:2}"
 }
 
 # Stop sudo from expiring

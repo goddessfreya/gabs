@@ -1,5 +1,5 @@
 From 075a96aa926e6e89795f95a6a59693f44d9ac970 Mon Sep 17 00:00:00 2001
-From: Hal Gentz <zegentzy@protonmail.com>
+From: Freya Gentz <zegentzy@protonmail.com>
 Date: Thu, 10 Oct 2019 18:35:50 -0600
 Subject: [PATCH 4/4] egl: Configs w/o double buffering support have no
  `EGL_WINDOW_BIT`.
@@ -16,7 +16,7 @@ Fixes: 049f343e8ac "egl: Allow 24-bit visuals for 32-bit RGBA8888 configs"
 Bugzilla: https://bugs.freedesktop.org/show_bug.cgi?id=67676
 Cc: mesa-stable@lists.freedesktop.org
 Reviewed-by: Adam Jackson <ajax@redhat.com>
-Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
+Signed-off-by: Freya Gentz <zegentzy@protonmail.com>
 ---
  src/egl/drivers/dri2/egl_dri2.c             | 57 ++++++++++++++++++---
  src/egl/drivers/dri2/egl_dri2.h             |  3 ++

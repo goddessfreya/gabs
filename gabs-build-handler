@@ -148,7 +148,6 @@ if [[ "${RESUME_DIR}" != "" ]]; then
 fi
 
 local MAKECHROOTPKG_BIN="${EPHEMERAL_DIR}/custom.${CHROOT_NAME}/makechrootpkg"
-local MAKEPKG_BIN="${CHROOT_DIR}/${USER}/bin/makepkg"
 
 mkdir -p data
 
@@ -157,19 +156,24 @@ chmod +x "${MAKECHROOTPKG_BIN}"
 patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/use_custom.patch" \
     -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}"
 
-# We got to make a copy of makepkg... make it use pump
-sudo rm "${CHROOT_DIR}/${USER}/bin/makepkg.gabs-inner"
-sudo cp "${CHROOT_DIR}/root/bin/makepkg" "${MAKEPKG_BIN}"
+for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
+    [[ ! -d "${CHROOT_DIR2}" ]] && continue
+    # We got to make a copy of makepkg... make it use pump
+    sudo rm "${CHROOT_DIR2}/bin/makepkg"{,.gabs-inner}
+    nspawn "${CHROOT_DIR2}" /bin/bash -xc "yes | pacman -S pacman || exit \$?" || exit $?
 
-sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/force_color.patch" \
-    -d"${CHROOT_DIR}/${USER}/bin"
+    sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/force_color.patch" \
+        -d"${CHROOT_DIR2}/bin"
+    sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/no_package.patch" \
+        -d"${CHROOT_DIR2}/bin"
 
-if [[ "${DISTC_SUPPORT}" == "true" ]]; then
-    sudo mv "${CHROOT_DIR}/${USER}/bin/makepkg"{,.gabs-inner}
-    printf '#!/bin/zsh -x\npump /bin/makepkg.gabs-inner "$@"\n' \
-        | sudo tee "${MAKEPKG_BIN}"
-    sudo chmod +x "${MAKEPKG_BIN}"
-fi
+    if [[ "${DISTC_SUPPORT}" == "true" ]]; then
+        sudo mv "${CHROOT_DIR2}/bin/makepkg"{,.gabs-inner}
+        printf '#!/bin/zsh -x\npump /bin/makepkg.gabs-inner "$@"\n' \
+            | sudo tee "${CHROOT_DIR2}/bin/makepkg"
+        sudo chmod +x "${CHROOT_DIR2}/bin/makepkg"
+    fi
+done
 
 # Then actually build it
 if [[ "${NO_BUILD}" != "true" ]]; then
@@ -199,6 +203,11 @@ fi
 
 [[ "${NO_BUILD}" == "true" ]] && exit
 
+if array_contains_element "--noarchive" "${MAKEPKG_PARAMS[@]}" \
+    || array_contains_element "--nopackage" "${MAKEPKG_PARAMS[@]}"; then
+    exit
+fi
+
 if [[ "$(ls *.pkg.(tar|tar.gz|tar.xz|tar.bz2) | wc -l)" == "0" ]]; then
     >&2 echo No packages generated.
     exit 1
@@ -217,7 +226,7 @@ done
 local DATA_DIR="$(pwd)/data"
 if [[ -f "data/packages" && "$(cat "data/packages" | wc -l)" != "0" ]]; then
     pushd "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"
-    cat "${DATA_DIR}/packages" | xargs -I% bash -c "sudo mv \"%\" \"${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}\""
+    cat "${DATA_DIR}/packages" | xargs -I% bash -c "sudo mv \"%\" \"${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}\""
     popd
 fi
 

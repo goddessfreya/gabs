@@ -173,6 +173,11 @@ options for the former two, respectively.
                 "/etc/gabs-build-config" 
                 "${SCRIPTS_DIR}/gabs-build-config"
 
+ * `-dup`:
+
+    Don't call `pacman -Syyu` on all the chroots. Shaves ~15 seconds off, or
+    more if your connection is slower.
+
 ## ISSUES 
 
 ### The compilation is pegging my HDD/CPU...

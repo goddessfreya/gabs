@@ -1,5 +1,5 @@
 From 173bc9d6842efdec54ea3fd415a6946dcee7b02a Mon Sep 17 00:00:00 2001
-From: Hal Gentz <zegentzy@protonmail.com>
+From: Freya Gentz <zegentzy@protonmail.com>
 Date: Thu, 10 Oct 2019 18:35:50 -0600
 Subject: [PATCH 1/4] egl: Add EGL_CONFIG_SELECT_GROUP_MESA ext.
 
@@ -8,7 +8,7 @@ Fixes: 049f343e8ac "egl: Allow 24-bit visuals for 32-bit RGBA8888 configs"
 Cc: mesa-stable@lists.freedesktop.org
 Reviewed-by: Adam Jackson <ajax@redhat.com>
 Acked-by: Eric Engestrom <eric.engestrom@intel.com>
-Signed-off-by: Hal Gentz <zegentzy@protonmail.com>
+Signed-off-by: Freya Gentz <zegentzy@protonmail.com>
 ---
  docs/specs/EGL_MESA_config_select_group.txt  | 103 +++++++++++++++++++
  include/EGL/eglmesaext.h                     |   5 +
@@ -31,11 +31,11 @@ index 00000000000..e71411fe23f
 +
 +Contributors
 +
-+    Hal Gentz <zegentzy@protonmail.com>
++    Freya Gentz <zegentzy@protonmail.com>
 +
 +Contacts
 +
-+    Hal Gentz <zegentzy@protonmail.com>
++    Freya Gentz <zegentzy@protonmail.com>
 +
 +Status
 +
@@ -119,10 +119,10 @@ index 00000000000..e71411fe23f
 +
 +Revision History
 +
-+    Version 2, 2019-07-11 (Hal Gentz)
++    Version 2, 2019-07-11 (Freya Gentz)
 +        - Resolved issues pointed out by Adam Jackson.
 +
-+    Version 1, 2019-06-21 (Hal Gentz)
++    Version 1, 2019-06-21 (Freya Gentz)
 +        - Initial draft
 diff --git a/include/EGL/eglmesaext.h b/include/EGL/eglmesaext.h
 index f4332b279f8..b83e9441012 100644
