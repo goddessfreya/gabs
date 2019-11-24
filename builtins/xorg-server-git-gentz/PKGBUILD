@@ -86,13 +86,13 @@ _exports() {
     export CXXFLAGS=${CXXFLAGS/-fno-plt}
     export LDFLAGS=${LDFLAGS/,-z,now}
 
-    export CFLAGS="$CFLAGS -fplt -fno-lto -g3"
-    export CXXFLAGS="$CXXFLAGS -fplt -fno-lto -g3"
-    export LDFLAGS="$LDFLAGS,-fno-lto"
+    export CFLAGS="${CFLAGS} -fplt -fno-lto -g3"
+    export CXXFLAGS="${CXXFLAGS} -fplt -fno-lto -g3"
+    export LDFLAGS="${LDFLAGS},-fno-lto"
 
     # For dbg symbols, afaik.
-    #export CFLAGS="$CFLAGS -O0"
-    #export CXXFLAGS="$CXXFLAGS -O0"
+    #export CFLAGS="${CFLAGS} -O0"
+    #export CXXFLAGS="${CXXFLAGS} -O0"
     #export CFLAGS=${CFLAGS/-O3}
     #export CXXFLAGS=${CXXFLAGS/-O3}
 }
@@ -134,11 +134,11 @@ build() {
     done
 
     _exports
-    ninja $NINJAFLAGS -C "${srcdir}/build"
+    ninja ${NINJAFLAGS} -C "${srcdir}/build"
 }
 
 package() {
-    DESTDIR="${pkgdir}" ninja $NINJAFLAGS -C "${srcdir}/build" install
+    DESTDIR="${pkgdir}" ninja ${NINJAFLAGS} -C "${srcdir}/build" install
 
     ln -s /usr/bin/Xorg "${pkgdir}/usr/bin/X"
 

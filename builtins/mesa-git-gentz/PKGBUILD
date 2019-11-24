@@ -56,6 +56,15 @@ sha512sums=('SKIP'
 
 #_meson_flags=(-D b_ndebug=false)
 
+join_by() { 
+    local IFS="$1"; shift; echo "$*"; 
+}
+
+_build_amd_driver=true
+_build_intel_driver=false
+_build_vm_driver=false
+_build_others_driver=true
+
 pkgver() {
     cd "${srcdir}/mesa"
     read -r _ver <VERSION
@@ -66,13 +75,41 @@ pkgver() {
 }
 
 _build_meson() {
-    if [[ -f ".build$1.built" ]]; then
+    if [[ -f ".build${1}.built" ]]; then
         return
     fi
 
-    _exports_$1
+    _exports_${1}
 
-    meson setup "${srcdir}/mesa" "${srcdir}/_build$1" \
+    local _dri_drivers=()
+    local _gallium_drivers=()
+    local _vulkan_drivers=()
+
+    if [[ "${_build_amd_driver}" == "true" ]]; then
+        _dri_drivers+=()
+        _gallium_drivers+=(radeonsi)
+        _vulkan_drivers+=(amd)
+    fi
+
+    if [[ "${_build_intel_driver}" == "true" ]]; then
+        _dri_drivers+=(i915 i965)
+        _gallium_drivers+=(iris)
+        _vulkan_drivers+=(intel)
+    fi
+
+    if [[ "${_build_other_driver}" == "true" ]]; then
+        _dri_drivers+=()
+        _gallium_drivers+=(swrast zink)
+        _vulkan_drivers+=()
+    fi
+
+    if [[ "${_build_vm_driver}" == "true" ]]; then
+        _dri_drivers+=()
+        _gallium_drivers+=(virgl svga)
+        _vulkan_drivers+=()
+    fi
+
+    echo meson setup "${srcdir}/mesa" "${srcdir}/_build${1}" \
         "${@:2}" \
         "${_meson_flags[@]}" \
         -D buildtype=plain \
@@ -80,9 +117,9 @@ _build_meson() {
         -D prefix=/usr \
         -D sysconfdir=/etc \
         -D platforms=x11,wayland,drm,surfaceless \
-        -D dri-drivers=i915,i965 \
-        -D gallium-drivers=radeonsi,virgl,swrast,iris,zink,svga \
-        -D vulkan-drivers=amd,intel \
+        -D dri-drivers="$(join_by , "${_dri_drivers}")" \
+        -D gallium-drivers="$(join_by , "${_gallium_drivers}")" \
+        -D vulkan-drivers="$(join_by , "${_vulkan_drivers}")" \
         -D dri3=true \
         -D egl=true \
         -D gallium-extra-hud=true \
@@ -104,17 +141,17 @@ _build_meson() {
         -D valgrind=true \
         -D tools=[]
 
-    meson configure "${srcdir}/_build$1"
+    meson configure "${srcdir}/_build${1}"
 
-    ninja $NINJAFLAGS -C "${srcdir}/_build$1"
-    touch ".build$1.built"
+    ninja ${NINJAFLAGS} -C "${srcdir}/_build${1}"
+    touch ".build${1}.built"
 }
 
 _exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
-    #export CFLAGS="$CFLAGS -m32"
-    #export CXXFLAGS="$CXXFLAGS -m32"
-    #export LDFLAGS="$LDFLAGS -m32"
+    #export CFLAGS="${CFLAGS} -m32"
+    #export CXXFLAGS="${CXXFLAGS} -m32"
+    #export LDFLAGS="${LDFLAGS} -m32"
 }
 
 _exports_64() {
@@ -125,7 +162,7 @@ _exports_64() {
 }
 
 _find_bin() { 
-    sed "s/'$1'/'$(which "$1" | sed "s/\//\\\\\//g")'/g" 
+    sed "s/'${1}'/'$(which "${1}" | sed "s/\//\\\\\//g")'/g" 
 }
 
 prepare() {
@@ -136,10 +173,10 @@ prepare() {
     git config --global user.name "Freya Gentz"
 
     pushd "${srcdir}/mesa"
-    #git am "../0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch"
-    #git am "../0002-egl-Fixes-transparency-with-EGL-and-X11.patch"
-    #git am "../0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch"
-    #git am "../0004-egl-Configs-w-o-double-buffering-support-have-no-EGL.patch"
+    git am "../0001-egl-Add-EGL_CONFIG_SELECT_GROUP_MESA-ext.patch"
+    git am "../0002-egl-Fixes-transparency-with-EGL-and-X11.patch"
+    git am "../0003-egl-Puts-RGBA-visuals-in-the-second-config-selection.patch"
+    git am "../0004-egl-Configs-w-o-double-buffering-support-have-no-EGL.patch"
     popd
 
     cat "${srcdir}/llvm32.cross.in" \
@@ -163,15 +200,37 @@ build () {
         -D gallium-omx=bellagio
 }
 
+_symlink_to_opt() {
+    pushd "${pkgdir}"
+
+    # Symlink can easily be swapped to some more local installs, use by other
+    # scripts of mine.
+    ln -s "./mesa${1}" "./opt/mesa${1}-sym"
+
+    for idir in $(find ./opt/mesa${1}-sym/* -type d); do
+        install -d "$(echo "${idir}" | sed "s/^\.\/opt\/mesa${1}-sym/./")"
+    done
+
+    for file in \
+        $(find ./opt/mesa${1}-sym/* -type f) \
+        $(find ./opt/mesa${1}-sym/* -type l)
+    do
+        ln -s "${file#?}" "$(echo "${file}" | sed "s/^\.\/opt\/mesa${1}-sym/./")"
+    done
+
+    popd
+}
+
 _package_common() {
-    DESTDIR="${pkgdir}" ninja $NINJAFLAGS -C "${srcdir}/_build$1" install
+    DESTDIR="${pkgdir}/opt/mesa${1}" ninja ${NINJAFLAGS} \
+        -C "${srcdir}/_build${1}" install
 
     # indirect rendering
-    ln -s /usr/lib$2/libGLX_mesa.so.0 \
-        "${pkgdir}/usr/lib$2/libGLX_indirect.so.0"
+    ln -s "./libGLX_mesa.so.0" \
+        "${pkgdir}/opt/mesa${1}/usr/lib${2}/libGLX_indirect.so.0"
 
 	install -Dm644 "${srcdir}/LICENSE" \
-        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+        "${pkgdir}/opt/mesa${1}/usr/share/licenses/${pkgname}/LICENSE"
 }
 
 package_lib32-mesa-git-gentz() {
@@ -205,11 +264,13 @@ package_lib32-mesa-git-gentz() {
     _package_common "32" "32"
 
     # remove files provided by mesa-git
-    rm -rf "${pkgdir}/etc"
-    rm -rf "${pkgdir}/usr/include"
-    rm -rf "${pkgdir}/usr/share/glvnd/"
-    rm -rf "${pkgdir}/usr/share/drirc.d/"
-    rm -rf "${pkgdir}/usr/share/vulkan/explicit_layer.d/"
+    rm -rf "${pkgdir}/opt/mesa32/etc"
+    rm -rf "${pkgdir}/opt/mesa32/usr/include"
+    rm -rf "${pkgdir}/opt/mesa32/usr/share/glvnd/"
+    rm -rf "${pkgdir}/opt/mesa32/usr/share/drirc.d/"
+    rm -rf "${pkgdir}/opt/mesa32/usr/share/vulkan/explicit_layer.d/"
+    
+    _symlink_to_opt "32"
 }
 
 package_mesa-git-gentz() {
@@ -233,4 +294,5 @@ package_mesa-git-gentz() {
     )
 
     _package_common "64" ""
+    _symlink_to_opt "64"
 }

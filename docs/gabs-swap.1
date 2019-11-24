@@ -1,0 +1,32 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GABS\-SWAP" "1" "November 2019" "" ""
+.
+.SH "NAME"
+\fBgabs\-swap\fR \- change the system\'s active LLVM/Mesa in use
+.
+.SH "SYNOPSIS"
+\fBgabs\-swap\fR \fIPKG\fR \fINUMBER_OF_BITS\fR \fINEW_DIR\fR
+.
+.SH "DESCRIPTION"
+For use in\-tangent with llvm\-git\-gentz/mesa\-git\-gentz, \fBgabs\-swap\fR let\'s you swap out the system\'s current llvm\-git\-gentz/mesa\-git\-gentz for another\. This lets you avoid having to \fBpacman \-U\fR the new one, which can be slow for the bigger multi\-gigabyte LLVM builds\.
+.
+.SH "USAGE"
+Pretty simple, pass in the number of bits (i\.e\. either 32 or 64) following by the directory to the new LLVM/Mesa\.
+.
+.SH "EXAMPLES"
+.
+.nf
+
+$ gabs\-swap llvm 64 "$(pwd)/\.\./some\-directory\-with\-llvm64"
+
+$ gabs\-swap mesa 64 "$(pwd)/\.\./some\-directory\-with\-mesa"
+.
+.fi
+.
+.SH "AUTHOR"
+Freya Gentz <zegentzy@protonmail\.com>
+.
+.SH "SEE ALSO"
+gabs\-build(1)

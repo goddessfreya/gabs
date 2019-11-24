@@ -50,7 +50,7 @@ validpgpkeys=(
 )
 
 pkgver() {
-    cd "$srcdir/xorgproto"
+    cd "${srcdir}/xorgproto"
     printf "%s.r%s.%s\n" \
         "$(git describe --long | cut -d "-" -f2-3 | tr - .)" \
         "$(git rev-list HEAD --count)" \
@@ -58,23 +58,23 @@ pkgver() {
 }
 
 prepare() {
-    mkdir -p "$srcdir/build"
+    mkdir -p "${srcdir}/build"
 }
 
 build() {
-    arch-meson "$srcdir/xorgproto" "$srcdir/build" \
+    arch-meson "${srcdir}/xorgproto" "${srcdir}/build" \
         -D legacy=false
 
-    ninja -C "$srcdir/build"
+    ninja -C "${srcdir}/build"
 }
 
 check() {
-    meson test -C "$srcdir/build"
+    meson test -C "${srcdir}/build"
 }
 
 package() {
-    cd "$srcdir"
-    DESTDIR="$pkgdir" ninja -C build install
+    cd "${srcdir}"
+    DESTDIR="${pkgdir}" ninja -C build install
 
     # missing docs
     install -m755 -d "${pkgdir}/usr/share/doc/${pkgname}"

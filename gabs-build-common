@@ -98,17 +98,15 @@ clone_file() {
 }
 
 cleanup_loopdevice1() {
+    sleep 2
     until sudo losetup -d "${LOOP_DEVICE}"; do sleep 2; done
 }
 
 cleanup_loopdevice2() {
-    trap cleanup_loopdevice3 EXIT
-}
-
-cleanup_loopdevice3() {
     if [[ "${UNMOUNT_LOOP_DEVICE}" == "true" ]]; then
+        sleep 2
         until sudo umount "${CHROOT_MOUNT}"; do sleep 2; done
-        until sudo losetup -d "${LOOP_DEVICE}"; do sleep 2; done
+        sudo losetup -d "${LOOP_DEVICE}"
     fi
 }
 
@@ -142,7 +140,6 @@ setup_loopdevice() {
 
     sudo mkdir -p "${CHROOT_MOUNT}"
     sudo mount "${LOOP_DEVICE}" "${CHROOT_MOUNT}" || exit $?
-    trap cleanup_loopdevice2 EXIT
 }
 
 builtin_config_script_try_dirs() {

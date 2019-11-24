@@ -63,10 +63,10 @@ package() {
     cd valgrind
     make DESTDIR="${pkgdir}" install
 
-    install -d "$pkgdir/usr/share/man/man1"
-    install -m644 docs/*.1 -t "$pkgdir/usr/share/man/man1"
+    install -d "${pkgdir}/usr/share/man/man1"
+    install -m644 docs/*.1 -t "${pkgdir}/usr/share/man/man1"
 
     if check_option 'debug' n; then
-        find "${pkgdir}/usr/bin" -type f -executable -exec strip $STRIP_BINARIES {} + || true
+        find "${pkgdir}/usr/bin" -type f -executable -exec strip ${STRIP_BINARIES} {} + || true
     fi
 }

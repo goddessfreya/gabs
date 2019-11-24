@@ -17,15 +17,15 @@ makedepends=('git')
 )
 conflicts=('winetricks' 'bin32-winetricks')
 provides=('winetricks')
-source=("$pkgname::git+https://github.com/Winetricks/winetricks.git")
+source=("${pkgname}::git+https://github.com/Winetricks/winetricks.git")
 md5sums=('SKIP')
 
 pkgver() {
-	cd "$pkgname"
+	cd "${pkgname}"
 	git describe --long --tags | sed -r 's/-([0-9]+)-/.r\1./'
 }
 
 package() {
-	cd "$pkgname"
-	make DESTDIR="$pkgdir" install
+	cd "${pkgname}"
+	make DESTDIR="${pkgdir}" install
 }

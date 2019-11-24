@@ -182,6 +182,7 @@ local LOOP_DEVICE="$("${SCRIPTS_DIR}/gabs-build-chroot" \
     -cf "${CHROOT_FILE}" \
     "${BUILD_CHROOT_PARAMS[@]}" \
     -s || exit $?)"
+trap cleanup_loopdevice2 EXIT
 
 if [[ "${REMAKE_CHROOT}" == "true" ]]; then
     sudo mkdir -p "${CHROOT_DIR}"

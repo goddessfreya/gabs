@@ -18,9 +18,9 @@ sha512sums=('654d73aad006e628110057681477b958b7ec0a42287bc78259fb4b84635e7ebe757
 
 _exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
-    export CFLAGS="$CFLAGS -m32"
-    export CXXFLAGS="$CXXFLAGS -m32"
-    export LDFLAGS="$LDFLAGS -m32"
+    export CFLAGS="${CFLAGS} -m32"
+    export CXXFLAGS="${CXXFLAGS} -m32"
+    export LDFLAGS="${LDFLAGS} -m32"
 }
 
 build() {

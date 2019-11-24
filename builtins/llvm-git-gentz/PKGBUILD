@@ -89,17 +89,17 @@ sha512sums=('SKIP'
 #
 # The _bootstrap option, when 1, will compile a stage 1, and when 2 will only
 # compile a stage 1.
-_bootstrap=2
+_bootstrap=stage1_only
 
 # People aren't packaging with `-D LLVM_INSTALL_UTILS=ON`! If the system's
-# clang-tblgen is missing, set this to `0`.
-_system_utils=0
+# clang-tblgen is missing, set this to `false`.
+_system_utils=false
 
 # If you are a peasant like me, falling back to low perf compile options might
 # be the only way you'll ever get it to compile within your lifetime.
 #
 # LLVM without this option takes me 2+ days per high perf build. (I'm serious!)
-_low_perf_fallback=1
+_low_perf_fallback=true
 
 _final_build_type=Release
 #_final_build_type=RelWithDebInfo
@@ -157,7 +157,7 @@ _build_cmake_sub() {
     local _cmake_compile_options=(
         # Cargo culted from similar packages.
         -D LLVM_APPEND_VC_REV=ON
-        -D LLVM_HOST_TRIPLE="$CHOST"
+        -D LLVM_HOST_TRIPLE="${CHOST}"
         -D LLVM_ENABLE_RTTI=ON
         -D LLVM_ENABLE_FFI=ON
         -D FFI_INCLUDE_DIR="$(pkg-config --variable=includedir libffi)"
@@ -198,18 +198,18 @@ _build_cmake_sub() {
         # Instead I install the whole of llvm to opt, and symlink the whole of
         # opt to my home partitions. Modern problems need modern solutions, you
         # know.
-        -D CMAKE_INSTALL_PREFIX="/opt/llvm$1"
+        -D CMAKE_INSTALL_PREFIX="/opt/llvm${1}"
     )
 
-    cmake "${srcdir}/llvm-project$1/llvm" -G Ninja \
+    cmake "${srcdir}/llvm-project${1}/llvm" -G Ninja \
         "${@:2}" \
         "${_cmake_compile_options[@]}"
 
-    ninja $NINJAFLAGS all
+    ninja ${NINJAFLAGS} all
 }
 
 _build_cmake() {
-    _exports_$1
+    _exports_${1}
 
     local _low_perf_compile_opts=(
         -D LLVM_ENABLE_LTO=OFF
@@ -221,7 +221,7 @@ _build_cmake() {
         -D LLVM_ENABLE_LTO=Thin
     )
 
-    if [[ "${_low_perf_fallback}" -eq "1" ]]; then
+    if [[ "${_low_perf_fallback}" == "true" ]]; then
         _high_perf_compile_opts=("${_low_perf_compile_opts[@]}")
     fi
 
@@ -234,7 +234,7 @@ _build_cmake() {
     )
 
     local _stage_1_tablegen=()
-    if [[ "${_system_utils}" -eq "1" ]]; then
+    if [[ "${_system_utils}" == "true" ]]; then
         _stage_1_tablegen=(
             -D LLVM_TABLEGEN="$(which llvm-tblgen)"
             -D CLANG_TABLEGEN="$(which clang-tblgen)"
@@ -242,37 +242,37 @@ _build_cmake() {
     fi
 
     local _llvm_profdata="$(which llvm-profdata)"
-    if [[ "${_bootstrap}" -eq "1" ]]; then
-        if [[ ! -f "${srcdir}/.build$1_stg1.built" ]]; then
-            cd "${srcdir}/_build$1_stg1"
-            _build_cmake_sub "$1" \
+    if [[ "${_bootstrap}" == "stage1" ]]; then
+        if [[ ! -f "${srcdir}/.build${1}_stg1.built" ]]; then
+            cd "${srcdir}/_build${1}_stg1"
+            _build_cmake_sub "${1}" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
                 "${_low_perf_compile_opts[@]}" \
                 "${_stage_1_opts[@]}" \
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld"
 
-            touch "${srcdir}/build$1_stg1.built"
+            touch "${srcdir}/build${1}_stg1.built"
         fi
 
         _stage_1_opts=(
-            -D CMAKE_CXX_COMPILER="${srcdir}/_build$1_stg1/bin/clang++"
-            -D CMAKE_C_COMPILER="${srcdir}/_build$1_stg1/bin/clang"
-            -D LLVM_USE_LINKER="${srcdir}/_build$1_stg1/bin/ld.lld"
-            -D CMAKE_RANLIB="${srcdir}/_build$1_stg1/bin/llvm-ranlib"
-            -D CMAKE_AR="${srcdir}/_build$1_stg1/bin/llvm-ar"
+            -D CMAKE_CXX_COMPILER="${srcdir}/_build${1}_stg1/bin/clang++"
+            -D CMAKE_C_COMPILER="${srcdir}/_build${1}_stg1/bin/clang"
+            -D LLVM_USE_LINKER="${srcdir}/_build${1}_stg1/bin/ld.lld"
+            -D CMAKE_RANLIB="${srcdir}/_build${1}_stg1/bin/llvm-ranlib"
+            -D CMAKE_AR="${srcdir}/_build${1}_stg1/bin/llvm-ar"
         )
         _stage_1_tablegen=(
-            -D LLVM_TABLEGEN="${srcdir}/_build$1_stg1/bin/llvm-tblgen"
-            -D CLANG_TABLEGEN="${srcdir}/_build$1_stg1/bin/clang-tblgen"
+            -D LLVM_TABLEGEN="${srcdir}/_build${1}_stg1/bin/llvm-tblgen"
+            -D CLANG_TABLEGEN="${srcdir}/_build${1}_stg1/bin/clang-tblgen"
         )
-        _llvm_profdata="${srcdir}/_build$1_stg1/bin/llvm-profdata"
+        _llvm_profdata="${srcdir}/_build${1}_stg1/bin/llvm-profdata"
     fi
 
-    if [[ "${_bootstrap}" -ne "2" ]]; then
-        if [[ ! -f "${srcdir}/.build$1_instr.built" ]]; then
-            cd "${srcdir}/_build$1_instr"
-            _build_cmake_sub "$1" \
+    if [[ "${_bootstrap}" != "stage1_only" ]]; then
+        if [[ ! -f "${srcdir}/.build${1}_instr.built" ]]; then
+            cd "${srcdir}/_build${1}_instr"
+            _build_cmake_sub "${1}" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
                 "${_stage_1_opts[@]}" \
@@ -282,20 +282,20 @@ _build_cmake() {
                 -D LLVM_BUILD_RUNTIME=No \
                 -D LLVM_BUILD_INSTRUMENTED=IR
 
-            touch "${srcdir}/.build$1_instr.built"
+            touch "${srcdir}/.build${1}_instr.built"
         fi
 
         local _instr_opts=(
-            -D CMAKE_CXX_COMPILER="${srcdir}/_build$1_instr/bin/clang++"
-            -D CMAKE_C_COMPILER="${srcdir}/_build$1_instr/bin/clang"
-            -D LLVM_USE_LINKER="${srcdir}/_build$1_instr/bin/ld.lld"
-            -D CMAKE_RANLIB="${srcdir}/_build$1_instr/bin/llvm-ranlib"
-            -D CMAKE_AR="${srcdir}/_build$1_instr/bin/llvm-ar"
+            -D CMAKE_CXX_COMPILER="${srcdir}/_build${1}_instr/bin/clang++"
+            -D CMAKE_C_COMPILER="${srcdir}/_build${1}_instr/bin/clang"
+            -D LLVM_USE_LINKER="${srcdir}/_build${1}_instr/bin/ld.lld"
+            -D CMAKE_RANLIB="${srcdir}/_build${1}_instr/bin/llvm-ranlib"
+            -D CMAKE_AR="${srcdir}/_build${1}_instr/bin/llvm-ar"
         )
 
-        if [[ ! -f "${srcdir}/.build$1_to_instr1.built" ]]; then
-            cd "${srcdir}/_build$1_to_instr1"
-            _build_cmake_sub "$1" \
+        if [[ ! -f "${srcdir}/.build${1}_to_instr1.built" ]]; then
+            cd "${srcdir}/_build${1}_to_instr1"
+            _build_cmake_sub "${1}" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
                 "${_instr_opts[@]}" \
@@ -303,36 +303,36 @@ _build_cmake() {
                 "${_high_perf_compile_opts[@]}" \
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld;lldb;clang-tools-extra"
 
-            touch "${srcdir}/.build$1_to_instr1.built"
+            touch "${srcdir}/.build${1}_to_instr1.built"
             cd ..
         fi
 
         if [[ \
-            ! -f "${srcdir}/.build$1_to_instr2.built" \
-            && "${_low_perf_fallback}" -ne "1" \
+            ! -f "${srcdir}/.build${1}_to_instr2.built" \
+            && "${_low_perf_fallback}" == "false" \
         ]]; then
-            cd "${srcdir}/_build$1_to_instr2"
-            _build_cmake_sub "$1" \
+            cd "${srcdir}/_build${1}_to_instr2"
+            _build_cmake_sub "${1}" \
                 -D CMAKE_BUILD_TYPE=RelWithDebInfo \
                 "${@:2}" \
                 "${_instr_opts[@]}" \
                 "${_stage_1_tablegen[@]}" \
                 "${_low_perf_compile_opts[@]}" \
                 -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld;lldb;clang-tools-extra" \
-            touch "${srcdir}/.build$1_to_instr2.built"
+            touch "${srcdir}/.build${1}_to_instr2.built"
             cd ..
         fi
 
-        _stage_1_opts+=(-D LLVM_PROFDATA_FILE="${srcdir}ofdata$1.prof")
+        _stage_1_opts+=(-D LLVM_PROFDATA_FILE="${srcdir}ofdata${1}.prof")
 
         "${_llvm_profdata}" merge \
-            -output="${srcdir}/profdata$1.prof" \
-            "${srcdir}/_build$1_instr/profiles/"*.profraw
+            -output="${srcdir}/profdata${1}.prof" \
+            "${srcdir}/_build${1}_instr/profiles/"*.profraw
     fi
 
-    if [[ ! -f "${srcdir}/.build$1_final.built" ]]; then
-        cd "${srcdir}/_build$1_final"
-        _build_cmake_sub "$1" \
+    if [[ ! -f "${srcdir}/.build${1}_final.built" ]]; then
+        cd "${srcdir}/_build${1}_final"
+        _build_cmake_sub "${1}" \
             -D CMAKE_BUILD_TYPE="${_final_build_type}" \
             "${@:2}" \
             "${_stage_1_opts[@]}" \
@@ -340,16 +340,16 @@ _build_cmake() {
             "${_high_perf_compile_opts[@]}" \
             -D LLVM_ENABLE_PROJECTS="clang;compiler-rt;lld;lldb;clang-tools-extra"
 
-        touch "${srcdir}/.build$1_final.built"
+        touch "${srcdir}/.build${1}_final.built"
         cd ..
     fi
 }
 
 _exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
-    export CFLAGS="$CFLAGS -m32"
-    export CXXFLAGS="$CXXFLAGS -m32"
-    export LDFLAGS="$LDFLAGS -m32"
+    export CFLAGS="${CFLAGS} -m32"
+    export CXXFLAGS="${CXXFLAGS} -m32"
+    export LDFLAGS="${LDFLAGS} -m32"
 }
 
 _exports_64() {
@@ -378,40 +378,40 @@ _symlink_to_opt() {
 
     # Symlink can easily be swapped to some more local installs, use by other
     # scripts of mine.
-    ln -s "./llvm$1" "./opt/llvm$1-sym"
+    ln -s "./llvm${1}" "./opt/llvm${1}-sym"
 
-    for idir in $(find ./opt/llvm$1-sym/* -type d); do
-        install -d "$(echo "$idir" | sed "s/^\.\/opt\/llvm$1-sym/.\/usr/")"
+    for idir in $(find ./opt/llvm${1}-sym/* -type d); do
+        install -d "$(echo "${idir}" | sed "s/^\.\/opt\/llvm${1}-sym/.\/usr/")"
     done
 
     for file in \
-        $(find ./opt/llvm$1-sym/* -type f) \
-        $(find ./opt/llvm$1-sym/* -type l)
+        $(find ./opt/llvm${1}-sym/* -type f) \
+        $(find ./opt/llvm${1}-sym/* -type l)
     do
-        ln -s "${file#?}" "$(echo "$file" | sed "s/^\.\/opt\/llvm$1-sym/.\/usr/")"
+        ln -s "${file#?}" "$(echo "${file}" | sed "s/^\.\/opt\/llvm${1}-sym/.\/usr/")"
     done
 
     popd
 }
 
 _move_licences() {
-    install -Dm644 "$srcdir/llvm-project$1/llvm/LICENSE.TXT" \
-        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-llvm"
+    install -Dm644 "${srcdir}/llvm-project${1}/llvm/LICENSE.TXT" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-llvm"
 
-    install -Dm644 "$srcdir/llvm-project$1/clang/LICENSE.TXT" \
-        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-clang"
+    install -Dm644 "${srcdir}/llvm-project${1}/clang/LICENSE.TXT" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-clang"
 
-    install -Dm644 "$srcdir/llvm-project$1/clang-tools-extra/LICENSE.TXT" \
-        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-clang-tools-extra"
+    install -Dm644 "${srcdir}/llvm-project${1}/clang-tools-extra/LICENSE.TXT" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-clang-tools-extra"
 
-    install -Dm644 "$srcdir/llvm-project$1/compiler-rt/LICENSE.TXT" \
-        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-compiler-rt"
+    install -Dm644 "${srcdir}/llvm-project${1}/compiler-rt/LICENSE.TXT" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-compiler-rt"
 
-    install -Dm644 "$srcdir/llvm-project$1/lld/LICENSE.TXT" \
-        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-lld"
+    install -Dm644 "${srcdir}/llvm-project${1}/lld/LICENSE.TXT" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-lld"
 
-    install -Dm644 "$srcdir/llvm-project$1/lldb/LICENSE.TXT" \
-        "$pkgdir/usr/share/licenses/$pkgname/LICENSE-lldb"
+    install -Dm644 "${srcdir}/llvm-project${1}/lldb/LICENSE.TXT" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-lldb"
 }
 
 package_llvm-git-gentz() {
@@ -471,7 +471,7 @@ package_llvm-git-gentz() {
 
     pushd "${srcdir}/_build64_final"
     _exports_64
-    DESTDIR="${pkgdir}" ninja $NINJAFLAGS install
+    DESTDIR="${pkgdir}" ninja ${NINJAFLAGS} install
     popd
 
     local _python_location="$(python -c "import site; print(site.getsitepackages()[0])" | grep "python[0-9]*\.[0-9]*" -o)"
@@ -577,7 +577,7 @@ package_lib32-llvm-git-gentz() {
 
     _exports_32
     pushd "${srcdir}/_build32_final"
-    DESTDIR="${pkgdir}" ninja $NINJAFLAGS install
+    DESTDIR="${pkgdir}" ninja ${NINJAFLAGS} install
     popd
 
     # Symlink LLVMgold.so from /opt/llvm/lib/bfd-plugins

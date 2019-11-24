@@ -29,9 +29,9 @@ pkgver() {
 
 _exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
-    export CFLAGS="$CFLAGS -m32"
-    export CXXFLAGS="$CXXFLAGS -m32"
-    export LDFLAGS="$LDFLAGS -m32"
+    export CFLAGS="${CFLAGS} -m32"
+    export CXXFLAGS="${CXXFLAGS} -m32"
+    export LDFLAGS="${LDFLAGS} -m32"
 }
 
 _exports_64() {
@@ -42,16 +42,16 @@ _exports_64() {
 }
 
 _build_libdrm() {
-    _exports_$1
-    meson setup libdrm _build$1 \
+    _exports_${1}
+    meson setup libdrm _build${1} \
         --prefix /usr \
         --buildtype plain \
         --wrap-mode nofallback \
         -D udev=false \
         -D valgrind=false \
         "${@:2}"
-    meson configure _build$1
-    ninja -C _build$1
+    meson configure _build${1}
+    ninja -C _build${1}
 }
 
 build() {
@@ -73,7 +73,7 @@ package_libdrm-git-gentz() {
     conflicts=('libdrm' 'libdrm-git')
 
     _exports_64
-    DESTDIR="$pkgdir" ninja -C _build64 install
+    DESTDIR="${pkgdir}" ninja -C _build64 install
 
 	install -Dm644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
 }
@@ -85,7 +85,7 @@ package_lib32-libdrm-git-gentz() {
     conflicts=('lib32-libdrm' 'lib32-libdrm-git')
 
     _exports_32
-    DESTDIR="$pkgdir" ninja -C _build32 install
-    rm -rf "$pkgdir"/usr/{include,share,bin}
+    DESTDIR="${pkgdir}" ninja -C _build32 install
+    rm -rf "${pkgdir}"/usr/{include,share,bin}
 	install -Dm644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
 }

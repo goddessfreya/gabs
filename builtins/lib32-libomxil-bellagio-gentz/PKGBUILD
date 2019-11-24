@@ -20,7 +20,7 @@ sha512sums=('72b4c8c639f8cf767ba6323fdfc42b90ad4b62f0ece3ba786ae38afc7c5d64cb0ba
             '6a763c164ed21ad9a8c0da01e02e823ed40f2539b68ef96d8052739dd433daa472c7d05f86bb06b95269a819403aa2e27670d37475ecf108f808bf9fa3ede413')
 
 prepare() {
-    cd "${srcdir}/libomxil-bellagio-$pkgver"
+    cd "${srcdir}/libomxil-bellagio-${pkgver}"
 
     # Fixes from fedora repo
     patch -Np1 -i ../fedora-fixes.patch
@@ -30,14 +30,14 @@ prepare() {
 
 _exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
-    export CFLAGS="$CFLAGS -m32"
-    export CXXFLAGS="$CXXFLAGS -m32"
-    export LDFLAGS="$LDFLAGS -m32"
+    export CFLAGS="${CFLAGS} -m32"
+    export CXXFLAGS="${CXXFLAGS} -m32"
+    export LDFLAGS="${LDFLAGS} -m32"
 }
 
 build() {
     _exports_32
-    cd "${srcdir}/libomxil-bellagio-$pkgver"
+    cd "${srcdir}/libomxil-bellagio-${pkgver}"
 
     ./configure \
         --prefix=/usr \
@@ -50,7 +50,7 @@ build() {
 
 package() {
     _exports_32
-    cd "${srcdir}/libomxil-bellagio-$pkgver"
+    cd "${srcdir}/libomxil-bellagio-${pkgver}"
     make DESTDIR="${pkgdir}" install
 
     rm -rf "${pkgdir}/usr/"{bin,include,share}

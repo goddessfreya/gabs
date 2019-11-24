@@ -1,0 +1,27 @@
+#!/bin/zsh -x
+
+if [[ "${2}" != "32" && "${2}" != "64" ]]; then
+    >&2 echo "\"${2}\" must be 32/64."
+    exit 1
+fi
+
+if [[ ! -d "${3}" ]]; then 
+    >&2 echo "\"${3}\" is an invalid directory."
+    exit 1
+fi
+
+local PKG_ROOT=""
+[[ "${2}" == "32" ]] && PKG_ROOT="lib32-"
+
+if [[ "$(pacman -Q "${PKG_ROOT}${1}-git-gentz" | wc -l)" != "1" ]]; then
+    >&2 echo "Missing gentz package."
+else
+    echo "Old symlink:"
+    ls -alh "/opt/${1}${2}-sym"
+
+    sudo rm -f "/opt/${1}${2}-sym"
+    sudo ln -sf "${3}" "/opt/${1}${2}-sym"
+
+    echo "New symlink:"
+    ls -alh "/opt/${1}${2}-sym"
+fi

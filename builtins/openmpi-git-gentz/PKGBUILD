@@ -23,7 +23,7 @@ sha512sums=('SKIP')
 pkgver() {
 	cd "${srcdir}/ompi"
 	. VERSION
-	printf "$major.$minor.$release.$greek.r%s.r%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+	printf "${major}.${minor}.${release}.${greek}.r%s.r%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
 }
 
 prepare() {

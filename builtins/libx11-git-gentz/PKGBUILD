@@ -37,8 +37,8 @@ prepare() {
 }
 
 _configure_libx11() {
-    pushd "${srcdir}/${pkgbase}$1"
-    _exports_$1
+    pushd "${srcdir}/${pkgbase}${1}"
+    _exports_${1}
     NOCONFIGURE=1 ./autogen.sh
     ./configure \
         --prefix=/usr \
@@ -50,23 +50,23 @@ _configure_libx11() {
 
 _exports_32() {
     export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
-    export CFLAGS="$CFLAGS -m32"
-    export CXXFLAGS="$CXXFLAGS -m32"
-    export CPPFLAGS="$CXXFLAGS"
-    export LDFLAGS="$LDFLAGS -m32"
+    export CFLAGS="${CFLAGS} -m32"
+    export CXXFLAGS="${CXXFLAGS} -m32"
+    export CPPFLAGS="${CXXFLAGS}"
+    export LDFLAGS="${LDFLAGS} -m32"
 }
 
 _exports_64() {
     export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
     export CFLAGS="${CFLAGS/-m32}"
     export CXXFLAGS="${CXXFLAGS/-m32}"
-    export CPPFLAGS="$CXXFLAGS"
+    export CPPFLAGS="${CXXFLAGS}"
     export LDFLAGS="${LDFLAGS/-m32}"
 }
 
 _make_x11() {
-    pushd "${srcdir}/${pkgbase}$1"
-    _exports_$1
+    pushd "${srcdir}/${pkgbase}${1}"
+    _exports_${1}
     make "${@:2}"
     popd
 }
@@ -82,8 +82,8 @@ check() {
 }
 
 _package_common() {
-    pushd "${srcdir}/${pkgbase}$1"
-    _exports_$1
+    pushd "${srcdir}/${pkgbase}${1}"
+    _exports_${1}
 
     make DESTDIR="${pkgdir}" install
 	install -Dm644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"

@@ -38,9 +38,9 @@ _exports() {
     export CXXFLAGS=${CXXFLAGS/-fno-plt}
     export LDFLAGS=${LDFLAGS/,-z,now}
 
-    export CFLAGS="$CFLAGS -fplt -fno-lto -g"
-    export CXXFLAGS="$CXXFLAGS -fplt -fno-lto -g"
-    export LDFLAGS="$LDFLAGS,-fno-lto"
+    export CFLAGS="${CFLAGS} -fplt -fno-lto -g"
+    export CXXFLAGS="${CXXFLAGS} -fplt -fno-lto -g"
+    export LDFLAGS="${LDFLAGS},-fno-lto"
 }
 
 build() {

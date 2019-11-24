@@ -50,5 +50,5 @@ package() {
     rm "${pkgdir}/usr/include/GLES3" -rf
     rm "${pkgdir}/usr/include/KHR" -rf
 
-    install -Dm644 ../LICENSE "${pkgdir}/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 ../LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
