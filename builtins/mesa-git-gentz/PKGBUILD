@@ -60,10 +60,10 @@ join_by() {
     local IFS="$1"; shift; echo "$*"; 
 }
 
-_build_amd_driver=true
-_build_intel_driver=false
-_build_vm_driver=false
-_build_others_driver=true
+_build_amd_drivers=true
+_build_intel_drivers=false
+_build_vm_drivers=false
+_build_other_drivers=true
 
 pkgver() {
     cd "${srcdir}/mesa"
@@ -85,31 +85,31 @@ _build_meson() {
     local _gallium_drivers=()
     local _vulkan_drivers=()
 
-    if [[ "${_build_amd_driver}" == "true" ]]; then
+    if [[ "${_build_amd_drivers}" == "true" ]]; then
         _dri_drivers+=()
         _gallium_drivers+=(radeonsi)
         _vulkan_drivers+=(amd)
     fi
 
-    if [[ "${_build_intel_driver}" == "true" ]]; then
+    if [[ "${_build_intel_drivers}" == "true" ]]; then
         _dri_drivers+=(i915 i965)
         _gallium_drivers+=(iris)
         _vulkan_drivers+=(intel)
     fi
 
-    if [[ "${_build_other_driver}" == "true" ]]; then
+    if [[ "${_build_other_drivers}" == "true" ]]; then
         _dri_drivers+=()
         _gallium_drivers+=(swrast zink)
         _vulkan_drivers+=()
     fi
 
-    if [[ "${_build_vm_driver}" == "true" ]]; then
+    if [[ "${_build_vm_drivers}" == "true" ]]; then
         _dri_drivers+=()
         _gallium_drivers+=(virgl svga)
         _vulkan_drivers+=()
     fi
 
-    echo meson setup "${srcdir}/mesa" "${srcdir}/_build${1}" \
+    meson setup "${srcdir}/mesa" "${srcdir}/_build${1}" \
         "${@:2}" \
         "${_meson_flags[@]}" \
         -D buildtype=plain \
@@ -117,9 +117,9 @@ _build_meson() {
         -D prefix=/usr \
         -D sysconfdir=/etc \
         -D platforms=x11,wayland,drm,surfaceless \
-        -D dri-drivers="$(join_by , "${_dri_drivers}")" \
-        -D gallium-drivers="$(join_by , "${_gallium_drivers}")" \
-        -D vulkan-drivers="$(join_by , "${_vulkan_drivers}")" \
+        -D dri-drivers="$(join_by , "${_dri_drivers[@]}")" \
+        -D gallium-drivers="$(join_by , "${_gallium_drivers[@]}")" \
+        -D vulkan-drivers="$(join_by , "${_vulkan_drivers[@]}")" \
         -D dri3=true \
         -D egl=true \
         -D gallium-extra-hud=true \
