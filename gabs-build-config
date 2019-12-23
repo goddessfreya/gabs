@@ -11,7 +11,7 @@ BUILTIN_PACKAGES=(
     '${BUILTINS_DIR}/libx11-git-gentz'
 
     '${BUILTINS_DIR}/libffi/trunk'
-    '${BUILTINS_DIR}/lib32-libxffi/trunk'
+    '${BUILTINS_DIR}/lib32-libffi/trunk'
 
     '${BUILTINS_DIR}/lib32-tk-gentz'
     '${BUILTINS_DIR}/lib32-mpdecimal-gentz'
