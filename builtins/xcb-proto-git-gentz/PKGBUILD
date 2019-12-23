@@ -1,0 +1,42 @@
+# Maintainer: Freya Gentz <zegentzy@protonmail.com>
+# Contributor: Andreas B. Wagner <andreas.wagner@lowfatcomputing.org>
+# Contributor: Doug Newgard <scimmia22 at outlook dot com>
+# Contributor: Matt Parnell/ilikenwf <parwok@gmail.com>
+# Contributor: Andreas Radke <andyrtr@archlinux.org>
+# Contributor: Jan de Groot <jgc@archlinux.org>
+
+pkgname=xcb-proto-git-gentz
+pkgver=1.13
+pkgrel=5
+pkgdesc="XML-XCB protocol descriptions"
+arch=('x86_64')
+url="https://xcb.freedesktop.org/"
+license=('custom')
+groups=('gentz_custom')
+makedepends=('python' 'libxml2')
+provides=('xcb-proto' 'xcb-proto-git')
+conflicts=('xcb-proto')
+source=(git://git.freedesktop.org/git/xcb/proto)
+sha512sums=('SKIP')
+validpgpkeys=('A66D805F7C9329B4C5D82767CCC4F07FAC641EFF') # "Daniel Stone <daniels@collabora.com>"
+
+pkgver() {
+    cd "${srcdir}/proto"
+    printf '%s.%s' \
+        "$(git rev-list --count HEAD)" \
+        "$(git rev-parse --short HEAD)"
+}
+
+build() {
+    cd "${srcdir}/proto"
+    ./autogen.sh
+    ./configure --prefix=/usr
+    make
+}
+
+package() {
+    cd "${srcdir}/proto"
+    make DESTDIR="${pkgdir}" install
+    install -m755 -d "${pkgdir}/usr/share/licenses/${pkgname}"
+    install -m644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}"
+}

@@ -155,9 +155,9 @@ sudo cp "/bin/makechrootpkg" "${MAKECHROOTPKG_BIN}"
 chmod +x "${MAKECHROOTPKG_BIN}"
 
 patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-use_custom.patch" \
-    -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}"
+    -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}" || exit $?
 patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-force_color.patch" \
-    -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}"
+    -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}" || exit $?
 #patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-add_x.patch" \
 #    -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}"
 
@@ -168,11 +168,11 @@ for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
     nspawn "${CHROOT_DIR2}" /bin/bash -xc "yes | pacman -S pacman || exit \$?" || exit $?
 
     sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-force_color.patch" \
-        -d"${CHROOT_DIR2}/bin"
+        -d"${CHROOT_DIR2}/bin" || exit $?
     sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-no_package.patch" \
-        -d"${CHROOT_DIR2}/bin"
+        -d"${CHROOT_DIR2}/bin" || exit $?
     sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-buildenv_during_prepare.patch" \
-        -d"${CHROOT_DIR2}/bin"
+        -d"${CHROOT_DIR2}/bin" || exit $?
 
     if [[ "${DISTC_SUPPORT}" == "true" ]]; then
         sudo mv "${CHROOT_DIR2}/bin/makepkg"{,.gabs-inner}
@@ -181,6 +181,8 @@ for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
         sudo chmod +x "${CHROOT_DIR2}/bin/makepkg"
     fi
 done
+
+rm *.pkg.(tar|tar.gz|tar.xz|tar.bz2)
 
 # Then actually build it
 if [[ "${NO_BUILD}" != "true" ]]; then
@@ -224,6 +226,7 @@ fi
 for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
     [[ ! -d "${CHROOT_DIR2}" ]] && continue
     sudo mkdir -p "${CHROOT_DIR2}/pkgs/"
+    sudo rm "${CHROOT_DIR2}/pkgs/"*
     sudo cp *.pkg.(tar|tar.gz|tar.xz|tar.bz2) "${CHROOT_DIR2}/pkgs/"
     nspawn "${CHROOT_DIR2}" /bin/bash -xc "yes | pacman -U /pkgs/* || exit \$?" || exit $?
     sudo rm "${CHROOT_DIR2}/pkgs/"*

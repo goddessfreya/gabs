@@ -62,8 +62,8 @@ join_by() {
 
 _build_amd_drivers=true
 _build_intel_drivers=false
-_build_vm_drivers=false
-_build_other_drivers=true
+_build_vm_drivers=true
+_build_zink=false
 
 pkgver() {
     cd "${srcdir}/mesa"
@@ -75,14 +75,12 @@ pkgver() {
 }
 
 _build_meson() {
-    if [[ -f ".build${1}.built" ]]; then
-        return
-    fi
+    msg "Building ${1}-bit build"
 
     _exports_${1}
 
     local _dri_drivers=()
-    local _gallium_drivers=()
+    local _gallium_drivers=(swrast)
     local _vulkan_drivers=()
 
     if [[ "${_build_amd_drivers}" == "true" ]]; then
@@ -97,9 +95,9 @@ _build_meson() {
         _vulkan_drivers+=(intel)
     fi
 
-    if [[ "${_build_other_drivers}" == "true" ]]; then
+    if [[ "${_build_zink}" == "true" ]]; then
         _dri_drivers+=()
-        _gallium_drivers+=(swrast zink)
+        _gallium_drivers+=(zink)
         _vulkan_drivers+=()
     fi
 
@@ -144,7 +142,6 @@ _build_meson() {
     meson configure "${srcdir}/_build${1}"
 
     ninja ${NINJAFLAGS} -C "${srcdir}/_build${1}"
-    touch ".build${1}.built"
 }
 
 _exports_32() {
@@ -188,7 +185,11 @@ prepare() {
         | _find_bin llvm-config32 > "${srcdir}/llvm32.cross"
 }
 
-build () {
+build() {
+    pushd "${srcdir}/mesa"
+    git diff > ../diff.patch
+    popd
+
     _build_meson 32 \
         --cross-file "${srcdir}/llvm32.cross" \
         --libdir=/usr/lib32 \

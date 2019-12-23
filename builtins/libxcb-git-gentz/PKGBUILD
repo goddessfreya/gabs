@@ -1,0 +1,111 @@
+# Maintainer: Freya Gentz <zegentzy@protonmail.com>
+# Contributor: Andreas Radke <andyrtr@archlinux.org>
+# Contributor: Jan de Groot <jgc@archlinux.org>
+# Contributor: Alexander Baldeck <alexander@archlinux.org>
+# Contributor: Philipp A. <flying-sheep@web.de>
+# Contributor: Doug Newgard <scimmia22 at outlook dot com>
+# Contributor: NeoRaider <neoraider@universe-factory.net>
+# Contributor: Stefan Husmann <stefan-husmann@t-online.de>
+
+pkgbase=libxcb-git-gentz
+pkgname=('libxcb-git-gentz' 'lib32-libxcb-git-gentz')
+pkgver=1.13.1
+pkgrel=2
+pkgdesc="X11 client-side library"
+arch=('x86_64')
+url="https://xcb.freedesktop.org/"
+license=('custom')
+groups=('gentz_custom')
+makedepends=(
+    'libxslt' 'python' 'xorg-util-macros' 'pkgconfig' 'gcc-multilib' 'autoconf'
+    'lib32-libxdmcp' 'lib32-libxau' 'xcb-proto-git' 'libxdmcp' 'libxau' 
+    'lib32-gcc-libs'
+)
+source=(
+    'git+http://anongit.freedesktop.org/git/xcb/libxcb.git'
+    'libxcb-1.1-no-pthread-stubs.patch'
+)
+sha256sums=('SKIP'
+            '21bf86a40e4038c52c2a8c57f76b5f10e211e27562cce7526b4bb6fd025dd0c3')
+validpgpkeys=('A66D805F7C9329B4C5D82767CCC4F07FAC641EFF') # "Daniel Stone <daniels@collabora.com>"
+_pkgver="${pkgver%_*}"
+
+pkgver() {
+    cd "${srcdir}/libxcb64"
+    printf '%s.%s.%s' \
+        "$(git describe | sed "s/-/_/g")" \
+        "$(git rev-list --count HEAD)" \
+        "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+    pushd "${srcdir}/libxcb"
+    patch -Np1 -i ../libxcb-1.1-no-pthread-stubs.patch
+    autoreconf -vfi
+    popd
+
+    mv "${srcdir}/libxcb"{,64}
+    cp "${srcdir}/libxcb"{64,32} -r
+}
+
+_exports_32() {
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
+    export CFLAGS="${CFLAGS} -m32 -O1"
+    #export CXXFLAGS="${CXXFLAGS} -m32"
+    export LDFLAGS="${LDFLAGS} -m32"
+}
+
+_exports_64() {
+    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
+    export CFLAGS="${CFLAGS/-m32}"
+    export CFLAGS="${CFLAGS/-O1}"
+    #export CXXFLAGS="${CXXFLAGS/-m32}"
+    export LDFLAGS="${LDFLAGS/-m32}"
+}
+
+_build_common() {
+    pushd "${srcdir}/libxcb${1}"
+    _exports_${1}
+    ./autogen.sh \
+        --prefix=/usr \
+        --enable-xinput \
+        --enable-xkb \
+        --disable-static \
+        "${@:2}"
+    make
+    popd
+}
+
+build() {
+    _build_common "64"
+    _build_common "32" \
+        --prefix=/usr \
+        --libdir=/usr/lib32
+}
+
+_package_common() {
+    pushd "${srcdir}/libxcb${1}"
+    _exports_${1}
+    make DESTDIR="${pkgdir}" install
+    install -m755 -d "${pkgdir}/usr/share/licenses/${pkgname}"
+    install -m644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}"
+    popd
+}
+
+package_libxcb-git-gentz() {
+    depends=('xcb-proto-git' 'libxdmcp' 'libxau')
+    provides=("libxcb=${_pkgver}" 'libxcb-git')
+    conflicts=('libxcb')
+
+    _package_common "64"
+}
+
+package_lib32-libxcb-git-gentz() {
+    pkgdesc+=" (32-bit)"
+    depends=('lib32-libxdmcp' 'lib32-libxau' 'libxcb-git-gentz' 'lib32-gcc-libs')
+    provides=("lib32-libxcb=${_pkgver}" 'lib32-libxcb-git')
+    conflicts=('lib32-libxcb')
+
+    _package_common "32"
+    rm -rf "${pkgdir}/usr/"{include,share}
+}

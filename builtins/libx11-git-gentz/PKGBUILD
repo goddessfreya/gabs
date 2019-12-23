@@ -11,7 +11,7 @@ arch=('x86_64')
 url='https://xorg.freedesktop.org/'
 license=('custom')
 groups=('gentz_custom')
-makedepends=('git' 'gcc-multilib' 'xorg-util-macros' 'xextproto' 'xtrans' 'inputproto')
+makedepends=('git' 'gcc-multilib' 'xorg-util-macros' 'xtrans' 'xorgproto')
 source=('git+https://gitlab.freedesktop.org/xorg/lib/libx11.git')
 sha512sums=('SKIP')
 validpgpkeys=(
@@ -90,7 +90,7 @@ _package_common() {
 }
 
 package_libx11-git-gentz() {
-    depends=('libxcb' 'xproto' 'kbproto')
+    depends=('libxcb')
     provides=("libx11=${pkgver}" 'libx11-git')
     conflicts=('libx11' 'libx11-git')
     _package_common "64"

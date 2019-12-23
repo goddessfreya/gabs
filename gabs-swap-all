@@ -1,0 +1,3 @@
+#!/bin/zsh -x
+./gabs-swap mesa 64 /home/gentz/Documents/aur-buildscripts/ephemeral_dir/chroots/chroot/chroot/gentz/build/mesa-git-gentz/pkg/mesa-git-gentz/opt/mesa64
+./gabs-swap mesa 32 /home/gentz/Documents/aur-buildscripts/ephemeral_dir/chroots/chroot/chroot/gentz/build/mesa-git-gentz/pkg/lib32-mesa-git-gentz/opt/mesa32

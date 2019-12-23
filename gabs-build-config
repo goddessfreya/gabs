@@ -6,12 +6,17 @@ BUILTINS_DIR="${SCRIPTS_DIR}/builtins"
 BUILTIN_PACKAGES=(
     '${BUILTINS_DIR}/xorgproto-git-gentz'
 
+    '${BUILTINS_DIR}/xcb-proto-git-gentz'
+    '${BUILTINS_DIR}/libxcb-git-gentz'
+    '${BUILTINS_DIR}/libx11-git-gentz'
+
+    '${BUILTINS_DIR}/libffi/trunk'
+    '${BUILTINS_DIR}/lib32-libxffi/trunk'
+
     '${BUILTINS_DIR}/lib32-tk-gentz'
     '${BUILTINS_DIR}/lib32-mpdecimal-gentz'
     '${BUILTINS_DIR}/python2-gentz'
     '${BUILTINS_DIR}/python-gentz'
-
-    '${BUILTINS_DIR}/libx11-git-gentz'
 
     '${BUILTINS_DIR}/lib32-libedit-gentz'
     '${BUILTINS_DIR}/llvm-git-gentz'
@@ -21,6 +26,8 @@ BUILTIN_PACKAGES=(
 
     '${BUILTINS_DIR}/lib32-libomxil-bellagio-gentz'
     '${BUILTINS_DIR}/libdrm-git-gentz'
+
+    '${BUILTINS_DIR}/wayland-git-gentz'
     '${BUILTINS_DIR}/mesa-git-gentz'
 
     '${BUILTINS_DIR}/xorg-server-git-gentz'
@@ -31,4 +38,10 @@ BUILTIN_PACKAGES=(
 
     '${BUILTINS_DIR}/wine-staging-git-gentz'
     '${BUILTINS_DIR}/winetricks-git'
+
+    '${BUILTINS_DIR}/wlroots-git'
+    '${BUILTINS_DIR}/swaybg-git'
+    '${BUILTINS_DIR}/sway-git'
+
+    '${BUILTINS_DIR}/gabs-git'
 )

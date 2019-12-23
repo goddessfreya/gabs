@@ -165,13 +165,12 @@ if [[ "${REMAKE_CHROOT}" == "true" ]]; then
 
     mv "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}/"* \
         "${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}"
-
-else
-    "${SCRIPTS_DIR}/gabs-build-chroot" \
-        -cm "${CHROOT_MOUNT}" \
-        -cf "${CHROOT_FILE}" \
-        -c
 fi
+
+"${SCRIPTS_DIR}/gabs-build-chroot" \
+    -cm "${CHROOT_MOUNT}" \
+    -cf "${CHROOT_FILE}" \
+    -c
 
 local BUILD_CHROOT_PARAMS=()
 [[ "${REMAKE_CHROOT}" == true ]] && BUILD_CHROOT_PARAMS+="-rm"
@@ -181,13 +180,13 @@ local LOOP_DEVICE="$("${SCRIPTS_DIR}/gabs-build-chroot" \
     -cm "${CHROOT_MOUNT}" \
     -cf "${CHROOT_FILE}" \
     "${BUILD_CHROOT_PARAMS[@]}" \
-    -s || exit $?)"
+    -s | tail -n1 || exit $?)"
 trap cleanup_loopdevice2 EXIT
 
 if [[ "${REMAKE_CHROOT}" == "true" ]]; then
     sudo mkdir -p "${CHROOT_DIR}"
 
-    local INSTALL_PACKAGES=(base-devel gcc-multilib zsh neovim)
+    local INSTALL_PACKAGES=(base-devel gcc-multilib zsh neovim git)
 
     [[ "${USE_CCACHE}" == "true" ]] && INSTALL_PACKAGES+=(ccache)
 
@@ -200,7 +199,7 @@ if [[ "${REMAKE_CHROOT}" == "true" ]]; then
         "${CHROOT_DIR}/root" \
         "${INSTALL_PACKAGES[@]}" || exit $?
 
-    nspawn "${CHROOT_DIR}/root" /bin/bash -xc 'yes | pacman -Syyu' || exit $?
+    nspawn "${CHROOT_DIR}/root" /bin/bash -xc 'yes | pacman -Syu' || exit $?
 
     sudo mkdir -p "${CHROOT_DIR}/root/alt_pkgs.${CHROOT_NAME}/"
     sudo cp "${EPHEMERAL_DIR}/alt_pkgs.${CHROOT_NAME}/"*.pkg* "${CHROOT_DIR}/root/pkgs/"
@@ -213,7 +212,7 @@ else
     if [[ "${DONT_UPDATE_PACKAGES}" == false ]]; then
         for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
             [[ ! -d "${CHROOT_DIR2}" ]] && continue
-            nspawn "${CHROOT_DIR2}" /bin/bash -xc 'yes | pacman -Syyu' || exit $?
+            nspawn "${CHROOT_DIR2}" /bin/bash -xc 'yes | pacman -Syu' || exit $?
         done
     fi
 fi

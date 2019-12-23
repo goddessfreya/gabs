@@ -9,4 +9,4 @@ chroot, plus a selection of PKGBUILDs.
  - [gabs-build-handler](./docs/gabs-build-handler.md)
  - [gabs-build-chroot](./docs/gabs-build-chroot.md)
  - [gabs-build-config](./docs/gabs-build-config.md)
- - [gabs-swap-llvm](./docs/gabs-swap-llvm.md)
+ - [gabs-swap](./docs/gabs-swap.md)

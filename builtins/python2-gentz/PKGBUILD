@@ -45,6 +45,9 @@ prepare() {
     # FS#23997
     sed -i -e "s|^#.* /usr/local/bin/python|#!/usr/bin/python|" Lib/cgi.py
 
+    # Enable built-in SQLite module to load extensions (fix FS#22122)
+    sed -i "/SQLITE_OMIT_LOAD_EXTENSION/d" setup.py
+
     # Ensure that we are using the system copy of various libraries
     # (expat, zlib and libffi), rather than copies shipped in the tarball
     rm -r Modules/expat
@@ -58,7 +61,6 @@ prepare() {
     # Workaround asdl_c.py/makeopcodetargets.py errors after we touched the
     # shebangs
     touch Include/Python-ast.h Python/Python-ast.c Python/opcode_targets.h
-
     popd
 
     cp -r "${srcdir}/${pkgbase}"{64,32}
@@ -79,17 +81,6 @@ prepare() {
     # Give the configuration script an extention
     patch -Np1 -i "../python-config-32.patch"
     popd
-
-    _configure_python "32" \
-        --libdir=/usr/lib32 \
-        --libexecdir=/usr/lib32 \
-        --includedir="/usr/lib32/python${_pybasever}/include" \
-        --exec_prefix="/usr/lib32/python${_pybasever}/" \
-        --bindir=/usr/bin \
-        --sbindir=/usr/bin \
-        --with-suffix='-32'
-
-    _configure_python "64"
 }
 
 _exports_32() {
@@ -97,7 +88,7 @@ _exports_32() {
     export CFLAGS="${CFLAGS} -m32"
     #export CXXFLAGS="${CXXFLAGS} -m32"
     export LDFLAGS="${LDFLAGS} -m32"
-    _export_O3
+    _exports
 }
 
 _exports_64() {
@@ -105,47 +96,39 @@ _exports_64() {
     export CFLAGS="${CFLAGS/-m32}"
     #export CXXFLAGS="${CXXFLAGS/-m32}"
     export LDFLAGS="${LDFLAGS/-m32}"
-    _export_O3
+    _exports
 }
 
-_export_O3() {
+_exports() {
     # PGO should be done with -O3
     export CFLAGS="${CFLAGS/-O0}"
     export CFLAGS="${CFLAGS/-Og}"
     export CFLAGS="${CFLAGS/-O1}"
     export CFLAGS="${CFLAGS/-O2}"
     export CFLAGS="${CFLAGS/-O3} -O3"
-}
 
-_configure_python() {
-    _exports_${1}
-    pushd "${srcdir}/${pkgbase}${1}"
-
-    local _python_configure_options=(
-        --prefix=/usr
-        --enable-shared
-        --with-threads
-        --enable-optimizations
-        --with-lto
-        --enable-ipv6
-        --enable-unicode=ucs4
-        --with-system-expat
-        --with-dbmliborder=gdbm:ndbm
-        --with-system-ffi
-        --without-ensurepip
-    )
-
-    # Disable bundled pip & setuptools
-    ./configure \
-        "${_python_configure_options[@]}" \
-        "${@:2}"
-
-    popd
+    # Else python breaks down on some edge cases when used with -ffast-math
+    export CFLAGS="${CFLAGS/-fno-finite-math-only} -fno-finite-math-only"
 }
 
 _build_python() {
     _exports_${1}
     pushd "${srcdir}/${pkgbase}${1}"
+
+    # Disable bundled pip & setuptools
+    OPT="${CFLAGS}" ./configure \
+        --prefix=/usr \
+        --enable-shared \
+        --with-threads \
+        --enable-optimizations \
+        --with-lto \
+        --enable-ipv6 \
+        --enable-unicode=ucs4 \
+        --with-system-expat \
+        --with-system-ffi \
+        --with-dbmliborder=gdbm:ndbm \
+        --without-ensurepip \
+        "${@:2}"
 
     OPT="${CFLAGS}" make
 
@@ -153,7 +136,14 @@ _build_python() {
 }
 
 build() {
-    _build_python "32"
+    _build_python "32" \
+        --libdir=/usr/lib32 \
+        --libexecdir=/usr/lib32 \
+        --includedir="/usr/lib32/python${_pybasever}/include" \
+        --exec_prefix="/usr/lib32/python${_pybasever}/" \
+        --bindir=/usr/bin \
+        --sbindir=/usr/bin \
+        --with-suffix='-32'
     _build_python "64"
 }
 

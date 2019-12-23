@@ -1,0 +1,26 @@
+[submodule "builtins/libffi"]
+	path = builtins/libffi
+	url = git://git.archlinux.org/svntogit/packages.git
+	branch = packages/libffi
+	shallow = true
+[submodule "builtins/lib32-libffi"]
+	path = builtins/lib32-libffi
+	url = git://git.archlinux.org/svntogit/community.git
+	branch = packages/lib32-libffi
+	shallow = true
+[submodule "builtins/winetricks-git"]
+	path = builtins/winetricks-git
+	url = https://aur.archlinux.org/winetricks-git.git
+	shallow = true
+[submodule "builtins/wlroots-git"]
+	path = builtins/wlroots-git
+	url = https://aur.archlinux.org/wlroots-git.git
+	shallow = true
+[submodule "builtins/sway-git"]
+	path = builtins/sway-git
+	url = https://aur.archlinux.org/sway-git.git
+	shallow = true
+[submodule "builtins/swaybg-git"]
+	path = builtins/swaybg-git
+	url = https://aur.archlinux.org/swaybg-git.git
+	shallow = true

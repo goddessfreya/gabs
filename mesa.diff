@@ -1,0 +1,64 @@
+diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
+index 3d17c8f11cd..3d2eb9ae056 100644
+--- a/src/egl/drivers/dri2/egl_dri2.c
++++ b/src/egl/drivers/dri2/egl_dri2.c
+@@ -486,6 +486,23 @@ dri2_add_config(_EGLDisplay *disp, const __DRIconfig *dri_config, int id,
+ /*
+  * We finalize the set of `SurfaceType`s supported by a config, and only
+  * reinsert it if it actually supports something.
++ *
++ * There is no support for pixmaps/pbuffers without both single buffered dri
++ * configs and window surfaces without both double buffered dri configs.
++ *
++ * The reason for this is because when users pass a config to
++ * `eglCreateWindowSurface` it requests double buffering. Similarily,
++ * `eglCreatePbufferSurface` and `eglCreatePixmapSurface` both request single
++ * buffering.
++ *
++ * We need both, and not just one of them, because we can't know before
++ * hand if users will require sRGB support ahead of time.
++ *
++ * If the config doesn't have the appropriate `__DRIconfig`, the functions
++ * annoyingly fails with a `EGL_BAD_MATCH`. Given that such behaviour is
++ * completely unacceptable, we drop the `EGL_WINDOW_BIT`, `EGL_PBUFFER_BIT`, and
++ * `EGL_PIXMAP_BIT` if we don't have the appropriate `__DRIconfig`s for the
++ * surface type.
+  */
+ void
+ dri2_finalize_config_surface_types(_EGLDisplay *disp)
+@@ -500,31 +517,20 @@ dri2_finalize_config_surface_types(_EGLDisplay *disp)
+          = (struct dri2_egl_config *) configs->Elements[i];
+ 
+       const bool double_buffer = conf->dri_config[true][false]
+-         || conf->dri_config[true][true];
++         && conf->dri_config[true][true];
+ 
+       const bool single_buffer = conf->dri_config[false][false]
+-         || conf->dri_config[false][true];
++         && conf->dri_config[false][true];
+ 
+-      /* No support for pixmaps without single buffered dri configs.
+-       *
+-       * When users pass a config to `eglCreateWindowSurface` it requests
+-       * double buffering, but if the config doesn't have the appropriate
+-       * `__DRIconfig`, `eglCreateWindowSurface` fails with a `EGL_BAD_MATCH`.
+-       *
+-       * Given that such behaviour is completely unacceptable, we drop the
+-       * `EGL_WINDOW_BIT` if we don't have at least one `__DRIconfig`
+-       * supporting double buffering.
+-       */
+       if (!single_buffer) {
+-         conf->base.SurfaceType &= ~EGL_PIXMAP_BIT;
++         conf->base.SurfaceType &= ~(EGL_PIXMAP_BIT | EGL_PBUFFER_BIT);
+       }
+ 
+       if (!double_buffer) {
+          conf->base.SurfaceType &= ~EGL_WINDOW_BIT;
+       }
+ 
+-      // Dont reinsert configs without some supported surface type.
+-      if (!conf->base.SurfaceType) {
++      if (!(conf->base.SurfaceType & (EGL_PIXMAP_BIT | EGL_PBUFFER_BIT | EGL_WINDOW_BIT))) {
+          free(conf);
+          continue;
+       }

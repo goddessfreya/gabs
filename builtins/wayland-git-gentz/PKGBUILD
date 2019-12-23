@@ -1,0 +1,134 @@
+# Contributor: Tom Gundersen <teg@jklm.no>
+# Contributor: Sébastien Luttringer <seblu@archlinux.org>
+# Contributor: Joel Teichroeb <joel@teichroeb.net>
+
+pkgbase=wayland-git-gentz
+pkgname=('wayland-git-gentz' 'wayland-docs-git-gentz' 'lib32-wayland-git-gentz')
+pkgver=1.17.0
+pkgrel=2
+pkgdesc='A computer display server protocol'
+arch=('x86_64')
+url='https://wayland.freedesktop.org/'
+license=('MIT')
+groups=('gentz_custom')
+makedepends=('libxslt' 'doxygen' 'xmlto' 'graphviz' 'docbook-xsl' 'git')
+validpgpkeys=('C7223EBE4EF66513B892598911A30156E0E67611'  # Bryce Harrington
+              'C0066D7DB8E9AC6844D728715E54498E697F11D7') # Derek Foreman
+source=('git+https://gitlab.freedesktop.org/wayland/wayland.git')
+sha1sums=('SKIP')
+
+pkgver() {
+    cd "${srcdir}/wayland32"
+
+    # git, tags available
+    git describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g;s/^v//'
+}
+
+_exports_32() {
+    export PKG_CONFIG_PATH="/usr/lib32/pkgconfig"
+    export CFLAGS="${CFLAGS} -m32"
+    export CXXFLAGS="${CXXFLAGS} -m32"
+    export CPPFLAGS="${CXXFLAGS}"
+    export LDFLAGS="${LDFLAGS} -m32"
+}
+
+_exports_64() {
+    export PKG_CONFIG_PATH="/usr/lib/pkgconfig"
+    export CFLAGS="${CFLAGS/-m32}"
+    export CXXFLAGS="${CXXFLAGS/-m32}"
+    export CPPFLAGS="${CXXFLAGS}"
+    export LDFLAGS="${LDFLAGS/-m32}"
+}
+
+_prepare() {
+    pushd "${srcdir}/wayland${1}"
+    _exports_${1}
+    ./configure \
+        --prefix=/usr \
+        --disable-static \
+        "${@:2}"
+    popd
+}
+
+prepare() {
+    pushd "${srcdir}/wayland"
+    NOCONFIGURE=1 ./autogen.sh
+    popd
+
+    mv "${srcdir}/wayland"{,64}
+    cp "${srcdir}/wayland"{64,32} -r
+
+    _prepare 64
+    _prepare 32 \
+        --prefix=/usr \
+        --libdir=/usr/lib32
+}
+
+_build() {
+    pushd "${srcdir}/wayland${1}"
+    _exports_${1}
+    sed -i -e 's/ -shared / -Wl,-O1,--as-needed\0/g' libtool
+    make
+    popd
+}
+
+build() {
+    _build 32
+    _build 64
+}
+
+_check() {
+    pushd "${srcdir}/wayland${1}"
+    _exports_${1}
+    make check
+    popd
+}
+
+check() {
+    _check 32
+    _check 64
+}
+
+package_lib32-wayland-git-gentz() {
+    pkgdesc+=" (32-bit)"
+    depends=('lib32-glibc' 'lib32-libffi' 'lib32-expat' 'lib32-libxml2' 'wayland')
+    provides=('lib32-wayland' 'lib32-wayland-git')
+    conflicts=('lib32-wayland' 'lib32-wayland-git')
+
+    cd "${srcdir}/wayland32"
+
+    make DESTDIR="${pkgdir}" install
+    rm -rf "${pkgdir}/usr/"{bin,include,share}
+
+    install -dm 755 "${pkgdir}/usr/share/licenses"
+    ln -s wayland "${pkgdir}/usr/share/licenses/lib32-wayland"
+
+    install -Dm 644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
+}
+
+package_wayland-git-gentz() {
+    depends=('glibc' 'libffi' 'expat' 'libxml2')
+    provides=('wayland' 'wayland-git')
+    conflicts=('wayland' 'wayland-git')
+
+    cd "${srcdir}/wayland64"
+
+    make DESTDIR="${pkgdir}" install
+
+    mkdir -p "${srcdir}/docs/share"
+    mv "${pkgdir}/usr/share/"{doc,man} "${srcdir}/docs/share"
+
+    install -Dm 644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
+}
+
+package_wayland-docs-git-gentz() {
+    pkgdesc+=" (documentation)"
+    provides=('wayland-docs' 'wayland-docs-git')
+    conflicts=('wayland-docs' 'wayland-docs-git')
+
+    cd "${srcdir}/wayland64"
+
+    mv "${srcdir}/docs" "${pkgdir}/usr"
+
+    install -Dm 644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"
+}

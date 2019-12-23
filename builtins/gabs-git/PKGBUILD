@@ -24,6 +24,7 @@ pkgver() {
 
 build() {
     cd "${srcdir}/gabs"
+    git submodule update --init --recursive
     echo 'BUILTINS_DIR="/usr/share/gabs/builtins"' >> "gabs-build-config"
 }
 
@@ -33,7 +34,7 @@ package() {
 	install -Dm755 "gabs-build-common" "${pkgdir}/usr/bin/gabs-build-common"
 	install -Dm755 "gabs-build-chroot" "${pkgdir}/usr/bin/gabs-build-chroot"
     install -Dm755 "gabs-build-handler" "${pkgdir}/usr/bin/gabs-build-handler"
-	install -Dm755 "gabs-swap-llvm" "${pkgdir}/usr/bin/gabs-swap-llvm"
+	install -Dm755 "gabs-swap" "${pkgdir}/usr/bin/gabs-swap"
 
     install -Dm644 "docs/gabs-build.1" "${pkgdir}/usr/share/man/man1/gabs-build.1"
     install -Dm644 "docs/gabs-build-chroot.1" "${pkgdir}/usr/share/man/man1/gabs-build-chroot.1"

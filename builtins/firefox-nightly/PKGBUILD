@@ -2,7 +2,7 @@
 # Contributor: Bruno Pagani (a.k.a. ArchangeGabriel) <bruno.n.pagani@gmail.com>
 # Contributor: Cedric MATHIEU <me.xenom @ gmail.com>
 
-_pkgver=72.0a1
+_pkgver=73.0a1
 _name=firefox
 _lang=en-US
 _channel=nightly

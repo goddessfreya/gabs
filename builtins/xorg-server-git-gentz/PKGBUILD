@@ -13,7 +13,7 @@ groups=('xorg' 'gentz_custom')
 makedepends=(
     'xorgproto' 'pixman' 'libx11' 'mesa' 'mesa-libgl' 'xtrans' 'libxkbfile'
     'libxfont2' 'libpciaccess' 'libxv' 'libxmu' 'libxrender' 'libxi' 'libxaw'
-    'libdmx' 'libxtst' 'libxres' 'xorg-xkbcomp' 'xorg-util-macros'
+    'libxtst' 'libxres' 'xorg-xkbcomp' 'xorg-util-macros'
     'xorg-font-util' 'libepoxy' 'xcb-util' 'xcb-util-image'
     'xcb-util-renderutil' 'xcb-util-wm' 'xcb-util-keysyms' 'libxshmfence'
     'libunwind' 'systemd' 'wayland-protocols' 'egl-wayland' 'meson' 'git'
@@ -26,31 +26,34 @@ depends=(
     'xcb-util-renderutil' 'xcb-util-wm' 'xorgproto' 'mesa' 'libpciaccess'
     'xcb-util-keysyms' 'systemd-libs' 'pixman' 'nettle' 'libepoxy' 'libxfont2'
     'libunwind' 'libgl' 'libpciaccess' 'libdrm' 'libxshmfence' 'libxv' 'libtirpc'
-    'libxext' 'libxi' 'libxaw' 'libxrender' 'libdmx' 'libxfixes' 'libbsd'
+    'libxext' 'libxi' 'libxaw' 'libxrender' 'libxfixes' 'libbsd'
 )
 # see xorg-server-*/hw/xfree86/common/xf86Module.h for ABI versions -
 # we provide major numbers that drivers can depend on
 # and /usr/lib/pkgconfig/xorg-server.pc in xorg-server-devel pkg
+_VIDEODRV_version=25.1
+_XINPUT_version=24.1
+_EXTENSION_version=10.0
 provides=(
     'xorg-server-common' 'xorg-server-common-git' 'xorg-server-git'
-    'X-ABI-VIDEODRV_VERSION=25.0' 'X-ABI-XINPUT_VERSION=24.1'
-    'X-ABI-EXTENSION_VERSION=10.0' 'x-server' 'xorg-server' 'xorg-server-xephyr'
+    "X-ABI-VIDEODRV_VERSION=${_VIDEODRV_version}" 
+    "X-ABI-XINPUT_VERSION=${_XINPUT_version}" 
+    "X-ABI-EXTENSION_VERSION=${_EXTENSION_version}" 'x-server' 'xorg-server' 
     'xorg-server-xephyr-git' 'xorg-server-xvfb' 'xorg-server-xvfb-git'
-    'xorg-server-xnest' 'xorg-server-xnest-git' 'xorg-server-xdmx'
-    'xorg-server-xdmx-git' 'xorg-server-xwayland' 'xorg-server-xwayland-git'
-    'xorg-server-devel' 'xorg-server-devel-git'
+    'xorg-server-xnest' 'xorg-server-xnest-git'    'xorg-server-xwayland' 
+    'xorg-server-xwayland-git' 'xorg-server-devel' 'xorg-server-devel-git'
+    'xorg-server-xephyr'
 )
 conflicts=(
     'xorg-server-common' 'xorg-server' 'xorg-server-xephyr' 'xorg-server-xvfb'
     'nvidia-utils<=331.20' 'glamor-egl' 'xf86-video-modesetting'
-    'xorg-server-xnest' 'xorg-server-xdmx' 'xorg-server-xwayland'
-    'xorg-server-devel'
+    'xorg-server-xnest' 'xorg-server-xwayland' 'xorg-server-devel'
 )
 replaces=(
     'glamor-egl' 'xf86-video-modesetting' 'xorg-server-common-git-gentz'
     'xorg-server-xephyr-git-gentz' 'xorg-server-xvfb-git-gentz'
-    'xorg-server-xnest-git-gentz' 'xorg-server-xdmx-git-gentz'
-    'xorg-server-xwayland-git-gentz' 'xorg-server-devel-git-gentz'
+    'xorg-server-xnest-git-gentz' 'xorg-server-xwayland-git-gentz' 
+    'xorg-server-devel-git-gentz'
 )
 source=(
     'git://anongit.freedesktop.org/xorg/xserver'
@@ -100,11 +103,33 @@ _exports() {
 prepare() {
     _exports
 
+    local _versions_dont_match=false
+    for VAR in VIDEODRV XINPUT EXTENSION; do
+        local _current_version="$(eval "echo \$_${VAR}_version")"
+        local _found_version="$(
+            grep -Po "${VAR}_V.*\(\K[^)]*" \
+                "${srcdir}/xserver/hw/xfree86/common/xf86Module.h" \
+                |& sed 's/, /./')"
+        if [[ "${_current_version}" != "${_found_version}" ]]; then
+            msg "${VAR}: Cur != Found: ${_current_version} != ${_found_version}"
+            _versions_dont_match=true
+        fi
+    done
+
+    if [[ "${_versions_dont_match}" == "true" ]]; then
+        exit 1
+    fi
+
+    pushd "${srcdir}/xserver"
+    # xwayland refactor broke builds, this is last good one :/
+    # FIXME: Undo this soon.
+    git checkout 89e32d00f6e03fcdab267bfd9f0b0c5c2747d380~
+    popd
+
     arch-meson "${srcdir}/xserver" "${srcdir}/build" \
         "${_meson_flags[@]}" \
         -D os_vendor="Arch Linux" \
         -D ipv6=true \
-        -D dmx=true \
         -D xvfb=true \
         -D xnest=true \
         -D xcsecurity=true \
@@ -124,15 +149,6 @@ prepare() {
 }
 
 build() {
-    msg2 "Please confirm"
-    for VAR in VIDEODRV XINPUT EXTENSION; do
-        echo "X-ABI-${VAR}_VERSION=$( \
-            grep -Po "${VAR}_V.*\(\K[^)]*" \
-                "${srcdir}/xserver/hw/xfree86/common/xf86Module.h" \
-            |& sed 's/, /./' \
-        )"
-    done
-
     _exports
     ninja ${NINJAFLAGS} -C "${srcdir}/build"
 }

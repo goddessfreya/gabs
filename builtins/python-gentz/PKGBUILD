@@ -8,7 +8,7 @@
 pkgbase=python-gentz
 pkgname=('python-gentz' 'lib32-python-gentz')
 pkgver=3.8.0
-pkgrel=21
+pkgrel=25
 pkgdesc='Next generation of the python high-level scripting language'
 arch=('x86_64')
 url='http://www.python.org/'
@@ -48,7 +48,7 @@ prepare() {
     pushd "${srcdir}/${pkgbase}64"
 
     # FS#59997
-    patch -Np1 -i ../0001-compileall-Fix-ddir-when-recursing.patch
+    patch -p1 -i "../0001-compileall-Fix-ddir-when-recursing.patch"
 
     # These tests hang when installing. We don't need them.
     rm -rf Lib/test/*
@@ -85,19 +85,7 @@ prepare() {
 
     # Give the configuration script an extention
     patch -Np1 -i "../python-config-32.patch"
-
     popd
-
-    _configure_python "32" \
-        --libdir=/usr/lib32 \
-        --libexecdir=/usr/lib32 \
-        --includedir=/usr/lib32/python${_pybasever}/include \
-        --exec_prefix=/usr/lib32/python${_pybasever}/ \
-        --bindir=/usr/bin \
-        --sbindir=/usr/bin \
-        --with-suffix='-32'
-
-    _configure_python "64"
 }
 
 _exports_32() {
@@ -105,7 +93,7 @@ _exports_32() {
     export CFLAGS="${CFLAGS} -m32"
     #export CXXFLAGS="${CXXFLAGS} -m32"
     export LDFLAGS="${LDFLAGS} -m32"
-    _export_O3
+    _exports
 }
 
 _exports_64() {
@@ -113,16 +101,19 @@ _exports_64() {
     export CFLAGS="${CFLAGS/-m32}"
     #export CXXFLAGS="${CXXFLAGS/-m32}"
     export LDFLAGS="${LDFLAGS/-m32}"
-    _export_O3
+    _exports
 }
 
-_export_O3() {
+_exports() {
     # PGO should be done with -O3
     export CFLAGS="${CFLAGS/-O0}"
     export CFLAGS="${CFLAGS/-Og}"
     export CFLAGS="${CFLAGS/-O1}"
     export CFLAGS="${CFLAGS/-O2}"
     export CFLAGS="${CFLAGS/-O3} -O3"
+
+    # Else python breaks down on some edge cases when used with -ffast-math
+    export CFLAGS="${CFLAGS/-fno-finite-math-only} -fno-finite-math-only"
 }
 
 _obtain_server() {
@@ -134,35 +125,26 @@ _obtain_server() {
     done
 }
 
-_configure_python() {
+_build_python() {
     _exports_${1}
     pushd "${srcdir}/${pkgbase}${1}"
 
-    local _python_configure_options=(
-        --prefix=/usr
-        --enable-shared
-        --with-threads
-        --with-computed-gotos
-        --enable-optimizations
-        --with-lto
-        --enable-ipv6
-        --with-system-expat
-        --with-dbmliborder=gdbm:ndbm
-        --with-system-ffi
-        --with-system-libmpdec
-        --enable-loadable-sqlite-extensions
-        --without-ensurepip
-    )
-
     # Disable bundled pip & setuptools
     ./configure \
-        "${_python_configure_options[@]}" \
+        --prefix=/usr \
+        --enable-shared \
+        --with-threads \
+        --with-computed-gotos \
+        --enable-optimizations \
+        --with-lto \
+        --enable-ipv6 \
+        --with-system-expat \
+        --with-dbmliborder=gdbm:ndbm \
+        --with-system-ffi \
+        --with-system-libmpdec \
+        --enable-loadable-sqlite-extensions \
+        --without-ensurepip \
         "${@:2}"
-}
-
-_build_python() {
-    exports_${1}
-    pushd "${srcdir}/${pkgbase}${1}"
 
     _obtain_server
 
@@ -172,9 +154,16 @@ _build_python() {
     popd
 }
 
-_build() {
-    _build_python "32"
+build() {
     _build_python "64"
+    _build_python "32" \
+        --libdir=/usr/lib32 \
+        --libexecdir=/usr/lib32 \
+        --includedir=/usr/lib32/python${_pybasever}/include \
+        --exec_prefix=/usr/lib32/python${_pybasever}/ \
+        --bindir=/usr/bin \
+        --sbindir=/usr/bin \
+        --with-suffix='-32'
 }
 
 _package_common() {
@@ -183,9 +172,6 @@ _package_common() {
 
     # Hack to avoid building again
     sed -i 's/^all:.*$/all: build_all/' Makefile
-
-    # PGO should be done with -O3
-    export CFLAGS="${CFLAGS/-O2/-O3}"
 
     make DESTDIR="${pkgdir}" EXTRA_CFLAGS="${CFLAGS}" install
 
