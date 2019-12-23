@@ -7,8 +7,8 @@
 
 pkgbase=python-gentz
 pkgname=('python-gentz' 'lib32-python-gentz')
-pkgver=3.8.0
-pkgrel=25
+pkgver=3.8.1
+pkgrel=0
 pkgdesc='Next generation of the python high-level scripting language'
 arch=('x86_64')
 url='http://www.python.org/'
