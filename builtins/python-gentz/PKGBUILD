@@ -8,7 +8,7 @@
 pkgbase=python-gentz
 pkgname=('python-gentz' 'lib32-python-gentz')
 pkgver=3.8.1
-pkgrel=0
+pkgrel=1
 pkgdesc='Next generation of the python high-level scripting language'
 arch=('x86_64')
 url='http://www.python.org/'
@@ -28,7 +28,7 @@ source=(
     'lib32-distutils-sysconfig.patch'
     'python-config-32.patch'
 )
-sha512sums=('5f9bfcb3acdf592770a9d5abd2c32c68c55a49b92f958ded069e3ef31cf2d415e67112b4f6738fab237dc29e5c622298719946d2e9471e7e78e3a6bdf2fac1d1'
+sha512sums=('d41381848cc1ec8009643b71875f395a9ac2c8e12a5b1efef33caf8a9e99a337c790d4354695c85352d11b62092ae372b5af62f78724363fcbf3504ff9a6ddca'
             'SKIP'
             'ebd04c3b6d41321b1f0d439d356e0ce463760db55dc64109854c70d017cf56608aa19de9fc4a21bf840795ff202b4703444f9af8074b661780798c17e03089ff'
             'e0df774b373178632963c5744eeeff7e2b460e28c2208c8a7f6ddda7f316d5b2d12576bec52a41a3eed0636339266121a4bb068d4a00ed0050bbd5f9cbf800db'

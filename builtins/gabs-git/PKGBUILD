@@ -40,7 +40,7 @@ package() {
     install -Dm644 "docs/gabs-build-chroot.1" "${pkgdir}/usr/share/man/man1/gabs-build-chroot.1"
     install -Dm644 "docs/gabs-build-config.5" "${pkgdir}/usr/share/man/man5/gabs-build-config.5"
     install -Dm644 "docs/gabs-build-handler.1" "${pkgdir}/usr/share/man/man1/gabs-build-handler.1"
-    install -Dm644 "docs/gabs-swap-llvm.1" "${pkgdir}/usr/share/man/man1/gabs-swap-llvm.1"
+    install -Dm644 "docs/gabs-swap.1" "${pkgdir}/usr/share/man/man1/gabs-swap.1"
 
 	install -Dm755 "gabs-build-config" "${pkgdir}/etc/gabs-build-config"
     install -dm755 "${pkgdir}/usr/share/gabs"
