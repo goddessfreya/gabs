@@ -24,3 +24,11 @@
 	path = builtins/swaybg-git
 	url = https://aur.archlinux.org/swaybg-git.git
 	shallow = true
+[submodule "builtins/python-uinput"]
+	path = builtins/python-uinput
+	url = https://aur.archlinux.org/python-uinput.git
+	shallow = true
+[submodule "builtins/python2-uinput"]
+	path = builtins/python2-uinput
+	url = https://aur.archlinux.org/python2-uinput.git
+	shallow = true

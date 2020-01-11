@@ -35,6 +35,7 @@ BUILTIN_PACKAGES=(
     '${BUILTINS_DIR}/xf86-video-ati-git-gentz'
     '${BUILTINS_DIR}/xf86-video-fbdev-git-gentz'
     '${BUILTINS_DIR}/xf86-video-vesa-git-gentz'
+    '${BUILTINS_DIR}/xf86-video-dummy-git-gentz'
 
     '${BUILTINS_DIR}/wine-staging-git-gentz'
     '${BUILTINS_DIR}/winetricks-git'
@@ -44,4 +45,10 @@ BUILTIN_PACKAGES=(
     '${BUILTINS_DIR}/sway-git'
 
     '${BUILTINS_DIR}/gabs-git'
+
+    '${BUILTINS_DIR}/python-uinput'
+    '${BUILTINS_DIR}/python2-uinput'
+
+    '${BUILTINS_DIR}/xscope-git-gentz'
+    '${BUILTINS_DIR}/xtrace-git-gentz'
 )

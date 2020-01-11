@@ -1,20 +1,21 @@
 # Maintainer: Freya Gentz <zegentzy@protonmail.com>
 # Contributor: Yurii Kolesnykov <root@yurikoles.com>
 # Contributor: Laurent Carlier <lordheavym@gmail.com>
+# Contributor: Jan de Groot <jgc@archlinux.org>
 
-_pkgname=xf86-video-amdgpu
-pkgname=xf86-video-amdgpu-git-gentz
+_pkgname=xf86-video-dummy
+pkgname=xf86-video-dummy-git-gentz
 pkgver=19.1.0.0
 pkgrel=7
-pkgdesc='X.org amdgpu video driver (git version)'
+pkgdesc='X.org dummy video driver (git version)'
 arch=('x86_64')
 url='https://xorg.freedesktop.org/'
 license=('custom')
 groups=('xorg-drivers' 'gentz_custom')
-depends=(''systemd-libs'' 'mesa')
-makedepends=('xorg-server-devel' 'git' 'pixman' 'systemd' 'xorgproto')
-provides=('xf86-video-amdgpu' 'xf86-video-amdgpu-git')
-conflicts=('xf86-video-amdgpu' 'xorg-server<1.20.0')
+depends=('mesa')
+makedepends=('xorg-server-devel' 'git' 'pixman' 'xorgproto')
+provides=('xf86-video-dummy' 'xf86-video-dummy-git')
+conflicts=('xf86-video-dummy' 'xorg-server<1.20.0')
 source=("${pkgname}::git+https://gitlab.freedesktop.org/xorg/driver/${_pkgname}.git")
 sha512sums=('SKIP')
 
@@ -25,7 +26,7 @@ pkgver() {
 
     version="$(git describe --abbrev=0 --tags)"
     count="$(git rev-list --count ${version}..)"
-    printf '%s.%s' "${version#v}" "${count}" | sed 's/^xf86-video-amdgpu-//'
+    printf '%s.%s' "${version#v}" "${count}" | sed 's/^xf86-video-dummy-//'
 }
 
 _exports() {
@@ -47,14 +48,8 @@ build() {
     cd "${srcdir}/${pkgname}"
 
     _exports
-    ./autogen.sh --prefix=/usr --enable-glamor
+    ./autogen.sh --prefix=/usr  
     make
-}
-
-check() {
-    cd "${srcdir}/${pkgname}"
-    _exports
-    make check
 }
 
 package() {

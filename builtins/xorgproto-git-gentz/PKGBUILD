@@ -1,6 +1,6 @@
 # Maintainer: Freya Gentz <zegentzy@protonmail.com>
 # Contributor: Det <nimetonmaili g-mail>
-# Contributer: AndyRTR <andyrtr@archlinux.org>
+# Contributor: AndyRTR <andyrtr@archlinux.org>
 
 pkgname=xorgproto-git-gentz
 pkgver=2019.2.0.r2629.gf61f9a3
