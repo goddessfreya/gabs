@@ -29,12 +29,11 @@ gabs-build(1).
  * `-nw`: 
  
     Adds `--noextract --noprepare --skipinteg` to `${MAKEPKG_PARAMS}`.  Please
-    refer to makepkg(1). Stops adding `-c` to `${MAKECHROOTPKG_PARAM}`.
+    refer to makepkg(1).
 
  * `-w`: 
  
-    Replaces the `-c` that's normally added to `${MAKECHROOTPKG_PARAM}` with a
-    `-C` that's added to `${MAKEPKG_PARAM}`.  Please refer to makepkg(1).
+    Adds `-C` to `${MAKEPKG_PARAM}`.  Please refer to makepkg(1).
 
  * `-r`: 
 

@@ -119,8 +119,6 @@ fi
 local HOMEDIR="$(getent passwd "${SUDO_USER}" | cut -d: -f6)"
 [[ -d "${HOMEDIR}/.ccache" ]] && MAKECHROOTPKG_PARAMS+=("-d" "${HOMEDIR}/.ccache:/ccache")
 
-[[ "${WIPE_SRC}" == "wipe" ]] && MAKEPKG_PARAMS+=("-c")
-
 # Remove old packages
 rm *.pkg*
 rm  -rf "${CHROOT_DIR}/root/pkgs/"
@@ -148,6 +146,11 @@ if [[ "${BACKUP_DIR}" != "" ]]; then
     chown "${SUDO_USER}:${SUDO_USER}" "${BACKUP_DIR}"
     patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-no_wipe_build.patch" \
         -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}" || exit $?
+
+    if array_contains_element "-c" "${MAKEPKG_PARAMS[@]}"; then
+        >&2 echo "-c will wipe backup dir after creation."
+        exit 1
+    fi
 fi
 
 for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
