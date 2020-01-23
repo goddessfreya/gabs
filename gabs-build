@@ -6,8 +6,6 @@ local SCRIPTS_DIR="${0:A:h}"
 
 source "${SCRIPTS_DIR}/gabs-build-common" || exit $?
 
-sudo_loop
-
 local SHOULD_RESUME=false
 local SHOULD_RESUME_AFTER=false
 local RESUME_PKG=
@@ -17,7 +15,6 @@ local FIRST_PARAMS=()
 local EVERY_PARAMS=()
 local ONE_ONLY=false
 local BACKUP_DIR=
-local RESUME_DIR=
 local CHROOT_NAME=
 local LOOP_DEVICE_SIZE=
 local UNMOUNT_LOOP_DEVICE=true
@@ -48,7 +45,6 @@ while [[ $# -gt 0 ]]; do
 		-fp) FIRST_PARAMS+=("${2}"); shift;;
 		-ep) EVERY_PARAMS+=("${2}"); shift;;
 		-o) ONE_ONLY=true;;
-		-rs) RESUME_DIR="${2}"; shift;;
 		-bk) BACKUP_DIR="${2}"; shift;;
 		-cn) CHROOT_NAME="${2}"; shift;;
         -lds) LOOP_DEVICE_SIZE="${2}"; shift;;
@@ -77,7 +73,12 @@ source "${BUILD_CONFIG_SCRIPT}" || exit $?
 
 error_blank_param -d EPHEMERAL_DIR
 
-if [[ "${#EVERY_PARAMS[@]}" == "0" ]]; then
+if [[ "${USER}" != "root" || "${SUDO_USER}" == "" ]]; then
+    >&2 echo "gabs-build was not started via sudo."
+    exit 1
+fi
+
+if [[ "${#EVERY_PARAMS[@]}" == "0" && "${BACKUP_DIR}" == "" ]]; then
     EVERY_PARAMS=("-w")
     print_fallback_param "EVERY_PARAMS" "${EVERY_PARAMS[@]}"
 fi
@@ -104,6 +105,7 @@ for PKG_DIR in ${PACKAGES}; do
     local EVAL_PKG_DIR="$(eval "echo \"${PKG_DIR}\"")"
     if [[ ! -d "${EVAL_PKG_DIR}" ]]; then
         >&2 echo "Package \"${PKG_DIR}\" (\"${EVAL_PKG_DIR}\") is missing"
+        >&2 echo "Have you called \`git submodule update --init --recursive\` yet?"
         exit 1
     fi
 done
@@ -151,7 +153,7 @@ if [[ "${REMAKE_CHROOT}" == "true" ]]; then
 
     unsetopt nomatch
     for PKGBUILD_CLONE in "${PKGBUILD_CLONE_DIR}"/*; do
-        rm "$PKGBUILD_CLONE/data/packages"
+        rm "${PKGBUILD_CLONE}/data/packages"
     done
     setopt nomatch
 
@@ -184,7 +186,7 @@ local LOOP_DEVICE="$("${SCRIPTS_DIR}/gabs-build-chroot" \
 trap cleanup_loopdevice2 EXIT
 
 if [[ "${REMAKE_CHROOT}" == "true" ]]; then
-    sudo mkdir -p "${CHROOT_DIR}"
+    mkdir -p "${CHROOT_DIR}"
 
     local INSTALL_PACKAGES=(base-devel gcc-multilib zsh neovim git)
 
@@ -192,7 +194,7 @@ if [[ "${REMAKE_CHROOT}" == "true" ]]; then
 
     [[ "${USE_DISTCC}" == "true" ]] && INSTALL_PACKAGES+=(distcc python procps-ng)
 
-    sudo /usr/bin/mkarchroot \
+    /usr/bin/mkarchroot \
         -C /etc/pacman.conf \
         -M "${EPHEMERAL_DIR}/custom.${CHROOT_NAME}/makepkg.conf" \
         -c /var/cache/pacman/pkg \
@@ -201,8 +203,8 @@ if [[ "${REMAKE_CHROOT}" == "true" ]]; then
 
     nspawn "${CHROOT_DIR}/root" /bin/bash -xc 'yes | pacman -Syu' || exit $?
 
-    sudo mkdir -p "${CHROOT_DIR}/root/alt_pkgs.${CHROOT_NAME}/"
-    sudo cp "${EPHEMERAL_DIR}/alt_pkgs.${CHROOT_NAME}/"*.pkg* "${CHROOT_DIR}/root/pkgs/"
+    mkdir -p "${CHROOT_DIR}/root/alt_pkgs.${CHROOT_NAME}/"
+    cp "${EPHEMERAL_DIR}/alt_pkgs.${CHROOT_NAME}/"*.pkg* "${CHROOT_DIR}/root/pkgs/"
     if [[ "$(ls "${CHROOT_DIR}/root/pkgs/")" != "" ]]; then
         nspawn "${CHROOT_DIR}/root" /bin/bash -xc "yes | pacman -U /pkgs/*" || exit $?
     fi
@@ -227,19 +229,18 @@ fi
 for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
     [[ ! -d "${CHROOT_DIR2}" ]] && continue
     if [[ "${USE_DISTCC}" == "true" ]]; then
-        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/bin/clang++"
-        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/bin/clang"
-        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/clang++"
-        sudo ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/clang"
+        ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/bin/clang++"
+        ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/bin/clang"
+        ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/clang++"
+        ln -s /usr/bin/distcc "${CHROOT_DIR2}/usr/lib/distcc/clang"
     else 
-        sudo rm "${CHROOT_DIR2}/usr/lib/distcc/bin/clang++"
-        sudo rm "${CHROOT_DIR2}/usr/lib/distcc/bin/clang"
-        sudo rm "${CHROOT_DIR2}/usr/lib/distcc/clang++"
-        sudo rm "${CHROOT_DIR2}/usr/lib/distcc/clang"
+        rm "${CHROOT_DIR2}/usr/lib/distcc/bin/clang++"
+        rm "${CHROOT_DIR2}/usr/lib/distcc/bin/clang"
+        rm "${CHROOT_DIR2}/usr/lib/distcc/clang++"
+        rm "${CHROOT_DIR2}/usr/lib/distcc/clang"
     fi
 done
 
-[[ "${RESUME_DIR}" != "" ]] && mkdir -p "${RESUME_DIR}"
 [[ "${BACKUP_DIR}" != "" ]] && mkdir -p "${BACKUP_DIR}"
 
 for PKG_DIR in ${PACKAGES}; do
@@ -267,26 +268,7 @@ for PKG_DIR in ${PACKAGES}; do
         FIRST_PARAMS=()
     fi
 
-    array_contains_element "-rs" "${PARAMS[@]}" \
-        && >&2 echo "Did not insert -rs as already present" \
-        || {
-            [[ "${RESUME_DIR}" != "" ]] \
-                && PARAMS+=("-rs" "${RESUME_DIR}/$PKGNAME")
-        }
-
-    if array_contains_element "-rs" "${PARAMS[@]}" ; then
-        # Strip -w, as that conflicts
-        TO_REMOVE=("-w")
-        remove_from_array PARAMS TO_REMOVE
-        PARAMS=("${RFA_RETURN[@]}")
-    fi
-
-    array_contains_element "-bk" "${PARAMS[@]}" \
-        && >&2 echo "Did not insert -bk as already present" \
-        || {
-            [[ "${BACKUP_DIR}" != "" ]] \
-                && PARAMS+=("-bk" "${BACKUP_DIR}/$PKGNAME")
-        }
+    PARAMS+=("-bk" "${BACKUP_DIR}/${PKGNAME}")
 
     local BUILD_SCRIPT="${EVAL_PKG_DIR}/gabs-build"
     if [[ ! -f "${BUILD_SCRIPT}" ]]; then
@@ -294,8 +276,8 @@ for PKG_DIR in ${PACKAGES}; do
     fi
 
     mkdir -p "${PKGBUILD_CLONE_DIR}/${PKGNAME}"
-    sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
-        --chown="${USER}:${USER}" \
+    rsync -chavPASWX --stats --inplace  --compress-level=0 \
+        --chown="${SUDO_USER}:${SUDO_USER}" \
         "${EVAL_PKG_DIR}/" "${PKGBUILD_CLONE_DIR}/${PKGNAME}" || exit $?
 
     pushd "${PKGBUILD_CLONE_DIR}/${PKGNAME}"

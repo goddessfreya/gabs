@@ -1,0 +1,13 @@
+diff --git a/makechrootpkg b/makechrootpkg
+index fe496d9..a305f6f
+--- a/makechrootpkg
++++ b/makechrootpkg
+@@ -561,6 +561,8 @@ for arg in "${@:$OPTIND}"; do
+ 	esac
+ done
+ 
++keepbuilddir=1
++
+ umask 0022
+ 
+ ORIG_HOME=$HOME

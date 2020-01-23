@@ -1,7 +1,7 @@
 .\" generated with Ronn/v0.7.3
 .\" http://github.com/rtomayko/ronn/tree/0.7.3
 .
-.TH "GABS\-BUILD\-HANDLER" "1" "November 2019" "" ""
+.TH "GABS\-BUILD\-HANDLER" "1" "January 2020" "" ""
 .
 .SH "NAME"
 \fBgabs\-build\-handler\fR \- builds a package in a chroot
@@ -43,12 +43,6 @@ Replaces the \fB\-c\fR that\'s normally added to \fB${MAKECHROOTPKG_PARAM}\fR wi
 .
 .IP
 Repackages the package only\. Stops makepkg from calling \fBpackage\fR by passing \fB\-\-repackage\fR\. Please refer to makepkg(1)\. Also implies \fB\-nw\fR\.
-.
-.TP
-\fB\-wn\fR:
-.
-.IP
-"FOR FUCKS SAKE, STOP ADDING \fB\-c\fR TO MY PRECIOUS \fB<MAKECHROOTPKG_PARAM>\fR\."
 .
 .TP
 \fB\-dbr\fR:
@@ -109,12 +103,6 @@ Passed in from \fBgabs\-build\fR\. This is the directory of the original \fBPKGB
 .
 .TP
 \fB\-ed <EPHEMERAL_DIR>\fR:
-.
-.IP
-Passed in from \fBgabs\-build\fR\. Please refer to the option of the same name in gabs\-build(1)\.
-.
-.TP
-\fB\-rs <RESUME_DIR>\fR:
 .
 .IP
 Passed in from \fBgabs\-build\fR\. Please refer to the option of the same name in gabs\-build(1)\.

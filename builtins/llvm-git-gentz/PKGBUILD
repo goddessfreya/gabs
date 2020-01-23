@@ -146,7 +146,7 @@ prepare() {
     mkdir dont_delete
 
     pushd llvm-project64
-    git am "../0001-Enable-SSP-and-PIE-by-default.patch"
+    #git am "../0001-Enable-SSP-and-PIE-by-default.patch"
     git am "../0001-Link-libatomic.so-during-32-bit-builds.patch"
     popd
 

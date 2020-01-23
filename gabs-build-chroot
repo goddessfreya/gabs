@@ -64,7 +64,7 @@ fi
 [[ "${CLEANUP}" == "true" ]] && cleanup_loopdevice
 
 if [[ "${SETUP}" == "true" ]]; then
-    local LOOP_DEVICE="$(sudo losetup -f)"
+    local LOOP_DEVICE="$(losetup -f)"
     UNMOUNT_LOOP_DEVICE=false
     setup_loopdevice || exit $?
     echo "${LOOP_DEVICE}"

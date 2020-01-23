@@ -28,22 +28,12 @@ array_contains_element () {
 }
 
 nspawn() {
-    sudo setarch x86_64 /usr/bin/systemd-nspawn -q \
-        -D "$1" \
+    setarch x86_64 /usr/bin/systemd-nspawn -q \
+        -D "${1}" \
 	    -E "PATH=/usr/local/sbin:/usr/local/bin:/usr/bin" \
         --register=no --keep-unit --as-pid2 \
         --bind=/var/cache/pacman/pkg \
         "${@:2}"
-}
-
-# Stop sudo from expiring
-sudo_loop() {
-    sudo -v || exit $?
-    while true; do
-        sudo -nv
-        sleep 1m
-        kill -0 $$ 2>/dev/null || exit
-    done &
 }
 
 print_fallback_param() {
@@ -90,23 +80,23 @@ if_buildenv_uses() {
 clone_file() {
     for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
         [[ ! -d "${CHROOT_DIR2}" ]] && continue
-        sudo cp "${1}" "${CHROOT_DIR2}${2}"
+        cp "${1}" "${CHROOT_DIR2}${2}"
 
-        sudo chown ${3} "${CHROOT_DIR2}${2}"
-        sudo chmod ${4} "${CHROOT_DIR2}${2}"
+        chown ${3} "${CHROOT_DIR2}${2}"
+        chmod ${4} "${CHROOT_DIR2}${2}"
     done
 }
 
 cleanup_loopdevice1() {
     sleep 2
-    until sudo losetup -d "${LOOP_DEVICE}"; do sleep 2; done
+    until losetup -d "${LOOP_DEVICE}"; do sleep 2; done
 }
 
 cleanup_loopdevice2() {
     if [[ "${UNMOUNT_LOOP_DEVICE}" == "true" ]]; then
         sleep 2
-        until sudo umount "${CHROOT_MOUNT}"; do sleep 2; done
-        until sudo losetup -d "${LOOP_DEVICE}"; do sleep 2; done
+        until umount "${CHROOT_MOUNT}"; do sleep 2; done
+        until losetup -d "${LOOP_DEVICE}"; do sleep 2; done
     fi
 }
 
@@ -115,8 +105,8 @@ cleanup_loopdevice() {
     losetup -j "${CHROOT_FILE}" \
         | cut -d":" -f1 \
         | xargs -I% bash -xc '
-            lsblk "%" -o MOUNTPOINT -n | xargs sudo umount
-            sudo losetup -d "%"
+            lsblk "%" -o MOUNTPOINT -n | xargs umount
+            losetup -d "%"
         '
 }
 
@@ -129,17 +119,17 @@ setup_loopdevice() {
         fallocate -l ${LOOP_DEVICE_SIZE} "${CHROOT_FILE}" || exit $?
     fi
 
-    LOOP_DEVICE="$(sudo losetup -f)"
-    sudo losetup "${LOOP_DEVICE}" "${CHROOT_FILE}" || exit $?
+    LOOP_DEVICE="$(losetup -f)"
+    losetup "${LOOP_DEVICE}" "${CHROOT_FILE}" || exit $?
 
     trap cleanup_loopdevice1 EXIT
 
     if [[ "${REMAKE_CHROOT}" == "true" ]]; then
-        sudo mkfs.ext4 "${LOOP_DEVICE}" || exit $?
+        mkfs.ext4 "${LOOP_DEVICE}" || exit $?
     fi
 
-    sudo mkdir -p "${CHROOT_MOUNT}"
-    sudo mount "${LOOP_DEVICE}" "${CHROOT_MOUNT}" || exit $?
+    mkdir -p "${CHROOT_MOUNT}"
+    mount "${LOOP_DEVICE}" "${CHROOT_MOUNT}" || exit $?
 
     trap -- EXIT
 }
@@ -147,7 +137,7 @@ setup_loopdevice() {
 builtin_config_script_try_dirs() {
     try_build_config_script() {
         if [[ "${BUILD_CONFIG_SCRIPT}" == "" || ! -f "${BUILD_CONFIG_SCRIPT}" ]]; then
-            BUILD_CONFIG_SCRIPT="$1"
+            BUILD_CONFIG_SCRIPT="${1}"
         fi
     }
 

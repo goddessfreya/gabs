@@ -44,11 +44,11 @@ BUILTIN_PACKAGES=(
     '${BUILTINS_DIR}/swaybg-git'
     '${BUILTINS_DIR}/sway-git'
 
-    '${BUILTINS_DIR}/gabs-git'
-
     '${BUILTINS_DIR}/python-uinput'
     '${BUILTINS_DIR}/python2-uinput'
 
     '${BUILTINS_DIR}/xscope-git-gentz'
     '${BUILTINS_DIR}/xtrace-git-gentz'
+
+    '${BUILTINS_DIR}/gabs-git'
 )

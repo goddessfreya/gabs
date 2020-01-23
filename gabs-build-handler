@@ -10,9 +10,8 @@ local STARTING_PARAMS=("$@")
 local MAKEPKG_PARAMS=("-s")
 local MAKECHROOTPKG_PARAMS=()
 local CHROOT_DIR=
-local RESUME_DIR=
 local BACKUP_DIR=
-local WIPE_SRC=false
+local WIPE_SRC=wipe
 local RESET_REL=
 local DONT_BUMP_REL=false
 local NO_BUILD=false
@@ -25,8 +24,8 @@ local REAL_PACKAGE_DIR=
 local PREVIOUS_REPAIR=()
 
 proc_nw() {
-    [[ "${WIPE_SRC}" == "very_false" ]] && return
-    WIPE_SRC=very_false
+    [[ "${WIPE_SRC}" == "no_wipe" ]] && return
+    WIPE_SRC=no_wipe
     MAKEPKG_PARAMS+=("--noextract" "--noprepare" "--skipinteg")
 }
 
@@ -35,29 +34,22 @@ while [[ ${#} -gt 0 ]]; do
         -m) MAKEPKG_PARAMS+=("${2}"); shift;;
         -mc) MAKECHROOTPKG_PARAMS+=("${2}"); shift;;
 		-w)
-            if [[ "${WIPE_SRC}" != "false" ]]; then
+            if [[ "${WIPE_SRC}" != "wipe" ]]; then
                 >&2 echo -w conflicts other parameter.
                 exit 1
             fi
-            WIPE_SRC=true
+            WIPE_SRC=wipe_all
             MAKEPKG_PARAMS+=("-C")
 		;;
 		-nw)
-            if [[ "${WIPE_SRC}" != "false" ]]; then
+            if [[ "${WIPE_SRC}" != "wipe" ]]; then
                 >&2 echo -nw conflicts other parameter.
                 exit 1
             fi
             proc_nw
 		;;
-		-wn)
-            if [[ "${WIPE_SRC}" != "false" ]]; then
-                >&2 echo -wn conflicts other parameter.
-                exit 1
-            fi
-            WIPE_SRC=nothing
-        ;;
         -r)
-            if [[ "${ONLY_REPACKAGE}" != "false" || "${WIPE_SRC}" != "false" && "${RESUME_DIR}" == "" ]]; then
+            if [[ "${ONLY_REPACKAGE}" != "false" || "${WIPE_SRC}" != "wipe" && "${BACKUP_DIR}" == "" ]]; then
                 >&2 echo -r conflicts other parameter.
                 exit 1
             fi
@@ -65,21 +57,14 @@ while [[ ${#} -gt 0 ]]; do
             MAKEPKG_PARAMS+=("--repackage")
             proc_nw
         ;;
-        -rs)
-            if [[ "${RESUME_DIR}" != "" ]]; then
-                >&2 echo Resume dir already passed.
+        -bk)
+            if [[ "${BACKUP_DIR}" != "" ]]; then
+                >&2 echo BACKUP_DIR dir already passed.
                 exit 1
             fi
-            if [[ "${WIPE_SRC}" != "false" && "${ONLY_REPACKAGE}" != "true" ]]; then
-                >&2 echo -rs conflicts other parameter.
-                exit 1
-            fi
-
-            RESUME_DIR="${2}"
-            proc_nw
+            BACKUP_DIR="${2}"
 			shift 
         ;;
-        -bk) BACKUP_DIR="${2}"; shift;;
         -c) CHROOT_DIR="${2}"; MAKECHROOTPKG_PARAMS+=("-r" "${2}"); shift;;
         -dbr) DONT_BUMP_REL=true;;
         -nb) NO_BUILD=true;;
@@ -115,7 +100,7 @@ error_blank_nondir_param -d EPHEMERAL_DIR
 error_blank_nondir_param -d CHROOT_DIR
 error_blank_param CHROOT_NAME
 
-if [[ "${WIPE_SRC}" != "very_false" && "${DONT_BUMP_REL}" == "false" || "${RESET_REL}" != "" ]]; then
+if [[ "${WIPE_SRC}" != "no_wipe" && "${DONT_BUMP_REL}" == "false" || "${RESET_REL}" != "" ]]; then
     local PKGREL="$(cat PKGBUILD | grep "^pkgrel=[0-9]*$" | cut -d"=" -f2)"
 
     if [[ "$(echo "${PKGREL}" | wc -l)" != "1" ]]; then
@@ -131,27 +116,20 @@ if [[ "${WIPE_SRC}" != "very_false" && "${DONT_BUMP_REL}" == "false" || "${RESET
     sed -i "s/^pkgrel=${PKGREL}$/pkgrel=$(( ${PKGREL} + 1 ))/g" PKGBUILD
 fi
 
-[[ -d "${HOME}/.ccache" ]] && MAKECHROOTPKG_PARAMS+=("-d" "${HOME}/.ccache:/ccache")
+local HOMEDIR="$(getent passwd "${SUDO_USER}" | cut -d: -f6)"
+[[ -d "${HOMEDIR}/.ccache" ]] && MAKECHROOTPKG_PARAMS+=("-d" "${HOMEDIR}/.ccache:/ccache")
 
-[[ "${WIPE_SRC}" == "false" ]] && MAKEPKG_PARAMS+=("-c")
+[[ "${WIPE_SRC}" == "wipe" ]] && MAKEPKG_PARAMS+=("-c")
 
 # Remove old packages
-sudo rm *.pkg*
-sudo rm  -rf "${CHROOT_DIR}/root/pkgs/"
-
-if [[ "${RESUME_DIR}" != "" ]]; then
-    sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
-        "${CHROOT_DIR}/root/" "${CHROOT_DIR}/${USER}" || exit $?
-    mkdir -p "${CHROOT_DIR}/${USER}/build"
-    sudo rsync -chavPASWX --stats --inplace  --compress-level=0 \
-        "${RESUME_DIR}/" "${CHROOT_DIR}/${USER}/build" || exit $?
-fi
+rm *.pkg*
+rm  -rf "${CHROOT_DIR}/root/pkgs/"
 
 local MAKECHROOTPKG_BIN="${EPHEMERAL_DIR}/custom.${CHROOT_NAME}/makechrootpkg"
 
 mkdir -p data
 
-sudo cp "/bin/makechrootpkg" "${MAKECHROOTPKG_BIN}"
+cp "/bin/makechrootpkg" "${MAKECHROOTPKG_BIN}"
 chmod +x "${MAKECHROOTPKG_BIN}"
 
 patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-use_custom.patch" \
@@ -161,41 +139,63 @@ patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-force_color.patch" \
 #patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-add_x.patch" \
 #    -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}"
 
+if [[ "${BACKUP_DIR}" != "" ]]; then
+    MAKECHROOTPKG_PARAMS+=("-d" "${BACKUP_DIR}:/build")
+    if [[ "${WIPE_SRC}" == "wipe" || "${WIPE_SRC}" == "wipe_all" ]]; then
+        rm -rf "${BACKUP_DIR}"
+    fi
+    mkdir -p "${BACKUP_DIR}"
+    chown "${SUDO_USER}:${SUDO_USER}" "${BACKUP_DIR}"
+    patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makechrootpkg-no_wipe_build.patch" \
+        -d"${EPHEMERAL_DIR}/custom.${CHROOT_NAME}" || exit $?
+fi
+
 for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
     [[ ! -d "${CHROOT_DIR2}" ]] && continue
     # We got to make a copy of makepkg... make it use pump
-    sudo rm "${CHROOT_DIR2}/bin/makepkg"{,.gabs-inner}
-    nspawn "${CHROOT_DIR2}" /bin/bash -xc "yes | pacman -S pacman || exit \$?" || exit $?
+    rm "${CHROOT_DIR2}/bin/makepkg.gabs-inner"
+    cp "${CHROOT_DIR2}/bin/makepkg"{.backup,}
+    cp "${CHROOT_DIR2}/bin/makepkg"{,.backup}
 
-    sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-force_color.patch" \
+    patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-force_color.patch" \
         -d"${CHROOT_DIR2}/bin" || exit $?
-    sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-no_package.patch" \
+    patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-no_package.patch" \
         -d"${CHROOT_DIR2}/bin" || exit $?
-    sudo patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-buildenv_during_prepare.patch" \
+    patch -p1 -i"${BUILTINS_DIR}/makepkg_patches/makepkg-buildenv_during_prepare.patch" \
         -d"${CHROOT_DIR2}/bin" || exit $?
 
     if [[ "${DISTC_SUPPORT}" == "true" ]]; then
-        sudo mv "${CHROOT_DIR2}/bin/makepkg"{,.gabs-inner}
+        mv "${CHROOT_DIR2}/bin/makepkg"{,.gabs-inner}
         printf '#!/bin/zsh -x\npump /bin/makepkg.gabs-inner "$@"\n' \
-            | sudo tee "${CHROOT_DIR2}/bin/makepkg"
-        sudo chmod +x "${CHROOT_DIR2}/bin/makepkg"
+            > "${CHROOT_DIR2}/bin/makepkg"
+        chmod +x "${CHROOT_DIR2}/bin/makepkg"
     fi
 done
 
 rm *.pkg.(tar|tar.gz|tar.xz|tar.bz2)
 
+md5sum_files() {
+    md5sum "${@}" | cut -d" " -f1 | sort -u | wc -l
+}
+
 # Then actually build it
 if [[ "${NO_BUILD}" != "true" ]]; then
-    if ! sudo "${MAKECHROOTPKG_BIN}" "${MAKECHROOTPKG_PARAMS[@]}" \
+    if ! "${MAKECHROOTPKG_BIN}" "${MAKECHROOTPKG_PARAMS[@]}" \
         -- CCACHE_DIR=/ccache "${MAKEPKG_PARAMS[@]}" \
         2> >(tee data/makechrootpkgerrors 1>&2); then
 
-        if [[ \
-            "$(cat data/makechrootpkgerrors | tail -n2)" == "$(cat "${BUILTINS_DIR}/makepkg_errors/updpkgsums")" \
-            || "$(cat data/makechrootpkgerrors | tail -n2 | sed "s/([a-z0-9]*)/(HASH)/")" == "$(cat "${BUILTINS_DIR}/makepkg_errors/updpkgsums2")" \
-        ]] \
+        local LINE_COUNT="$(( \
+            $(md5sum_files \
+                =(cat "data/makechrootpkgerrors" | tail -n2) \
+                "${BUILTINS_DIR}/makepkg_errors/updpkgsums") \
+            + $(md5sum_files \
+                =(cat "data/makechrootpkgerrors" | tail -n2 | sed "s/([a-z0-9]*)/(HASH)/") \
+                "${BUILTINS_DIR}/makepkg_errors/updpkgsums2") \
+        ))"
+
+        if [[ "${LINE_COUNT}" != "4" ]] \
             && ! array_contains_element "updpkgsums" "${PREVIOUS_REPAIR[@]}"; then
-            updpkgsums
+            sudo -u "${SUDO_USER}" updpkgsums || exit $?
             cp PKGBUILD "${REAL_PACKAGE_DIR}/PKGBUILD"
             exec "${SCRIPTS_DIR}/gabs-build-handler" "${STARTING_PARAMS[@]}" \
                 -pr updpkgsums
@@ -203,11 +203,6 @@ if [[ "${NO_BUILD}" != "true" ]]; then
             exit $?
         fi
     fi
-fi
-
-if [[ "${BACKUP_DIR}" != "" ]]; then
-    sudo rsync -chavPASWX --stats --inplace --compress-level=0 \
-        "${CHROOT_DIR}/${USER}/build/" "${BACKUP_DIR}" || exit $?
 fi
 
 [[ "${NO_BUILD}" == "true" ]] && exit
@@ -225,18 +220,18 @@ fi
 # Install the pkg everywhere.
 for CHROOT_DIR2 in "${CHROOT_DIR}"/*; do
     [[ ! -d "${CHROOT_DIR2}" ]] && continue
-    sudo mkdir -p "${CHROOT_DIR2}/pkgs/"
-    sudo rm "${CHROOT_DIR2}/pkgs/"*
-    sudo cp *.pkg.(tar|tar.gz|tar.xz|tar.bz2) "${CHROOT_DIR2}/pkgs/"
+    mkdir -p "${CHROOT_DIR2}/pkgs/"
+    rm "${CHROOT_DIR2}/pkgs/"*
+    cp *.pkg.(tar|tar.gz|tar.xz|tar.bz2) "${CHROOT_DIR2}/pkgs/"
     nspawn "${CHROOT_DIR2}" /bin/bash -xc "yes | pacman -U /pkgs/* || exit \$?" || exit $?
-    sudo rm "${CHROOT_DIR2}/pkgs/"*
+    rm "${CHROOT_DIR2}/pkgs/"*
 done
 
 # Move the old packages out
 local DATA_DIR="$(pwd)/data"
 if [[ -f "data/packages" && "$(cat "data/packages" | wc -l)" != "0" ]]; then
     pushd "${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}"
-    cat "${DATA_DIR}/packages" | xargs -I% bash -c "sudo mv \"%\" \"${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}\""
+    cat "${DATA_DIR}/packages" | xargs -I% bash -c "mv \"%\" \"${EPHEMERAL_DIR}/pkgs.old.${CHROOT_NAME}\""
     popd
 fi
 
@@ -244,4 +239,4 @@ fi
 ls *.pkg.(tar|tar.gz|tar.xz|tar.bz2) > "data/packages"
 
 # Add it with the rest of the packages
-cat "data/packages" | xargs -I% bash -c "sudo mv \"%\" \"${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}\""
+cat "data/packages" | xargs -I% bash -c "mv \"%\" \"${EPHEMERAL_DIR}/pkgs.${CHROOT_NAME}\""

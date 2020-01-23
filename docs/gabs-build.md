@@ -129,27 +129,17 @@ options for the former two, respectively.
     If you want to build the same package in different chroots, change `-ed`
     instead.
 
- * `-rs <RESUME_DIR>`:
-    
-    Passes `-rs <RESUME_DIR>/<PKG_NAME>.<MD5_HASH_OF_FULL_NAME>` to
-    `gabs-build-handler`. Must be a full path. Before building, files will be
-    `rsync`ed from this directory into the build directory, allowing builds to
-    resume from where they last completed. 
-
-    Admitdly, I've never needed to use this option, as generally a fresh build
-    is plenty faster.
-
  * `-bk <BACKUP_DIR>`: 
  
     Passes `-bk <BACKUP_DIR>/<PKG_NAME>.<MD5_HASH_OF_FULL_NAME>` to
-    `gabs-build-handler`. Must be a full path. After building, build files will
-    be `rsync`ed into this directory, preserving them for the future. Originally
-    made to be used in tangent with `-rs`.
+    `gabs-build-handler`. Must be a full path. The chroot's `/build` directory
+    will be rerouted to the directory mentioned above, allowing contents to be
+    preserved between builds.
 
     This option is very usefull for preserving the source code you used to build
-    a package with, for things like gdb. If you want to incrementally rebuild a
-    package tho, you are probably better off with `-fp -nw`, instead of `-rs` +
-    `-bk`, please refer to gabs-build-handler(1).
+    a package with for things like gdb. If you want to incrementally rebuild a
+    package, please use this option with `-fp -nw` and refer to 
+    gabs-build-handler(1) for more details.
 
  * `-ed <EPHEMERAL_DIR>`:
 
@@ -189,7 +179,7 @@ Operating under the assumption that your computer is not swapping, an easy way
 to alleviate the stress gabs places on your hardware is to prefix your command
 with `nice` and `ionice`. 
 
-For example, I always use `ionice -c 2 -n 7 nice -19 gabs-build ...` when
+For example, I always use `ionice -c 2 -n 7 nice -19 sudo gabs-build ...` when
 building.
 
 ## EXAMPLES

@@ -41,10 +41,6 @@ gabs-build(1).
     Repackages the package only. Stops makepkg from calling `package` by passing
     `--repackage`. Please refer to makepkg(1). Also implies `-nw`.
 
- * `-wn`:   
- 
-    "FOR FUCKS SAKE, STOP ADDING `-c` TO MY PRECIOUS `<MAKECHROOTPKG_PARAM>`."
-
  * `-dbr`: 
 
     Don't bump the package release version. 
@@ -97,11 +93,6 @@ already passes in. If you are using `gabs-build`, trying to override them via
     `$(pwd)` should be inside `${PKGBUILD_CLONE_DIR}/${PKGNAME}`.
 
  * `-ed <EPHEMERAL_DIR>`:
-
-    Passed in from `gabs-build`. Please refer to the option of the same name in
-    gabs-build(1).
-
- * `-rs <RESUME_DIR>`:
 
     Passed in from `gabs-build`. Please refer to the option of the same name in
     gabs-build(1).
